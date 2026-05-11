@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Env & secrets
+.env
+.env.local
+*.pem
+
+# Data & artifacts
+data/
+storage/
+audio_cache/
+models/
+*.wav
+*.mp3
+!tests/fixtures/**/*.wav
+
+# Eval outputs (results are committed, runs are not)
+eval/runs/
+!eval/runs/.gitkeep
+
+# Node
+node_modules/
+web/dist/
+web/.vite/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
