@@ -1,0 +1,108 @@
+# Source registry seed.
+#
+# This file is the *initial* state of the `source` table, not the runtime source of
+# truth. `voicebrief sources sync` upserts these rows by slug; after that, sources
+# are managed in the database. Adding a feed here or via SQL is equivalent — the
+# point is that neither requires a code change.
+#
+# trust_weight is a prior on signal quality, used by the cheap pre-LLM filter to
+# decide what survives when the daily cap bites.
+
+sources:
+  # ─── Tier 1: zero-auth APIs, high signal ──────────────────────────────────
+  - slug: arxiv-cs-ai
+    name: arXiv cs.AI
+    kind: api
+    endpoint: http://export.arxiv.org/api/query
+    poll_interval_minutes: 720
+    trust_weight: 0.80
+    default_topics: [agentic-ai, machine-learning, research]
+    config:
+      adapter: arxiv
+      categories: [cs.AI, cs.CL, cs.LG]
+      max_results: 200
+
+  - slug: arxiv-cs-systems
+    name: arXiv cs.SE / cs.CV
+    kind: api
+    endpoint: http://export.arxiv.org/api/query
+    poll_interval_minutes: 720
+    trust_weight: 0.72
+    default_topics: [systems, computer-vision, research]
+    config:
+      adapter: arxiv
+      categories: [cs.SE, cs.CV, cs.DC]
+      max_results: 120
+
+  - slug: hackernews-top
+    name: Hacker News Top Stories
+    kind: api
+    endpoint: https://hacker-news.firebaseio.com/v0
+    poll_interval_minutes: 360
+    trust_weight: 0.65
+    default_topics: [engineering, startups, systems]
+    config:
+      adapter: hackernews
+      feed: topstories
+      limit: 120
+      min_score: 40
+
+  - slug: github-trending-ai
+    name: GitHub Trending — AI/ML
+    kind: github
+    endpoint: https://api.github.com/search/repositories
+    poll_interval_minutes: 720
+    trust_weight: 0.70
+    default_topics: [agentic-ai, tooling, open-source]
+    config:
+      adapter: github_search
+      query: "topic:llm OR topic:agents OR topic:rag"
+      min_stars: 50
+      created_within_days: 30
+
+  - slug: github-releases-watched
+    name: GitHub Releases — watched repos
+    kind: github
+    endpoint: https://api.github.com/repos
+    poll_interval_minutes: 360
+    trust_weight: 0.95      # a release for a dep you actually use is the highest-value item there is
+    default_topics: [releases, tooling]
+    config:
+      adapter: github_releases
+      repos:
+        - langchain-ai/langgraph
+        - langchain-ai/langchain
+        - run-llama/llama_index
+        - vllm-project/vllm
+        - ollama/ollama
+        - huggingface/transformers
+        - pytorch/pytorch
+        - fastapi/fastapi
+        - qdrant/qdrant
+        - flutter/flutter
+        - modelcontextprotocol/servers
+
+  - slug: huggingface-models
+    name: Hugging Face — trending models
+    kind: api
+    endpoint: https://huggingface.co/api/models
+    poll_interval_minutes: 720
+    trust_weight: 0.68
+    default_topics: [machine-learning, open-source, edge-ai]
+    config:
+      adapter: huggingface
+      sort: trendingScore
+      limit: 100
+
+  - slug: huggingface-datasets
+    name: Hugging Face — trending datasets
+    kind: api
+    endpoint: https://huggingface.co/api/datasets
+    poll_interval_minutes: 1440
+    trust_weight: 0.55
+    default_topics: [machine-learning, research]
+    config:
+      adapter: huggingface
+      kind: datasets
+      sort: trendingScore
+      limit: 50
