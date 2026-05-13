@@ -56,7 +56,8 @@ sources:
     default_topics: [agentic-ai, tooling, open-source]
     config:
       adapter: github_search
-      query: "topic:llm OR topic:agents OR topic:rag"
+      # One query per topic, merged — the Search API cannot express OR here.
+      topics: [llm, agents, rag, llmops, agentic-ai]
       min_stars: 50
       created_within_days: 30
 
