@@ -13,7 +13,7 @@ sources:
   - slug: arxiv-cs-ai
     name: arXiv cs.AI
     kind: api
-    endpoint: http://export.arxiv.org/api/query
+    endpoint: https://export.arxiv.org/api/query
     poll_interval_minutes: 720
     trust_weight: 0.80
     default_topics: [agentic-ai, machine-learning, research]
@@ -25,7 +25,7 @@ sources:
   - slug: arxiv-cs-systems
     name: arXiv cs.SE / cs.CV
     kind: api
-    endpoint: http://export.arxiv.org/api/query
+    endpoint: https://export.arxiv.org/api/query
     poll_interval_minutes: 720
     trust_weight: 0.72
     default_topics: [systems, computer-vision, research]
