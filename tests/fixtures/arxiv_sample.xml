@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:arxiv="http://arxiv.org/schemas/atom">
+  <entry>
+    <id>http://arxiv.org/abs/2606.01234v1</id>
+    <updated>2026-06-02T10:00:00Z</updated>
+    <published>2026-06-02T10:00:00Z</published>
+    <title>Durable Execution for Long-Running Agent Graphs</title>
+    <summary>  We present a checkpointing scheme
+    that survives process restarts.  </summary>
+    <author><name>A. Researcher</name></author>
+    <author><name>B. Coauthor</name></author>
+    <link href="http://arxiv.org/abs/2606.01234v1" rel="alternate" type="text/html"/>
+    <arxiv:primary_category term="cs.AI"/>
+    <category term="cs.AI"/>
+    <category term="cs.LG"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.00001v2</id>
+    <updated>2026-05-01T08:00:00Z</updated>
+    <published>2026-05-01T08:00:00Z</published>
+    <title>An Older Paper Outside The Window</title>
+    <summary>Should be filtered by the since cutoff.</summary>
+    <author><name>C. Author</name></author>
+    <link href="http://arxiv.org/abs/2605.00001v2" rel="alternate" type="text/html"/>
+    <category term="cs.CL"/>
+  </entry>
+</feed>
