@@ -107,3 +107,433 @@ sources:
       kind: datasets
       sort: trendingScore
       limit: 50
+
+  # ─── Tier 2: RSS/Atom, one generic ingester ───────────────────────────────
+  #
+  # Every feed below was probed before being added; the ones that 404'd, blocked
+  # non-browser clients, or had stopped publishing were dropped rather than left
+  # in as dead weight. Vendors that retired their RSS (Anthropic, LangChain,
+  # LlamaIndex, vLLM, Mistral) are covered by their GitHub releases atom feed
+  # instead, which is the more actionable signal anyway.
+
+  # Research labs & company blogs
+  - slug: openai-news
+    name: OpenAI News
+    kind: rss
+    endpoint: https://openai.com/news/rss.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.85
+    default_topics: [agentic-ai, research]
+    config:
+      adapter: rss
+
+  - slug: deepmind-blog
+    name: Google DeepMind Blog
+    kind: rss
+    endpoint: https://deepmind.google/blog/rss.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.85
+    default_topics: [research, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: google-research
+    name: Google Research Blog
+    kind: rss
+    endpoint: https://research.google/blog/rss/
+    poll_interval_minutes: 720
+    trust_weight: 0.82
+    default_topics: [research, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: microsoft-research
+    name: Microsoft Research
+    kind: rss
+    endpoint: https://www.microsoft.com/en-us/research/feed/
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [research]
+    config:
+      adapter: rss
+
+  - slug: meta-engineering
+    name: Meta Engineering
+    kind: rss
+    endpoint: https://engineering.fb.com/feed/
+    poll_interval_minutes: 720
+    trust_weight: 0.75
+    default_topics: [systems, engineering]
+    config:
+      adapter: rss
+
+  - slug: nvidia-blog
+    name: NVIDIA Technical Blog
+    kind: rss
+    endpoint: https://developer.nvidia.com/blog/feed
+    poll_interval_minutes: 720
+    trust_weight: 0.72
+    default_topics: [machine-learning, edge-ai]
+    config:
+      adapter: rss
+
+  - slug: aws-ml
+    name: AWS Machine Learning Blog
+    kind: rss
+    endpoint: https://aws.amazon.com/blogs/machine-learning/feed/
+    poll_interval_minutes: 720
+    trust_weight: 0.70
+    default_topics: [machine-learning, cloud]
+    config:
+      adapter: rss
+
+  - slug: huggingface-blog
+    name: Hugging Face Blog
+    kind: rss
+    endpoint: https://huggingface.co/blog/feed.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [machine-learning, open-source]
+    config:
+      adapter: rss
+
+
+  # Engineering blogs
+  - slug: cloudflare-blog
+    name: Cloudflare Blog
+    kind: rss
+    endpoint: https://blog.cloudflare.com/rss/
+    poll_interval_minutes: 720
+    trust_weight: 0.75
+    default_topics: [systems, engineering]
+    config:
+      adapter: rss
+
+  - slug: netflix-tech
+    name: Netflix Tech Blog
+    kind: rss
+    endpoint: https://netflixtechblog.com/feed
+    poll_interval_minutes: 720
+    trust_weight: 0.72
+    default_topics: [systems, engineering]
+    config:
+      adapter: rss
+
+  - slug: github-blog-eng
+    name: GitHub Engineering
+    kind: rss
+    endpoint: https://github.blog/engineering/feed/
+    poll_interval_minutes: 720
+    trust_weight: 0.70
+    default_topics: [engineering, tooling]
+    config:
+      adapter: rss
+
+  - slug: stripe-blog
+    name: Stripe Blog
+    kind: rss
+    endpoint: https://stripe.com/blog/feed.rss
+    poll_interval_minutes: 720
+    trust_weight: 0.68
+    default_topics: [engineering]
+    config:
+      adapter: rss
+
+  - slug: discord-eng
+    name: Discord Engineering
+    kind: rss
+    endpoint: https://discord.com/blog/rss.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.60
+    default_topics: [systems]
+    config:
+      adapter: rss
+
+  - slug: dropbox-tech
+    name: Dropbox Tech
+    kind: rss
+    endpoint: https://dropbox.tech/feed
+    poll_interval_minutes: 1440
+    trust_weight: 0.62
+    default_topics: [systems]
+    config:
+      adapter: rss
+
+
+  # Newsletters & practitioners
+  - slug: simonwillison
+    name: Simon Willison
+    kind: rss
+    endpoint: https://simonwillison.net/atom/everything/
+    poll_interval_minutes: 720
+    trust_weight: 0.82
+    default_topics: [agentic-ai, tooling]
+    config:
+      adapter: rss
+
+  - slug: import-ai
+    name: Import AI
+    kind: rss
+    endpoint: https://importai.substack.com/feed
+    poll_interval_minutes: 720
+    trust_weight: 0.80
+    default_topics: [research, agentic-ai]
+    config:
+      adapter: rss
+
+  - slug: ahead-of-ai
+    name: Ahead of AI
+    kind: rss
+    endpoint: https://magazine.sebastianraschka.com/feed
+    poll_interval_minutes: 1440
+    trust_weight: 0.80
+    default_topics: [machine-learning, research]
+    config:
+      adapter: rss
+
+  - slug: interconnects
+    name: Interconnects
+    kind: rss
+    endpoint: https://www.interconnects.ai/feed
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [research, agentic-ai]
+    config:
+      adapter: rss
+
+  - slug: gradient-pub
+    name: The Gradient
+    kind: rss
+    endpoint: https://thegradient.pub/rss/
+    poll_interval_minutes: 1440
+    trust_weight: 0.70
+    default_topics: [research]
+    config:
+      adapter: rss
+
+  - slug: eugene-yan
+    name: Eugene Yan
+    kind: rss
+    endpoint: https://eugeneyan.com/rss/
+    poll_interval_minutes: 1440
+    trust_weight: 0.72
+    default_topics: [machine-learning, engineering]
+    config:
+      adapter: rss
+
+  - slug: lilian-weng
+    name: Lil'Log
+    kind: rss
+    endpoint: https://lilianweng.github.io/index.xml
+    poll_interval_minutes: 1440
+    trust_weight: 0.80
+    default_topics: [research]
+    config:
+      adapter: rss
+
+
+  # Framework & tooling releases
+  - slug: langgraph-releases
+    name: LangGraph Releases
+    kind: rss
+    endpoint: https://github.com/langchain-ai/langgraph/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.85
+    default_topics: [agentic-ai, releases]
+    config:
+      adapter: rss
+
+  - slug: langchain-releases
+    name: LangChain Releases
+    kind: rss
+    endpoint: https://github.com/langchain-ai/langchain/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [agentic-ai, releases]
+    config:
+      adapter: rss
+
+  - slug: llamaindex-releases
+    name: LlamaIndex Releases
+    kind: rss
+    endpoint: https://github.com/run-llama/llama_index/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.72
+    default_topics: [retrieval, releases]
+    config:
+      adapter: rss
+
+  - slug: vllm-releases
+    name: vLLM Releases
+    kind: rss
+    endpoint: https://github.com/vllm-project/vllm/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.75
+    default_topics: [systems, releases]
+    config:
+      adapter: rss
+
+  - slug: transformers-releases
+    name: Transformers Releases
+    kind: rss
+    endpoint: https://github.com/huggingface/transformers/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [machine-learning, releases]
+    config:
+      adapter: rss
+
+  - slug: pytorch-releases
+    name: PyTorch Releases
+    kind: rss
+    endpoint: https://github.com/pytorch/pytorch/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.75
+    default_topics: [machine-learning, releases]
+    config:
+      adapter: rss
+
+  - slug: ollama-releases
+    name: Ollama Releases
+    kind: rss
+    endpoint: https://github.com/ollama/ollama/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.75
+    default_topics: [edge-ai, releases]
+    config:
+      adapter: rss
+
+  - slug: fastapi-releases
+    name: FastAPI Releases
+    kind: rss
+    endpoint: https://github.com/fastapi/fastapi/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.70
+    default_topics: [tooling, releases]
+    config:
+      adapter: rss
+
+  - slug: flutter-releases
+    name: Flutter Releases
+    kind: rss
+    endpoint: https://github.com/flutter/flutter/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.70
+    default_topics: [flutter, releases]
+    config:
+      adapter: rss
+
+  - slug: qdrant-releases
+    name: Qdrant Releases
+    kind: rss
+    endpoint: https://github.com/qdrant/qdrant/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.68
+    default_topics: [retrieval, releases]
+    config:
+      adapter: rss
+
+  - slug: mistral-releases
+    name: Mistral Inference Releases
+    kind: rss
+    endpoint: https://github.com/mistralai/mistral-inference/releases.atom
+    poll_interval_minutes: 720
+    trust_weight: 0.65
+    default_topics: [agentic-ai, releases]
+    config:
+      adapter: rss
+
+  - slug: mcp-spec
+    name: MCP Specification
+    kind: rss
+    endpoint: https://github.com/modelcontextprotocol/specification/releases.atom
+    poll_interval_minutes: 1440
+    trust_weight: 0.80
+    default_topics: [agentic-ai, standards]
+    config:
+      adapter: rss
+
+
+  # Docs & product blogs
+  - slug: supabase-blog
+    name: Supabase Blog
+    kind: rss
+    endpoint: https://supabase.com/rss.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.62
+    default_topics: [tooling]
+    config:
+      adapter: rss
+
+  - slug: duckdb-news
+    name: DuckDB News
+    kind: rss
+    endpoint: https://duckdb.org/feed.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.65
+    default_topics: [tooling, systems]
+    config:
+      adapter: rss
+
+  - slug: weaviate-blog
+    name: Weaviate Blog
+    kind: rss
+    endpoint: https://weaviate.io/blog/rss.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.62
+    default_topics: [retrieval]
+    config:
+      adapter: rss
+
+  - slug: qdrant-blog
+    name: Qdrant Blog
+    kind: rss
+    endpoint: https://qdrant.tech/blog/index.xml
+    poll_interval_minutes: 720
+    trust_weight: 0.65
+    default_topics: [retrieval, tooling]
+    config:
+      adapter: rss
+
+
+  # Aggregators
+  - slug: lobsters
+    name: Lobste.rs
+    kind: rss
+    endpoint: https://lobste.rs/rss
+    poll_interval_minutes: 720
+    trust_weight: 0.60
+    default_topics: [engineering, systems]
+    config:
+      adapter: rss
+
+  - slug: reddit-ml
+    name: r/MachineLearning
+    kind: rss
+    endpoint: https://www.reddit.com/r/MachineLearning/.rss
+    poll_interval_minutes: 720
+    trust_weight: 0.55
+    default_topics: [machine-learning]
+    config:
+      adapter: rss
+
+  - slug: reddit-localllama
+    name: r/LocalLLaMA
+    kind: rss
+    endpoint: https://www.reddit.com/r/LocalLLaMA/.rss
+    poll_interval_minutes: 720
+    trust_weight: 0.58
+    default_topics: [edge-ai, open-source]
+    config:
+      adapter: rss
+
+  - slug: hn-frontpage-rss
+    name: HN Front Page (RSS)
+    kind: rss
+    endpoint: https://hnrss.org/frontpage
+    poll_interval_minutes: 720
+    trust_weight: 0.55
+    default_topics: [engineering]
+    config:
+      adapter: rss
+
