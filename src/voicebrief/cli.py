@@ -106,5 +106,38 @@ def ingest_run(
     )
 
 
+
+@app.command("enrich")
+def enrich_command(
+    keep: int = typer.Option(300, "--keep", help="Items surviving the cheap filter"),
+    threshold: float = typer.Option(0.92, "--threshold", help="Cosine dedup threshold"),
+    topics: str = typer.Option("", "--topics", help="Comma-separated user topics"),
+) -> None:
+    """Embed, deduplicate and cluster the recent crawl."""
+    from voicebrief.db import session_scope
+    from voicebrief.pipeline.enrich import enrich
+
+    user_topics = {t.strip() for t in topics.split(",") if t.strip()}
+    with session_scope() as session:
+        result = enrich(
+            session, user_topics=user_topics or None, keep=keep, dedup_threshold=threshold
+        )
+
+    table = Table(title="Enrichment")
+    table.add_column("stage")
+    table.add_column("count", justify="right")
+    for label, value in (
+        ("items considered", result.considered),
+        ("survived filter", result.filtered),
+        ("embedded", result.embedded),
+        ("duplicate groups", result.duplicate_groups),
+        ("items collapsed", result.collapsed),
+        ("clusters", result.clusters),
+        ("multi-item clusters", result.multi_item_clusters),
+    ):
+        table.add_row(label, str(value))
+    console.print(table)
+
+
 if __name__ == "__main__":
     app()
