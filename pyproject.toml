@@ -29,8 +29,9 @@ dependencies = [
 [project.optional-dependencies]
 ml = [
     "sentence-transformers>=3.3",
+    # HDBSCAN ships inside scikit-learn >= 1.3; the standalone package needs a C
+    # toolchain on Windows for no benefit.
     "scikit-learn>=1.5",
-    "hdbscan>=0.8.40",
     "numpy>=1.26,<3",
 ]
 llm = [
