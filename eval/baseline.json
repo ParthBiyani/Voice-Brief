@@ -1,0 +1,111 @@
+{
+  "generated_at": "2026-09-10T05:38:59.206047+00:00",
+  "git_sha": "adc2ec1",
+  "python": "3.11.9",
+  "corpus_size": 500,
+  "dedup_threshold": 0.92,
+  "elapsed_seconds": 23.64,
+  "metrics": [
+    {
+      "component": "Deduplication",
+      "metric": "pairwise precision",
+      "value": 1.0,
+      "target": 0.9,
+      "higher_is_better": true,
+      "passed": true,
+      "detail": {
+        "precision": 1.0,
+        "recall": 0.9714,
+        "f1": 0.9855,
+        "tp": 34,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    {
+      "component": "Deduplication",
+      "metric": "pairwise recall",
+      "value": 0.9714,
+      "target": 0.8,
+      "higher_is_better": true,
+      "passed": true,
+      "detail": {
+        "judged_pairs": 255,
+        "true_pairs": 35
+      }
+    },
+    {
+      "component": "Clustering",
+      "metric": "homogeneity",
+      "value": 0.8105,
+      "target": 0.75,
+      "higher_is_better": true,
+      "passed": true,
+      "detail": {
+        "scored_items": 398,
+        "true_topics": 19,
+        "predicted_clusters": 290,
+        "multi_item_clusters": 82
+      }
+    },
+    {
+      "component": "Clustering",
+      "metric": "clustered fraction",
+      "value": 0.4774,
+      "target": null,
+      "higher_is_better": true,
+      "passed": null,
+      "detail": {
+        "note": "guards against purity gamed by refusing to cluster"
+      }
+    },
+    {
+      "component": "Clustering",
+      "metric": "adjusted rand index",
+      "value": 0.0189,
+      "target": null,
+      "higher_is_better": true,
+      "passed": null,
+      "detail": {
+        "note": "granularity mismatch: stories vs subject areas, see metrics.py"
+      }
+    },
+    {
+      "component": "Ranking",
+      "metric": "precision@10",
+      "value": 0.4333,
+      "target": 0.7,
+      "higher_is_better": true,
+      "passed": false,
+      "detail": {
+        "agent-builder": {
+          "p_at_k": 0.5,
+          "ndcg": 0.6489,
+          "pool": 76,
+          "relevant": 14
+        },
+        "edge-ml": {
+          "p_at_k": 0.3,
+          "ndcg": 0.469,
+          "pool": 76,
+          "relevant": 10
+        },
+        "cv-researcher": {
+          "p_at_k": 0.5,
+          "ndcg": 0.6489,
+          "pool": 76,
+          "relevant": 21
+        }
+      }
+    },
+    {
+      "component": "Ranking",
+      "metric": "nDCG@10",
+      "value": 0.589,
+      "target": null,
+      "higher_is_better": true,
+      "passed": null,
+      "detail": {}
+    }
+  ]
+}

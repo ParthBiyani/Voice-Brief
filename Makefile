@@ -50,4 +50,10 @@ fmt:  ## Auto-format
 eval:  ## Run the evaluation harness and diff against the last recorded run
 	$(PY) -m voicebrief.evalkit.run --compare
 
-.PHONY: help install up down migrate seed ingest brief api web test test-all lint fmt eval
+.PHONY: help install up down migrate seed ingest brief api web test test-all lint fmt eval eval-record eval-sets
+
+eval-record:  ## Record the current run as the baseline for future comparisons
+	$(PY) -m voicebrief.evalkit.run --record
+
+eval-sets:  ## Regenerate cluster and relevance label sets from the frozen corpus
+	$(PY) scripts/build_eval_sets.py

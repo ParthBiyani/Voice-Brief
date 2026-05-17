@@ -1,0 +1,500 @@
+{"id": "498338d4-8a6a-49f6-a88d-3635302b0fbf", "title": "Jackrong/Qwopus3.8-27B-Flash-GGUF (model)", "topic": "model-release"}
+{"id": "6fe92ed4-6afc-4c58-ae43-b484b5aad4c5", "title": "langchain-ai/langchain langchain-openai==1.6.2", "topic": "framework-release"}
+{"id": "9d02f2f5-594c-4904-99ca-62fe3671c3e1", "title": "markov-ai/cad-1000-hours (dataset)", "topic": "dataset-release"}
+{"id": "bedc8355-0f26-4e69-9489-f164bbc6a0b6", "title": "peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF (model)", "topic": "model-release"}
+{"id": "de72ed22-8166-4e6f-bbf1-149b9bfba7f5", "title": "Shopify acquires Tailwind", "topic": "industry-news"}
+{"id": "74f2314a-70c0-4a5d-8ec6-1bdc87cf3606", "title": "nvidia/PhysicalAI-Autonomous-Vehicles (dataset)", "topic": "dataset-release"}
+{"id": "5cc08808-2182-40fa-9521-aa65aba4a867", "title": "lvladikov/Krea2-Turbo-Distill-4step-LoRA (model)", "topic": "model-release"}
+{"id": "5b346ba3-f96e-470d-995e-134c4bd9e049", "title": "vllm-project/vllm v0.29.0", "topic": "framework-release"}
+{"id": "90c48472-fea3-47e2-912f-0baef3353019", "title": "BreezeBlue/Breeze-TTS-2 (model)", "topic": "model-release"}
+{"id": "722519a3-826f-4937-9a26-387275a4a15c", "title": "Claude, change the “Add to Cart” button to blue", "topic": "other"}
+{"id": "9e8ccd5a-1022-463f-bd7f-261d6eb1632d", "title": "iPhone 18 Pro and iPhone 18 Pro Max", "topic": "consumer-tech"}
+{"id": "30ebb0c5-8ef8-4019-bb71-b7638f9668c4", "title": "Show HN: What if the speed of light was 5 km/h?", "topic": "vision-multimodal"}
+{"id": "83157546-6493-4a3c-9680-1ceca0189a57", "title": "GPT-6 Astra, looped transformers, and hidden reasoning", "topic": "other"}
+{"id": "edc9c33d-4a72-4597-b4d1-99ec8bd5a5b7", "title": "nvidia/Open-SWE-Traces (dataset)", "topic": "dataset-release"}
+{"id": "126273d6-4edd-48bb-a29f-6e0cae42dfca", "title": "Desert Ant Labs: local, fast models that run on device", "topic": "other"}
+{"id": "f8662914-a1cd-4d8d-89e9-a0c035218917", "title": "No Man's Sky Cosmos", "topic": "other"}
+{"id": "ab8c8091-42f8-4d91-a871-6dd4737a1dfe", "title": "Nanbeige/Nanbeige4.2-3B (model)", "topic": "model-release"}
+{"id": "5d02eac0-502c-4aea-ac89-7c5a2b27839c", "title": "Automattic's board forces CEO Matt Mullenweg into leave of absence", "topic": "industry-news"}
+{"id": "86c687ef-5ea7-41bb-a29a-d4df6713d4c6", "title": "Growing proof that autonomous cars save lives", "topic": "other"}
+{"id": "9453ac0a-4ea8-4ab8-92cb-5aa529b78c2d", "title": "peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP (model)", "topic": "model-release"}
+{"id": "1c4feea8-e2a5-4703-b7d3-ebc6e7884004", "title": "How I advertise malicious software on Google Ads", "topic": "other"}
+{"id": "624cf6c0-509d-44f8-8dca-35068ab39fac", "title": "Blizzard Workers Win Historic Union Contract", "topic": "industry-news"}
+{"id": "1d39c5ed-66a5-46c7-b9fb-eca1407b0d72", "title": "I'm sorry, you're not going to die from an AI-engineered supervirus", "topic": "other"}
+{"id": "a7bf257c-29c1-4555-9585-bec6e3f02b9d", "title": "Apple Watch Series 12", "topic": "consumer-tech"}
+{"id": "fe60c0ba-c83c-44bd-9817-49ef63f6e18a", "title": "OpenVDN/vdn-minimax-h3 (model)", "topic": "model-release"}
+{"id": "30dd4af0-c9df-46d7-84be-3bfff60105bc", "title": "openbmb/MiniCPM5-2B (model)", "topic": "model-release"}
+{"id": "74f2f946-71b7-4a3a-9147-0bb480a01207", "title": "Qwen 3.8 follows GPT-5.5 Pro reasoning prefills", "topic": "other"}
+{"id": "bcd05c57-3e70-4e37-89fb-51fb687a1d1a", "title": "speach1sdef178/MiniMax-H3-Semantic-Bridge (model)", "topic": "model-release"}
+{"id": "55942194-771f-44b6-af7c-85bde6d8838b", "title": "Muse – Meta’s personal AI agent", "topic": "agents-tool-use"}
+{"id": "c8db53f8-a4e7-44c5-8180-42212170dd34", "title": "Tao: Open math problems being non-renewably mined by AI", "topic": "other"}
+{"id": "66afb33b-c344-4919-81a5-21ab186ccf52", "title": "GNU Radio in the browser", "topic": "other"}
+{"id": "4515ee41-aa03-4126-b1ac-5b5b80c3885a", "title": "Understanding the recent DDoS attack against Read the Docs", "topic": "security"}
+{"id": "4649d629-79ef-4b37-b544-70088bbac146", "title": "How to build a printer", "topic": "other"}
+{"id": "0929da0b-9195-4238-8025-37bbe929a6e8", "title": "IdeaAMBIG: Benchmarking Implementation-Critical Gaps in Research-Idea Specifications", "topic": "safety-eval"}
+{"id": "ae110d4a-689d-43c1-bfea-b1fe1f04d6da", "title": "Planet Labs' open satellite feed", "topic": "other"}
+{"id": "3a6e1ced-5d8c-4deb-8938-44899d3292f0", "title": "Likelihood-free inference with nuisance parameters through normalizing flows", "topic": "efficiency-inference"}
+{"id": "aec50ca4-8e8b-4c87-ab7b-f57237d3d14f", "title": "A positive resolution of the gap-entropy conjecture", "topic": "theory-optimization"}
+{"id": "3a7a5117-e06b-4557-96d9-200eff3c92d7", "title": "Factoring RSA 260", "topic": "other"}
+{"id": "9d785106-9ebe-4cc4-8f3d-971026e802cd", "title": "Characterizing Language Generation in the Limit: Finite Witnesses and a Separation-Width Hierarch", "topic": "other"}
+{"id": "d6b9b601-c7b2-40c0-8b9d-aa209086ab3f", "title": "Show-Harness: Just a VLM Agent Can Play Robots", "topic": "robotics-autonomy"}
+{"id": "42dd558f-6288-432a-9aac-ea72e49cadb7", "title": "Optimal Low-Rank Quantum State Tomography with Bounded-Sample Joint Measurements", "topic": "theory-optimization"}
+{"id": "8f00b9f3-caef-4738-ab8a-34fe47d7252a", "title": "What do Visa and Mastercard do? An intro to card networks", "topic": "other"}
+{"id": "031e1669-dfcb-4283-88d6-ad9ae45c3cdc", "title": "Quantum Feature Engineering for Credit Default Prediction: When and Why IQP Circuits Help Linear Classifiers", "topic": "theory-optimization"}
+{"id": "5d080dc3-e363-4ed0-a4dd-e8f4b7622518", "title": "Cross-Model Agreement as a Deployment-Time Reliability Signal for Automatic Polyp Segmentation", "topic": "healthcare-ai"}
+{"id": "a74644ee-d7d9-4fa2-b4fa-d56d4181cfa9", "title": "IBIB: A Protocol for Measuring Enterprise AI Systems by Serving Route, Not Model Identifier", "topic": "safety-eval"}
+{"id": "c46bad94-70f3-44f8-b666-ffc997162807", "title": "Learning with Covariance Matrices: Principal Component Analysis Meets Learning with Graphs", "topic": "other"}
+{"id": "05b9e38f-ac20-4282-9da3-d9822c4daa77", "title": "What will our economic future look like?", "topic": "other"}
+{"id": "da30c41c-e67f-4d8b-9220-eec279c7a625", "title": "Nonmaximal sums of maximally monotone operators under Rockafellar's constraint qualification", "topic": "theory-optimization"}
+{"id": "ff0691d3-2e77-49d3-8656-8fa7334971bc", "title": "Deep Learning-Based Detection of Electrical Faults and Power Quality Disturbances in Aerospace Power Systems", "topic": "healthcare-ai"}
+{"id": "bc3149d6-43be-45a0-b4a1-f635ba7efc34", "title": "Semigroup-JEPA: Latent Dynamics Consistency for Zero-Shot Physics Generalization", "topic": "rl-planning"}
+{"id": "3f3ac156-a753-41ac-a78b-cf70463e87ad", "title": "JarvisGUI: Towards Cross-Device GUI Agents with Dynamic Task Composition", "topic": "agents-tool-use"}
+{"id": "7a5ac76b-d747-4ea0-9362-c665846080a8", "title": "Building Multilingual Bridges: Data Mixing as the Pillar of Generalization for In-Language Reasoning", "topic": "nlp-language"}
+{"id": "9e0b33dd-4c79-4019-a14a-f5541ec72fe6", "title": "ConvMem: Convolutional Memory for Long-Context Reasoning", "topic": "memory-retrieval"}
+{"id": "b5f35de1-34a2-40b0-9e50-8a4769c337c7", "title": "Forgetting Only What Matters: Layer-Selective Unlearning toward Robust LLMs", "topic": "safety-eval"}
+{"id": "952bc052-378d-4430-a642-e9d342215bbd", "title": "openbmb/MiniCPM5-2B-GGUF (model)", "topic": "model-release"}
+{"id": "53913753-6fb7-4233-ae32-eb610346abd3", "title": "Do speech foundation models really learn words?", "topic": "speech-audio"}
+{"id": "83fc33cb-8b9c-4f70-aec1-5f9132455f4f", "title": "Apple Watch Ultra 4", "topic": "consumer-tech"}
+{"id": "395047c5-9b82-4bb2-8c07-09277735ecef", "title": "Multi-Agent Reinforcement Learning for Autonomous UAV Exploration in Wildfire Response", "topic": "robotics-autonomy"}
+{"id": "56dcf598-81dd-49e9-a975-fbec3c5fdca3", "title": "Algorithmic stability via ensembling", "topic": "other"}
+{"id": "f8aa9e2d-9761-4747-b4ec-313e25d9b262", "title": "Emergency Department Revisit Quality Review Screening: Exploring Human Decision-Making and Artificial Intelligence Support", "topic": "healthcare-ai"}
+{"id": "781635ec-cb5d-4f6a-a337-86f8768e4dc2", "title": "Fortunate Recall: Ontology-Driven Memory Lifecycle Management for Persistent Coherence in LLMs", "topic": "memory-retrieval"}
+{"id": "14277335-ffd7-4e84-8a80-d92997bcb107", "title": "Can Foundation Models Moderate Online Content? Evaluating Instruction- vs. Example-Driven Policy Operationalization", "topic": "safety-eval"}
+{"id": "6f7086fd-129f-4e0d-8e13-a91cc45143ed", "title": "HybridFLow: SDN-Orchestrated Client Partitioning for Hybrid Federated Learning", "topic": "agents-tool-use"}
+{"id": "77d4efa7-4cad-4b1a-b4a7-e4aa6798b603", "title": "Retrofitting Code Using LLMs to Support Exceptional Behavior", "topic": "nlp-language"}
+{"id": "cad6c0ef-15e1-4779-a5a3-1bb74764fe78", "title": "Rosetta at AlexandriaX-2026: LoRA-Adapted NileChat for Context-Aware Dialectal Arabic Dialogue Translation", "topic": "efficiency-inference"}
+{"id": "f714296c-37b3-407f-8d8b-2b9aa9f1a1b2", "title": "MOONWALK: Mediating Operations with Intent-Evidence-Action Alignment Across Junior-Supervisor Review Workflows in Animation/VFX Pre-Production", "topic": "agents-tool-use"}
+{"id": "585cf50d-9950-4205-94a6-038db6bb79f8", "title": "Searching for New Physics with Reinforcement Learning", "topic": "rl-planning"}
+{"id": "7040928b-40b4-4c92-9f6a-8c469d50b680", "title": "PACE: Perceived-Latency-Aware Cascading Service Routing and Filler Control for QoE-Efficient Retrieval-Augmented Dialogue Serving", "topic": "memory-retrieval"}
+{"id": "6af7d5dd-31cd-4083-9949-7ba057b68ed8", "title": "How An AI math breakthrough ignited a controversy", "topic": "other"}
+{"id": "bc42c6af-80da-43a5-aaa3-f223ae74372d", "title": "OmniMed-FL: A Robust Multimodal Federated Learning Framework for Clinical Diagnosis", "topic": "healthcare-ai"}
+{"id": "a44ce10f-b1c2-4010-b54b-349d9af183e8", "title": "A Later Test Set Is Not a New Domain: Pretraining Familiarity Survives a Contamination-Free Hold-Out", "topic": "safety-eval"}
+{"id": "a7c3eae7-ef5c-4a22-bee0-a24a499f89c5", "title": "Why Is Video Still So Expensive? A Survey of Inference-Efficiency Mechanisms in Video and Audiovisual LLMs", "topic": "speech-audio"}
+{"id": "9ab6b548-d640-4bd3-8c8a-dd1e45fd4b88", "title": "Cyber-Financial Contagion: Modeling the Propagation of an AI Vendor Compromise Through the Banking System", "topic": "security"}
+{"id": "41a9cc93-c74c-4b23-8271-4e3376763393", "title": "Beyond One-Size-Fits-All: Sample-Adaptive Strategy Routing for Vision Token Pruning in MLLMs", "topic": "vision-multimodal"}
+{"id": "e63c8016-a6bb-4dce-aa16-4fb08edcc810", "title": "inclusionAI/Ling-3.0-flash-VL (model)", "topic": "model-release"}
+{"id": "fa2a55f1-8643-477a-b4e6-e7200c5e790f", "title": "TimeCues Studio: A Workspace for Music Annotation and Algorithm Prototyping", "topic": "speech-audio"}
+{"id": "3f1d592a-c3e0-4446-a0c4-e3997305f0ce", "title": "From Symbolic Perception to Logical Deduction: A Framework for Guiding Language Models in Geometric Reasoning", "topic": "vision-multimodal"}
+{"id": "21744c1f-df64-44db-b9fa-128a7fd6b3a7", "title": "On-Policy Distillation for Vision-Language Model Adaptation, an Effective Paradigm on Low-Quality Multimodal Data", "topic": "vision-multimodal"}
+{"id": "74629bb1-8e42-4d3c-9c93-df4844f528cb", "title": "TRACE: Training Reasoning Agents for Causal Exploration with Synthesized Rewards", "topic": "agents-tool-use"}
+{"id": "4f9e10f3-aa71-4070-b256-897fc37d76b9", "title": "One Loop, Two Gains: Can Active Learning win the Lottery for Free?", "topic": "other"}
+{"id": "f91cfdb2-d1d3-4e4b-9165-45af41d88cd3", "title": "View-Structured Conformal Prediction for 3D Gaussian Splatting", "topic": "vision-multimodal"}
+{"id": "6e93d4f5-63a3-4a3f-9cea-cb6afd26d5b9", "title": "RiLM: Parameter-Efficient Language Modeling via Geodesic Decoding", "topic": "efficiency-inference"}
+{"id": "16969c47-91ba-4d7d-aeb0-78c2842d3df4", "title": "A Dominant Diffuse Phase in the Sparse Autoencoder Phase Diagram", "topic": "safety-eval"}
+{"id": "a924ff64-a682-4e34-a259-0401a5576c58", "title": "Learning Intrusion Response Strategies for OT Systems", "topic": "security"}
+{"id": "0dc7fb5f-d708-4cec-a435-fbffdbbf8efc", "title": "The Semantic Bottleneck: Leveraging Semantic Representations for Non-Invasive Speech Decoding", "topic": "speech-audio"}
+{"id": "a128e25a-8358-499b-9c60-d45d5341f7ba", "title": "GANDR: Claim Auditing for Verifiable Legal Answer Generation", "topic": "other"}
+{"id": "e95f06f5-45b0-4275-a9af-ae8d9bbac33f", "title": "Training Trajectories Determine Circuit Removability in Annealable Soft-Prior Transformers", "topic": "memory-retrieval"}
+{"id": "f374a1f7-1c04-4636-b295-3af7f8b2582d", "title": "Programmable World Model", "topic": "vision-multimodal"}
+{"id": "5adde72a-7fdd-4c1b-a3ca-2b88fcbd1a4a", "title": "Guiding Image-to-3D Generation with Test-Time Partial Observations", "topic": "vision-multimodal"}
+{"id": "99bede33-25e2-4bd3-9b06-bbfaea5a2d35", "title": "Structural Fusion of Bayesian Networks with Limited Treewidth Using Genetic Algorithms", "topic": "other"}
+{"id": "b0aad31d-0654-4f5e-bbb7-b0cb6b437f81", "title": "Precision in Rice Variety Classification using Stacking-Based Ensemble Learning", "topic": "other"}
+{"id": "9fa2099b-69cb-4134-a2d6-f69ae2c51d85", "title": "Show-Harness: Just a VLM Agent Can Play Robots", "topic": "robotics-autonomy"}
+{"id": "e00c64dc-a547-4c26-a0c3-40bbb74f6d14", "title": "KVShareArena: KV-Cache Reuse Across Contexts and Model Checkpoints", "topic": "memory-retrieval"}
+{"id": "d98a8306-adf7-4011-905f-775e3ca1f811", "title": "BrainTaskonomy: Learning How to Pretrain and What to Transfer in fMRI Foundation Models", "topic": "healthcare-ai"}
+{"id": "d6459e45-ca27-4b39-8eeb-709f276b4947", "title": "Maverick: Private and Verifiable LLM Inference Made Practical via Matrix-Vector Multiplication Delegation", "topic": "memory-retrieval"}
+{"id": "99d40a94-3a50-4a6a-bf2d-026bba87824b", "title": "PASCAL: A Phase-Aware Shared-Cache Model for Parallel Scans", "topic": "other"}
+{"id": "597eee8e-4a62-44de-8aa3-9c34c5047e8a", "title": "Is OpenAI Taking Everyone for Fools?", "topic": "other"}
+{"id": "753155d8-2f6a-45ac-a162-e0dbe3564f74", "title": "What Should an Agent Forget? Separating What Is Stored from What Is Used", "topic": "agents-tool-use"}
+{"id": "598c4e1e-a29e-48b4-b40b-dd21119a5ac5", "title": "Avatar: Toward Autonomous End-to-End Orchestration of Scientific Workflows using LLMs", "topic": "agents-tool-use"}
+{"id": "1210279c-0a3e-448d-bf5c-8e5cf20c17f7", "title": "DUET-DINO: Simultaneous Cross-View World Modeling for Latent Planning in Robot Manipulation", "topic": "robotics-autonomy"}
+{"id": "edcca10e-2407-49a4-84c0-9763c63e8df4", "title": "DiSCo: A Distribution-First Steering and Cultural Prior Evaluation Framework for Measuring Cultural Preference Bias in LLMs", "topic": "safety-eval"}
+{"id": "506a9622-6c29-4af7-85d7-9f23d613ffaa", "title": "ChatGPT Images 2.5", "topic": "vision-multimodal"}
+{"id": "bffeba96-2f1f-42ea-ab1e-a76702f60b6a", "title": "Wicked Problem, Parsimonious Solution: Securing Electric Vehicle Charging Station Software", "topic": "security"}
+{"id": "410c39b9-dd17-468b-95d0-1f357ab4b3fa", "title": "A-JIT: Agentic Just-In-Time Software Construction", "topic": "agents-tool-use"}
+{"id": "18291d1c-4485-4f5d-acb1-8073955b8cf6", "title": "Field Converter: Geometry-Initialized Temporal Residual Refinement for World-Grounded Player Pose Estimation from Soccer Broadcasts", "topic": "other"}
+{"id": "5fe3c556-b576-48c1-9e74-0f862a4a6b9a", "title": "Two-Token Features and Small-Large Ensembles for VLM Hallucination Detection", "topic": "vision-multimodal"}
+{"id": "f8f4f9a5-35e0-41cd-acf3-f4c13d536102", "title": "Cross-Model Agreement as a Deployment-Time Reliability Signal for Automatic Polyp Segmentation", "topic": "healthcare-ai"}
+{"id": "d9e06a2b-8edb-4271-bf1e-98f4d3454a4f", "title": "LiteRAG: Cost-Efficient Graph-Based Retrieval-Augmented Generation", "topic": "memory-retrieval"}
+{"id": "e0c087ec-85da-4e11-907e-1266173738cf", "title": "The Answer Path and the Grounding Instruction in LLM Question Answering over Knowledge Graphs", "topic": "memory-retrieval"}
+{"id": "81f73ce7-7a7b-4b31-8af8-449ad7e40a33", "title": "Italy proposes no fees for digital euro payments under €10", "topic": "other"}
+{"id": "912b6925-74b3-487a-aa23-909255e3c751", "title": "Show HN: Self-hosted company OS, Claude Code and Codex agents in departments", "topic": "agents-tool-use"}
+{"id": "dd20e65f-c0af-47dc-9241-7be932175f23", "title": "Artificial Intelligence Literacy and Sustainable Development: An Ethical Governance and Development Goals Framework", "topic": "safety-eval"}
+{"id": "9be763be-7d3e-4e44-83aa-90151b644380", "title": "$Φ$-Bench: Can Large Language Models Engineer the Infrastructure That Powers Them?", "topic": "code-swe"}
+{"id": "2abde4bd-2620-44e7-b400-a59c82889f41", "title": "Hierarchical and Permutation-Invariant Feature Transformation Learning via Policy-Guided Embedding Search", "topic": "efficiency-inference"}
+{"id": "1668821e-ebeb-44a5-85ee-6ed96b5ccbd4", "title": "Why Sample What You Can Enumerate? Exact Policy Optimization for Genomic Tool Selection", "topic": "rl-planning"}
+{"id": "f505f778-dcad-4d9c-80c8-a66b5519e2f5", "title": "Why Emacs Consult async searches feel slow and how to speed them up", "topic": "other"}
+{"id": "6c2841ee-5bdd-49a7-85a1-3b0bd305eb27", "title": "Through the Looking Glass: Directly Reading and Writing Transformers", "topic": "other"}
+{"id": "2795b89c-c519-4de8-81d5-efacc19c3288", "title": "AgroVisNet: A lightweight Convolutional Network and the BD-PlantDX Expert-Validated Benchmark for Radish, Potato and Pointed Gourd Disease Classification", "topic": "healthcare-ai"}
+{"id": "b5ab42f2-7e45-4a54-9b4b-d6b6dfdb586e", "title": "Procedural Graphs: Self-Evolving Execution Structures for LLM Agents", "topic": "agents-tool-use"}
+{"id": "30637b51-d966-4ca2-bf82-79db1abc571d", "title": "Semigroup-JEPA: Latent Dynamics Consistency for Zero-Shot Physics Generalization", "topic": "rl-planning"}
+{"id": "f4b7140b-c4a4-4d67-a962-e2d4aaa21b4e", "title": "Robust Beam Prediction for V2X Networks with Multi-Modal Sensing", "topic": "other"}
+{"id": "15ef35b2-1874-4bee-a0aa-aa37d99096c4", "title": "Politics of Feelings: Emotional Expression and Legislative Effectiveness in the U.S. Congress", "topic": "other"}
+{"id": "a3edcf51-a5f6-4152-ac15-f44f97109474", "title": "An Exponential Deterministic--Randomized Gap in ERM-Oracle Complexity for Thresholds on an Unknown Order", "topic": "theory-optimization"}
+{"id": "5e067c91-d020-4a21-a85a-bc34d4faacc4", "title": "Are You Learning Biological Signal or Shortcuts? Auditing and Mitigating Bias in Protein-Protein Interaction Datasets", "topic": "safety-eval"}
+{"id": "342506d8-c1b1-455f-8d61-e39ce4428da1", "title": "Advanced Brain Tissue Imaging with Data-Consistent Diffusion Priors in Laminographic X-Ray Nanoimaging", "topic": "vision-multimodal"}
+{"id": "76677c39-8b43-4b83-b432-814c39d3f522", "title": "Who Argues What? Joint Argument-Entity Detection and Classification in Political Debates", "topic": "vision-multimodal"}
+{"id": "a0597d91-3374-44d5-af7b-67203eb939b9", "title": "The UN challenges five centuries of cartography", "topic": "other"}
+{"id": "fdf8ee69-098c-403f-9f43-af16a7f6b84b", "title": "Can AI Agents Deliver Verifiable Network-Wide Outcomes Across Authority Boundaries?", "topic": "agents-tool-use"}
+{"id": "75a2a7fb-e4fb-4239-ab18-9d13edff4856", "title": "We accidentally built a synthetic cell factory", "topic": "other"}
+{"id": "8bab8ae4-6fb7-43b9-b6e4-db04d0c075fa", "title": "Beyond Surface Imitation: Contrastive Modeling for Reasoning Path Alignment in Multimodal In-Context Learning", "topic": "vision-multimodal"}
+{"id": "f2051042-2003-4fa4-a0ad-4de4785b5292", "title": "TokenRhythm/NeoHorse-1-4B (model)", "topic": "model-release"}
+{"id": "ec7db323-51f7-483c-a445-8e6502ebc9f4", "title": "CoGe-GCD: Reframing Generalized Category Discovery with Compositional Generalization", "topic": "other"}
+{"id": "48622f2a-6b08-4600-9666-e36800c6bd77", "title": "From Retrieval to Weights: Parametric Individualization of Small Language Models with Individual Text Corpora", "topic": "memory-retrieval"}
+{"id": "e29f6f4c-12e8-4815-b111-44fd70ec6320", "title": "CompassOPD: Cross-Family On-Policy Distillation via Within-Family Likelihood Shifts", "topic": "efficiency-inference"}
+{"id": "c23b9076-1f7a-416d-bf07-1c40424afb14", "title": "YallaMorph: A Benchmark for Evaluating Arabic Morphological Generation in Large Language Models", "topic": "safety-eval"}
+{"id": "9b4fccc3-e851-4f94-a67a-7c7cc805af68", "title": "TrajMark: Ownership Attribution and Segment-Level Tamper Localization for Coding-Agent Trajectories", "topic": "agents-tool-use"}
+{"id": "10bc2e73-aa27-467d-be87-1077aafedf13", "title": "Towards Scalable and Cost-Efficient Vulnerability Detection: A Study on Automatic Query Generation", "topic": "security"}
+{"id": "6308bf65-2ba8-44b4-8b4e-ddb74aec33dd", "title": "Kernel-Managed Shared Memory for System-Wide Personalization", "topic": "agents-tool-use"}
+{"id": "e1a33b25-ed4b-4a07-bfae-184e42c703a6", "title": "Active Adaptation, Not Static Defense: Temporal Dynamics of Preventative Steering in Adversarial Fine-Tuning", "topic": "memory-retrieval"}
+{"id": "ce68af19-b604-4d8b-a06e-dfd127a41a0a", "title": "The Sample Complexity of Quantum Entanglement Allocation", "topic": "memory-retrieval"}
+{"id": "dffe4a5a-f1b1-4c91-9f96-b21957763e4c", "title": "dexamine: A Python package for Uniswap event data on Ethereum", "topic": "other"}
+{"id": "bcccce1c-c91c-4a67-bdf0-e2872bad7a47", "title": "Agent-Based ML-LLM Fusion with Self-Optimizing Prompts for Plateau Weather Alerts", "topic": "agents-tool-use"}
+{"id": "676b16b4-f204-4c05-8b21-d6a78201b709", "title": "Retrofitting Code Using LLMs to Support Exceptional Behavior", "topic": "nlp-language"}
+{"id": "c5f73154-2cd6-47ab-ad47-b04fc89f5217", "title": "Context operations to architecture modelling output from large language models and evaluation criteria for their use in systems engineering design", "topic": "safety-eval"}
+{"id": "6e2bc2aa-60a7-425e-a0e1-665438bb805c", "title": "Candor-LR: A Dyadic Conversational Dataset for Audio-Visual Speech Recognition", "topic": "speech-audio"}
+{"id": "86ea7118-556d-4e57-b3b3-d8900e8d6dee", "title": "SA-Profile: Automated Sulcus Angle Profiling from Super-Resolution MRI", "topic": "healthcare-ai"}
+{"id": "5a8fa75a-af83-47df-9cad-6f45ea4d25ae", "title": "Enhanced Deformable Convolution with Center-invariant Offset and Edge-aware Mask", "topic": "vision-multimodal"}
+{"id": "6a6ca3ec-7f6c-4f12-8143-6607561c8923", "title": "If It's Not Buggy, Don't Fix It: On the Dynamics of Iterative Bug-fixing with LLMs", "topic": "code-swe"}
+{"id": "0ad4a670-558b-48c7-a28c-5641a5af8ca5", "title": "ProbPlug: A Plugin Uncertainty Network for Reliable Confidence in LLM Binary Classification", "topic": "safety-eval"}
+{"id": "8ec5bd90-234a-4dc0-80b5-b603af616f6c", "title": "Data-Driven Risk Fields for Safer End-to-End Autonomous Driving", "topic": "safety-eval"}
+{"id": "6864118c-85df-4743-8bf3-55b4d8fd363b", "title": "Shape-guided Gaussian Splatting for Sparse-View X-ray 3D Reconstruction", "topic": "vision-multimodal"}
+{"id": "52a31ec1-4bfd-469d-9de8-8b301c8f3d31", "title": "PACE: Perceived-Latency-Aware Cascading Service Routing and Filler Control for QoE-Efficient Retrieval-Augmented Dialogue Serving", "topic": "memory-retrieval"}
+{"id": "3ba60dd4-99b2-4d05-b994-452673804e5f", "title": "“Tweet” and the bird logo apparently enter the public domain", "topic": "other"}
+{"id": "54af80a5-afb7-4af0-b621-e500c16c0a71", "title": "Lotus Notes and the dangers of starting from scratch", "topic": "other"}
+{"id": "7e6e2627-1121-4415-9fb5-0cc0b4963f92", "title": "Beyond Weak Labels: Prompt-Guided Local Refinement for Weakly Supervised Water Segmentation in High-Resolution Multispectral Imagery", "topic": "vision-multimodal"}
+{"id": "11303403-3fc9-4d1b-ac30-22174df2962b", "title": "Stencil Computation at the Intersection of AI and HPC", "topic": "memory-retrieval"}
+{"id": "2470ace3-e975-4620-a749-7f536a33b9f4", "title": "AVSRBench: A Multi-Condition AVSR Benchmark", "topic": "speech-audio"}
+{"id": "37f2f5d3-a354-46a6-ab1f-cdcf19aecf6f", "title": "Data-Centric Post-Training for Financial Reasoning: Mining, Distillation, and Verifiable Learning", "topic": "efficiency-inference"}
+{"id": "6ff3817d-980d-4300-9198-8458f2fedbfe", "title": "Storage-Scalable Progressive Semantic Communication via Knowledge-Base Reuse", "topic": "memory-retrieval"}
+{"id": "c0c711fb-0089-4bdf-8ec3-6832ddf9a34a", "title": "SceneHI: High-Resolution 3D-Consistent Scene Texturing with Controllable Illumination", "topic": "vision-multimodal"}
+{"id": "1f05b4f9-5fbc-4fdc-8443-869f4836903f", "title": "A Trust-Network-Based Federated Learning Framework for Multi-Center Aging Clock Prediction", "topic": "federated-privacy"}
+{"id": "7be4baa2-425c-43b6-9ec8-b312a8174f07", "title": "Spot-the-shift: Evaluating Grounded Image Difference Captioning of Long-term Changes", "topic": "vision-multimodal"}
+{"id": "07c50e63-3db0-442c-ae37-50f13d32d470", "title": "Why Is Video Still So Expensive? A Survey of Inference-Efficiency Mechanisms in Video and Audiovisual LLMs", "topic": "speech-audio"}
+{"id": "f2c6b960-f69a-43a6-b397-13538937b3e8", "title": "Beyond Training: A Feasibility Taxonomy for Inference-Time AI Governance", "topic": "efficiency-inference"}
+{"id": "f3392993-e1b8-4ade-bf75-d04474819d4f", "title": "Beyond One-Size-Fits-All: Sample-Adaptive Strategy Routing for Vision Token Pruning in MLLMs", "topic": "vision-multimodal"}
+{"id": "5290a1dd-88b3-4293-8e53-cc681054ec5e", "title": "A Systematic Evaluation of Molecule Generation Models for De Novo Drug Design: From Benchmarks to Practical Insights", "topic": "efficiency-inference"}
+{"id": "dfa0c5ab-f001-43f8-bb66-722636c5b886", "title": "Dimensionality Reduction for Hyperspectral Image Classification", "topic": "vision-multimodal"}
+{"id": "5cf6cdfa-7e65-48a3-a627-5bfd4e08a1da", "title": "Learning to Adapt and Calibrate: Score Distribution Alignment for Few-Shot Uncertainty Prediction in Medical VLMs", "topic": "healthcare-ai"}
+{"id": "3563e2ba-1b4d-4916-bf63-908a1f137f71", "title": "RAP: Research Attention Prediction Reveals Target-Conditioned Evidence Acquisition Biases", "topic": "agents-tool-use"}
+{"id": "ef0594be-50d6-4316-9a7e-a0436da1827b", "title": "Geometry Without Coordinates: LiDAR Diffusion as a 3D Feature Bridge", "topic": "vision-multimodal"}
+{"id": "500e1a6d-b346-4f92-aa2c-ac459f7322e4", "title": "Hybrid Quantum-Classical NLP Classification with Compact Semantic Representations: An Experimental Analysis of Representation Compression", "topic": "efficiency-inference"}
+{"id": "461947d5-1a0e-49e0-b7a7-77c8b82b30df", "title": "A statistical approach to bias in zero-shot learning: the lens of handwriting recognition", "topic": "vision-multimodal"}
+{"id": "e392a1a0-aa27-48a5-a4e1-aea31ec408b5", "title": "Decoupled Self-Forcing Distillation for Streaming Talking Head Generation", "topic": "speech-audio"}
+{"id": "58bfb577-112b-4bab-a0fc-98ced59ffcf5", "title": "Ensembling LLMs for AI-Augmented Cybersecurity Software Requirements Generation", "topic": "security"}
+{"id": "895add6c-20f9-4cea-a7b1-93a7a8627bc6", "title": "One Loop, Two Gains: Can Active Learning win the Lottery for Free?", "topic": "other"}
+{"id": "392259bf-a232-42d9-898f-27891551716f", "title": "Physics-Informed Multi-Task Surrogate Model for the Martian Nightside Thermosphere", "topic": "other"}
+{"id": "c0b4ec5d-90c7-44b5-a6db-661f9b170477", "title": "View-Structured Conformal Prediction for 3D Gaussian Splatting", "topic": "vision-multimodal"}
+{"id": "a950e507-a69c-4fe8-88c5-00a544fe151d", "title": "SynThermFace: Amplifying Limited Paired Data for Visible-Thermal Face Recognition via Synthetic Data Generation", "topic": "vision-multimodal"}
+{"id": "d27fa2ec-db60-4234-a036-41d0ce87f11e", "title": "TRACE: Trajectory-robust Admission with Evidence Ordering for Efficient GUI Agents", "topic": "vision-multimodal"}
+{"id": "c334bb99-dff8-496c-80cf-9c3c56f8f247", "title": "Microsoft/TracerAI withdraws copyright takedown against Luanti", "topic": "other"}
+{"id": "92912d37-c3d4-443a-bc4b-d0962b18a07c", "title": "Isotropic Embedding Perturbations for Robust Vision Language Encoders", "topic": "vision-multimodal"}
+{"id": "ee8f4894-d8b2-445c-8aa9-dba65803e03d", "title": "Better AI code comment detector", "topic": "other"}
+{"id": "45db91d3-043b-4f4a-83d4-2d0a367a16bc", "title": "FreqFLD: Towards All-in-One Facial Landmark Detection via Frequency Modulation", "topic": "vision-multimodal"}
+{"id": "c8060ec0-6cca-48de-8315-56ba4fe5f807", "title": "Reference-Based Bias Detection in LLMs via Relative Representations of Hidden States", "topic": "vision-multimodal"}
+{"id": "9078861d-a510-4cd8-a461-6da1bae16e51", "title": "NOPE-HYPE: A Structured Simulation Workflow for Robust Speech-to-Text Across Diverse Acoustic Environments", "topic": "speech-audio"}
+{"id": "11707a92-bbb3-465b-9d85-fb1d8b29606a", "title": "OntologyAligner: Ontology-Aligned Retrieval and Hierarchy-Guided Large Language Model Reranking for Biomedical Ontology Normalization", "topic": "healthcare-ai"}
+{"id": "1607b467-deea-4fa5-8042-00669a8b63f0", "title": "Orukeet: Multilingual ASR with Frozen Gabor Kernels", "topic": "speech-audio"}
+{"id": "0e3dcb78-e1d6-4ec0-a860-4fd6c32eeeb0", "title": "Direct Diversity Optimization for Diverse Successful Trajectories in Preference Post-Training", "topic": "agents-tool-use"}
+{"id": "b29cb4d7-5be1-4dae-b407-2d23550641f3", "title": "Zero-Shot Temporal Localisation of Audio Deepfakes in Multi-Speaker Conversations", "topic": "speech-audio"}
+{"id": "947f46ca-5804-41a2-aa83-16e8af9a6d2d", "title": "When Fusion Fails: Corruption-Aware Rebalanced Fusion for Multi-Modal Medical Image Segmentation", "topic": "healthcare-ai"}
+{"id": "89f948fc-c72d-4f85-a5f6-db294b48bce7", "title": "MedDeID enables locally governed clinical-text de-identification from real or synthetic training data", "topic": "healthcare-ai"}
+{"id": "4340b7e3-ba49-406e-8e78-4b87d30dee3c", "title": "A-JIT: Agentic Just-In-Time Software Construction", "topic": "agents-tool-use"}
+{"id": "779b4cc3-3e53-4142-9bd4-adf0fd679285", "title": "Belief-State Engine: Augmenting LLMs for Principled Planning Under Partial Observability", "topic": "agents-tool-use"}
+{"id": "2642937c-6332-416a-9eaa-8cc8ff38e77b", "title": "Field-level prediction of mid-plane stress tensor fields in concrete target penetration: a cross-velocity graph neural operator surrogate", "topic": "other"}
+{"id": "60302faf-9ff6-4000-8c10-5013f45a3df2", "title": "Show HN: Geiger – See every AI agent on your machine and what it can touch", "topic": "agents-tool-use"}
+{"id": "cc361437-dc44-4d0c-8634-3d325acd50e1", "title": "Dynamical Non-compensatory Multidimensional IRT Model Using Variational Approximation", "topic": "other"}
+{"id": "41f11f69-4f5d-46d5-9b57-7bb46831f274", "title": "Beyond Contact Sensors: Deep learning with Pseudo-Labeling for remote Photoplethysmography", "topic": "vision-multimodal"}
+{"id": "e00904ae-3e99-44bb-8aa4-4411f32ff38d", "title": "UOT-Gap: A Variational Principle for the Modality Gap in Vision-Language Models via Unbalanced Optimal Transport", "topic": "vision-multimodal"}
+{"id": "4abc1493-fa19-426a-95fd-6ba8aac60c3f", "title": "Deterministic Prompting for Speaker-Stable Low-Resource Greek TTS", "topic": "speech-audio"}
+{"id": "b87d75d5-007d-49e4-904a-de134e5989f0", "title": "Elastoformer: Enabling Dynamic Adaptivity via Elastic Model Transformation", "topic": "efficiency-inference"}
+{"id": "85a8130d-49f1-47d1-ab68-fad38efc3f57", "title": "Structure-Aware Unsupervised Anomaly Detection for Spacecraft Telemetry with Adaptive EVT Thresholding", "topic": "vision-multimodal"}
+{"id": "fb07d032-e9cc-4d83-ad85-117983fef68c", "title": "MetroLLM-Bench: Evaluating Language Models as Transit Kiosk Runtimes", "topic": "safety-eval"}
+{"id": "768f8954-b8b1-4e93-b16e-b78f123b2588", "title": "An Explainable Machine Learning Framework for Predicting Blood-Brain Barrier Permeability Using Molecular Descriptors", "topic": "other"}
+{"id": "4d3a979f-8fd7-4dcd-8085-b9a9c89d66d4", "title": "Playing whack-a-mole is losing", "topic": "other"}
+{"id": "fc430261-527c-49b7-986d-14decd88fb06", "title": "What Makes Adversarial Examples Transfer Across Deepfake Detectors?", "topic": "security"}
+{"id": "08ea6309-193f-4c4a-b0df-398e67cfaac0", "title": "3rd Place Solution to Human Motion Challenges in Real-World and Clinical Settings (MoCha) @ECCV2026: Language-Aligned Motion Representations for Domain-Generalizable UPDRS-Gait Severity Estimation", "topic": "healthcare-ai"}
+{"id": "23394134-856c-4eab-8ce2-5a9d5545eb55", "title": "SalamandraTA at WMT 2026 Terminology Shared Task: Hard Examples Are Better Teachers", "topic": "nlp-language"}
+{"id": "c51d3d25-6397-41aa-9fb3-68134cab5461", "title": "Stable Answers, Unfinished Reasoning: Why Self-Consensus Is Not a Safe Early-Exit Signal", "topic": "efficiency-inference"}
+{"id": "8583450d-de05-4c5e-9cbb-056fd39665e0", "title": "A Sharp Barrier for Consistent Submodular Maximization: Any Improvement over $2-\\sqrt{2}$ Entails Exponential Queries or Linear Recourse", "topic": "theory-optimization"}
+{"id": "c331be66-6daf-48ad-9ddf-7711bcd13a82", "title": "VLX-VR: An Agentic-Aware Video Reasoning Model", "topic": "speech-audio"}
+{"id": "7e567520-7528-4b2e-828f-95cdd28b0793", "title": "Multi-Functional Embedding Models for Funder Name Disambiguation in Scientific Publication Records", "topic": "efficiency-inference"}
+{"id": "5235df57-5ac4-4078-b3c8-8f7f22f0a960", "title": "Optimal Value Inference for Reinforcement Learning", "topic": "rl-planning"}
+{"id": "3c1ce9c3-793c-4f73-b3e3-e2a9aaec67e4", "title": "Fidelity-Aware Scheduling of Quantum Circuits on Multi-QPU Systems", "topic": "theory-optimization"}
+{"id": "713abd38-fb73-47e3-ada8-29ad4ed1338e", "title": "Towards Stress-Aware Sentence-Level Filipino G2P With Weakly-Supervised ByT5 Fine-Tuning", "topic": "speech-audio"}
+{"id": "a845128a-b2be-49e1-90e5-0194b72ba918", "title": "ScopeMamba-YOLO: Widening the Perceptual Scope Inward and Outward for Small Object Detection in Remote Sensing Imagery", "topic": "robotics-autonomy"}
+{"id": "9428dd07-ebf4-4ed1-aa98-095596fe4f97", "title": "CEDD-optimizer: Enabling Cost-Efficient Dataset Distillation on Geographically Distributed Edge Systems", "topic": "efficiency-inference"}
+{"id": "a33c57de-fdd5-4d38-8fdd-375d6ed48d0b", "title": "Deep Neural Networks for Learning Intent from sEMG Signals to Support Hardware Devices for Post-Stroke Neurorehabilitation", "topic": "healthcare-ai"}
+{"id": "e8ec7ac4-2d70-4b80-b41c-0f1ba47637f7", "title": "5-Dialects-BN: Unmasking the Impact of Transliteration on Bangla Dialectal LLMs", "topic": "nlp-language"}
+{"id": "75cd72af-7b4e-469d-a932-9266cf2d80a0", "title": "TransGaze-Object: Transformer Based Driver Gaze Object Prediction Framework in Real Driving", "topic": "vision-multimodal"}
+{"id": "859bd1c3-ebd4-4788-b92c-c79a2a02f7cb", "title": "Improving Cross-Lingual Token Representations by Adding a Pinch of SALT", "topic": "nlp-language"}
+{"id": "047489fe-6bc8-4e14-a59c-7b3d7a48bc14", "title": "Vague2Detect: Handling Ambiguous Prompts in Knowledge-Based Open-World Detection", "topic": "vision-multimodal"}
+{"id": "871b3f98-8450-4047-b854-31a4a17ddf20", "title": "Adversarial Training for Tabular Credit Scoring: A Multi-Attack Robustness Evaluation in P2P Lending", "topic": "robotics-autonomy"}
+{"id": "315dc5d8-7741-4d72-8f6f-15c68737be40", "title": "Context operations to architecture modelling output from large language models and evaluation criteria for their use in systems engineering design", "topic": "safety-eval"}
+{"id": "55aec816-784c-4933-8263-db73ecc06a9c", "title": "How GPT‑5.6 Sol helps run quantum computing experiments", "topic": "theory-optimization"}
+{"id": "2d1a4a7e-d941-4f18-8536-d35b4a02ac0a", "title": "Kimi K3 (2.8T) at 1 token/s on a MacBook Pro, streamed from four SSDs", "topic": "consumer-tech"}
+{"id": "70e335e9-5661-4449-b7a5-e0ffd33bd82c", "title": "SA-Profile: Automated Sulcus Angle Profiling from Super-Resolution MRI", "topic": "healthcare-ai"}
+{"id": "6150cb97-3044-4872-a511-f564bf54b93e", "title": "If It's Not Buggy, Don't Fix It: On the Dynamics of Iterative Bug-fixing with LLMs", "topic": "code-swe"}
+{"id": "4bf0fda2-1e80-465b-93fa-a0d233a91b49", "title": "Structural Process Supervision for Latent Chain-of-Thought Reasoning", "topic": "efficiency-inference"}
+{"id": "ed17ee27-1dfe-4d4e-9440-6162dac7a33a", "title": "Time-Frequency Geometric Cross-Attention for Chunked Vision-Language-Action Models", "topic": "vision-multimodal"}
+{"id": "51f928fd-faba-4489-9c89-0f28d7e09bfd", "title": "Multi-Pass, Multi-View Blended Learning for High-Fidelity Volumetric CT Synthesis from Chest X-Rays", "topic": "other"}
+{"id": "9c60fcca-9627-4dd9-a2da-b8ba9d5aad0a", "title": "Development and Validation of a Physics-Guided Machine Learning Extrapolation Framework Using a Classical Transient Diffusion Benchmark", "topic": "vision-multimodal"}
+{"id": "f0467f20-f645-4a2c-89fc-517a0b78d8e5", "title": "A Kernel-Based Modular Discriminant Analysis Framework for Small-Sample Learning", "topic": "other"}
+{"id": "5ea6cc95-b146-40f2-bea3-7aadc4352629", "title": "Meta-LinEXP3: Online-within-Online Learning for Adversarial Linear Contextual Bandits", "topic": "rl-planning"}
+{"id": "b16a0fa5-d601-4c10-96e3-c268b6aa6bc0", "title": "FlowCPO: A Unified Divergence View of Preference Alignment for Flow Models", "topic": "vision-multimodal"}
+{"id": "f81f45fd-c89f-4f2e-943e-178dacd2f6a5", "title": "Beyond Conventional Federated Learning via High-Order Regularization", "topic": "federated-privacy"}
+{"id": "97029642-a5a8-400b-8cc5-9f714f75faa6", "title": "LinearMask-GS: Stable-Mask Importance Pruning for Compact 3D Gaussian Splatting", "topic": "vision-multimodal"}
+{"id": "5cf25c88-1912-4869-be33-dac47e578ac0", "title": "A statistical approach to bias in zero-shot learning: the lens of handwriting recognition", "topic": "vision-multimodal"}
+{"id": "4764bfc3-f349-44a0-ae42-d429ac1eb035", "title": "Automatic Reproducible Camera Intrinsic Calibration", "topic": "robotics-autonomy"}
+{"id": "bd70ba9a-de53-4fd3-8865-5385fd5ab796", "title": "Grio43/Tag_cleaning (dataset)", "topic": "dataset-release"}
+{"id": "8731ca98-308d-49cb-8d78-e51beae88de7", "title": "Building a Wall Lamp from Scratch", "topic": "other"}
+{"id": "5d56dd1a-64f2-4cd1-a93c-1b63ca0a3051", "title": "Introvert Clustering for Distributed Graph Algorithms", "topic": "other"}
+{"id": "ab6f1062-4e89-4308-9a71-0b4aadee1e4e", "title": "GraphDroid: Asynchronous LLM-Based Mobile App GUI Testing via History-Aware Exploration and Hybrid Intent Fulfillment", "topic": "efficiency-inference"}
+{"id": "17d0d8e9-63ea-48b0-adc0-69c0d3b01154", "title": "Elastoformer: Enabling Dynamic Adaptivity via Elastic Model Transformation", "topic": "efficiency-inference"}
+{"id": "553b1040-9a97-45c0-b4a0-120144c6e95d", "title": "Beyond Similarity: Foundation Models as an Efficient Backbone for Training-Free Composed Video Retrieval", "topic": "vision-multimodal"}
+{"id": "91f56849-8d6f-44c4-8996-897e1531b0d7", "title": "What Makes Adversarial Examples Transfer Across Deepfake Detectors?", "topic": "security"}
+{"id": "eaab3c19-d06f-42e3-a35b-f48dc652fd05", "title": "From Few-Shot Segmentation to Clinician-in-the-Loop Medical Image Analysis", "topic": "healthcare-ai"}
+{"id": "4d2bd016-8223-43d3-9509-3b540da51610", "title": "Beyond Repository Boundaries: Cross-Repository Graph Retrieval for Code Generation", "topic": "memory-retrieval"}
+{"id": "81a99360-61f7-4597-bebb-9c993e1f610f", "title": "VLX-VR: An Agentic-Aware Video Reasoning Model", "topic": "speech-audio"}
+{"id": "7e84085b-7c30-44bc-907a-1e28482a61da", "title": "On Really Trying (2009)", "topic": "other"}
+{"id": "1d1ee507-928b-4625-815e-469d5a329bc5", "title": "Socio-technical and Ethical Dimensions of Architecture Practices in FLOSS", "topic": "other"}
+{"id": "d20cbb89-01ff-4ab9-b486-e135cdda9a12", "title": "Putting Captions to the Test: Evaluating Video Caption Quality through Multiple-Choice Question Answering", "topic": "vision-multimodal"}
+{"id": "146d7207-55c9-4101-b191-f9c8bb0f0602", "title": "Decentralized network congestion control for DAG-based distributed ledger system", "topic": "efficiency-inference"}
+{"id": "f0494b37-ec61-463b-914e-6f0067eaa2d7", "title": "Vague2Detect: Handling Ambiguous Prompts in Knowledge-Based Open-World Detection", "topic": "vision-multimodal"}
+{"id": "a68951ff-adc2-4931-bb5d-eadf662d2b60", "title": "Multimodal Emotion Recognition in Conversations via Class-Wise Adaptive Modality Fusion and Affective Geometry", "topic": "speech-audio"}
+{"id": "ae252322-218a-434a-b59f-2a6dac8be607", "title": "Interpreting Object-Dependent Concept Brittleness in Text-to-Image Diffusion Models", "topic": "vision-multimodal"}
+{"id": "582fd164-65a7-405f-8b89-0974571fbacc", "title": "FlowCPO: A Unified Divergence View of Preference Alignment for Flow Models", "topic": "vision-multimodal"}
+{"id": "b0994ff1-fd18-45c8-aed9-5f0ab727d96f", "title": "Strangers to Themselves: What Language Models Say About Themselves Is Generic", "topic": "nlp-language"}
+{"id": "1d84022b-6999-4b7a-93e9-da819de79dbf", "title": "Can We Trust Video Hallucination Detectors? VidHalLoc for Evaluating the Evaluators", "topic": "vision-multimodal"}
+{"id": "8de313a3-2f37-423e-bca7-aed6f073b720", "title": "StreetDiff: Multi-view Street Scenes Generation via Cross-view Consistent Multi-view Stable Diffusion with Structure Prompts", "topic": "vision-multimodal"}
+{"id": "f73c1d82-0e45-4984-93ff-52310c028249", "title": "Albedo Estimation via Latent Bridge Matching", "topic": "vision-multimodal"}
+{"id": "6e99f081-654c-4027-9abf-3b85bb959585", "title": "CLFTv2: Efficient Camera-LiDAR Fusion for Semantic Segmentation via Hierarchical Feature Pyramids", "topic": "vision-multimodal"}
+{"id": "041f5ed4-3ae4-4e12-b178-af0dbcbc49ef", "title": "From Pixels to Hierarchical Sequences: Quadtree Mask Encoding for Vision-Language Binary Change Detection", "topic": "vision-multimodal"}
+{"id": "71f77af2-2ffc-4f28-87bc-41ba456c8261", "title": "Keep Evaluation Fair: Detecting Data Leakage in Code Generation Benchmarks via Membership Inference Attacks", "topic": "security"}
+{"id": "bd3c2f73-f908-4784-9b35-a1dfb18d03bb", "title": "Pretraining and Distillation Matter More Than Architecture Family for Label-Free Single-Cell Classification", "topic": "efficiency-inference"}
+{"id": "dcf06e02-57c2-46da-90e9-711ae5fffa44", "title": "Show HN: Compute polynomials twice as fast", "topic": "other"}
+{"id": "fbc3d037-3554-4723-99a1-056fc54814e8", "title": "Viggle/Viggle-Animate (model)", "topic": "model-release"}
+{"id": "533db6b9-e83e-41ac-8c08-56c83c36c0c1", "title": "A Biography of Lee Holloway, the Architect of Cloudflare's Technology (Part 1)", "topic": "other"}
+{"id": "8bd6a24c-2594-4991-a183-dc35bf8e4301", "title": "SkNeXt enables topology-guided neuronal reconstruction from petabyte-scale microscopy data", "topic": "other"}
+{"id": "262cfa06-6dd4-4da5-8616-beba346aa47d", "title": "RealSimLoop: Online Real-to-Sim Adaptation via Differentiable Reduced-Order Simulation with Vision Feedback", "topic": "other"}
+{"id": "e2d4b23b-3fb5-4f45-b44a-efa92ec9f3f7", "title": "Layerwise Tunable Lifting Scheme for the Convolutional Neural Network", "topic": "other"}
+{"id": "61913f8f-4d7c-4fd6-ba74-6ff2c638a8e6", "title": "Freezing of Gait Prediction Under Spatial Occlusion: An IMU-Supervised Cross-Modal Distillation Approach", "topic": "vision-multimodal"}
+{"id": "e404f499-984e-4025-b09b-653dd101cc90", "title": "Morphological Decoupling-Based Skeletal Classification for Clinical Assessment of Malocclusion", "topic": "healthcare-ai"}
+{"id": "1ff7980c-7fea-4e78-8eb3-1f48059fdc45", "title": "LogiScope-VQA: Benchmarking Vision-Language Models for Logistics Hazard Identification in Industrial Scenarios", "topic": "vision-multimodal"}
+{"id": "5332b349-eee2-4fde-be37-7a4ac5845ab1", "title": "27.5KB language-agnostic WebGPU syntax highlighter", "topic": "other"}
+{"id": "e9189878-e8c4-4be2-a6ed-9eaedfa75965", "title": "XAgent: eXecution-guided Agentic AI for Effective Localization and Resolution of GitHub Issues", "topic": "agents-tool-use"}
+{"id": "ed700523-94cd-4092-b5a3-a870425eef6d", "title": "MethaneFuse: Learning from Multi-Sensor Satellite Observations for Methane Plume Detection", "topic": "vision-multimodal"}
+{"id": "49c0307d-4eee-4479-ae60-ca38f1bb79c3", "title": "Arti-JEPA: Adapting Video World Model to Real-Time MRI of the Vocal Tract for Speech-Production Analysis", "topic": "healthcare-ai"}
+{"id": "7e456e98-f928-4b2f-b995-59e584aebdac", "title": "A Topological Picture Book, Rendered", "topic": "other"}
+{"id": "51fc27ff-d12a-42db-bbfc-9885dc522ab1", "title": "Epoch: Compiling Diffusion Blocks for Sparse MoE Serving", "topic": "vision-multimodal"}
+{"id": "e0635182-42f5-43cd-acfd-38cd694163a7", "title": "nvidia/Qwen3.8-27B-NVFP4 (model)", "topic": "model-release"}
+{"id": "5a8e9b5a-f43f-449e-9734-b2b3badd68d2", "title": "Breaking Fault Lines: Unifying TEE-Assisted BFT Consensus in Partially Trusted Worlds", "topic": "other"}
+{"id": "5b4006c0-9a19-43e8-bcab-3b246ce4c7ca", "title": "Distilling Image Prototypes for Guided Test-Time Adaptation", "topic": "vision-multimodal"}
+{"id": "982f2567-e3f5-4f59-a919-629dcc6ed85b", "title": "IAE-VTG: Interaction-Aligned Action-Entity Video Temporal Grounding", "topic": "vision-multimodal"}
+{"id": "0298890e-95d7-4f5a-a347-d8bc2a384a5e", "title": "VFNet: Multi-View Spatio-Temporal Model for Void Fraction Estimation in Gas-Liquid Two-Phase Flow", "topic": "other"}
+{"id": "e0a2864d-e34e-4c93-95b3-243dd87eadfb", "title": "Cross-Species Animal Re-Identification with Semantic Consistency Learning", "topic": "other"}
+{"id": "c2ed528c-f7b4-4834-bc8a-56f861ada36a", "title": "Introducing Consort: A Spec-First Agent Framework for Enforced, Test-Driven Development on Live Database Branches", "topic": "agents-tool-use"}
+{"id": "42dc027d-e3a2-479b-9f22-b1e2c7fdb343", "title": "Recovering Biomechanical Signals from Missing Keypoints Using Temporal Interpolation in Monocular Gait Analysis", "topic": "vision-multimodal"}
+{"id": "f8c7f931-9c43-4ab5-87c6-a13582909a6f", "title": "LightMedSeg-ISLES: Stroke Lesion Segmentation with 81x Fewer Parameters than nnU-Net", "topic": "healthcare-ai"}
+{"id": "a2e27cb5-21d3-4908-8fae-dad1456bb087", "title": "Hyperbolic Geometry for Open-World Object Detection in Remote Sensing Imagery", "topic": "vision-multimodal"}
+{"id": "9b6c7f2f-e2f1-41b1-ba56-0be433ee4b2d", "title": "Marker-free eye-gaze estimation using a single image and depth from defocus", "topic": "vision-multimodal"}
+{"id": "71f93da2-4c05-4986-bb13-59da0dd1d7a2", "title": "RouteBridge: Reliability-Routed Bidirectional Distillation Between Neural Radiance Fields and 3D Gaussian Splatting", "topic": "vision-multimodal"}
+{"id": "49f791ed-50fc-4476-b5aa-779bf912ed9f", "title": "Myocardial Strain Drift Correction in Deep Learning Based Ultrasound Tracking", "topic": "other"}
+{"id": "04443fac-935f-4790-a36b-d74a21af092d", "title": "The Vibe Shift in Software Engineering: Evaluating AI-Led Conversational Programming for Performance, Cognition, and Responsible Adoption", "topic": "safety-eval"}
+{"id": "9b0e82bd-a620-42cc-afef-a173e04e8434", "title": "MotionBlind: Probing the Illusion of Motion Understanding in Video-LLMs", "topic": "vision-multimodal"}
+{"id": "93a2dd93-5a6d-4411-9eab-bd5d97dc3d38", "title": "HLSFactory-Agent: Large-Scale Agentic HLS Dataset Construction from Academic and Open-Source Projects", "topic": "agents-tool-use"}
+{"id": "e9532f1d-eeb2-4d73-845d-ec7762e93665", "title": "AnimalLift: Reconstructing Animatable 3D Animals from a Single Image by Learning Canonical Shape, Texture, and Fur Maps", "topic": "vision-multimodal"}
+{"id": "8f06f98b-1471-4794-8c5a-90194895da5a", "title": "CHIMERA Challenge Task 2 and 3: Response Subtypes Classification and Progression Survival Prediction in Bladder Cancer Patients using Multimodal Datasets", "topic": "healthcare-ai"}
+{"id": "c4e33be1-716f-4d2f-95fd-27afad374531", "title": "RoMa-$Ω$: What Feed-Forward 3D Models Know About Image Matching", "topic": "vision-multimodal"}
+{"id": "8d307958-c8a1-4c50-9985-d9c189246817", "title": "Learning Global Camera Poses from Noisy View-Graphs for Structure from Motion", "topic": "vision-multimodal"}
+{"id": "50ed32e2-5237-498e-82af-554120590c2f", "title": "Efficient Fairness Auditing Across Guidance Scales in Text-to-Image Diffusion Models via Causal Abstraction", "topic": "vision-multimodal"}
+{"id": "b8a19464-351e-40c9-9169-7a61a9a3bf80", "title": "Infra-Bench CLS: A Global, Open-Source Benchmark for Critical Infrastructure Classification with Earth Observation Foundation Models", "topic": "safety-eval"}
+{"id": "6c9c2b74-a34c-4b0b-be0f-09e69f69d756", "title": "LeCor: Learning to Be Corrected by Meta-Learned Test-Time Training for Interactive 3D Lung-Tumour Segmentation", "topic": "vision-multimodal"}
+{"id": "2214d3ad-88d8-40fb-add9-be60470b4e5a", "title": "Alissonerdx/Minimax-H3-ComfyUI (model)", "topic": "model-release"}
+{"id": "01a165d2-ce39-4fb5-8707-e13f5f266fe6", "title": "Low-Rank Prompt Learning for Vision-Language Models with Fixed-Token Bases", "topic": "vision-multimodal"}
+{"id": "a510cb63-d46f-46b8-aff4-5a8966114379", "title": "Longitudinal tracking of multiple sclerosis lesions in the spinal cord: A validation study", "topic": "other"}
+{"id": "4111a831-e225-4237-a323-ac6382978718", "title": "Vision-language models know more about agriculture than they show and rubric-grounded verifications close the gap", "topic": "vision-multimodal"}
+{"id": "8de183fe-c981-424a-8c69-2f7fce5f8846", "title": "VANTAGE-Bench: Evaluating the Infrastructure AI Gap in Vision-Language Models", "topic": "robotics-autonomy"}
+{"id": "bfcea93c-37f0-4ca5-82d3-01e5a8659334", "title": "OmniPoint: Universal Monocular Metric Pointcloud from Any Camera", "topic": "vision-multimodal"}
+{"id": "4af2bd42-5576-4af1-ad13-17d8ca926118", "title": "Rivian's gambit for full autonomy", "topic": "other"}
+{"id": "ee0b8d0b-1c93-4023-8918-de3067f3e4fd", "title": "The Living Library: Transforming Archival Collections into Conversational Knowledge Systems -- Lessons from the Theodore Roosevelt Presidential Library", "topic": "memory-retrieval"}
+{"id": "73a22483-2736-4aa8-b987-6269b2f41b6d", "title": "ApodexAI/FrontierAgent", "topic": "agents-tool-use"}
+{"id": "6b3d1262-9671-4518-8eda-68f51eeb971a", "title": "DensePol: Dense-Angle Polarization Dataset for Learning-Based Polarimetric Vision", "topic": "other"}
+{"id": "6a0dff6b-f64b-4720-bad3-20242c0672c8", "title": "Smart Adaptive Computing Across the Continuum: LLMs in IoT-Edge-Cloud Resource Management", "topic": "rl-planning"}
+{"id": "db6e02dc-eabc-4db3-8d2a-85a12c55e391", "title": "Player-YN/PawWork_ZhuaZhua", "topic": "agents-tool-use"}
+{"id": "505e6ed5-5ba9-4e01-bfc0-3acecb715c5a", "title": "How effective are traditional test criteria at detecting bugs in large language models generated code?", "topic": "safety-eval"}
+{"id": "cca8a64d-7a7e-40d3-8b97-2a1ab0c5f4cd", "title": "Video-MOPD: Multi-Teacher On-Policy Distillation for Video Understanding", "topic": "vision-multimodal"}
+{"id": "cb814bfe-d5a4-471e-abb8-41a72c2b3048", "title": "Python in the front, party in the Backline: compiling quantum workloads across CPUs, GPUs, and FPGAs", "topic": "theory-optimization"}
+{"id": "46cc416a-97fa-4877-b141-0b639e58058e", "title": "SyncWorld: Visual Calibration Enables World Models as Zero-Shot Simulators", "topic": "robotics-autonomy"}
+{"id": "e772a7e4-98dc-4d5a-8274-177f27b52e5f", "title": "Point4D: Long-range 4D Motion Reconstruction", "topic": "vision-multimodal"}
+{"id": "7ba2a6c3-ca84-4a31-a286-ad61ffc957fc", "title": "Studying Image Tokenizers as Visual Languages in Unified Multimodal Models", "topic": "vision-multimodal"}
+{"id": "0e06d0e9-47c7-46b0-9262-8ba9550f3b02", "title": "ExecCritic: Learn to Test, Test to Improve for Coding Agents", "topic": "agents-tool-use"}
+{"id": "250b1a45-a3aa-4d12-b51a-26644ac6ebb2", "title": "Generating the P3 Tiling", "topic": "other"}
+{"id": "eda5e37c-a227-4d7c-a738-04beec9d27e6", "title": "elie222/rakazo", "topic": "other"}
+{"id": "51a453a3-562c-4bd4-9f83-aa13f8746339", "title": "Human-Agent-Society/reef", "topic": "agents-tool-use"}
+{"id": "68c4b7c6-6891-4994-9df8-c7a687881118", "title": "tigerless-labs/agent-memory", "topic": "agents-tool-use"}
+{"id": "4f7102f5-03b9-4a56-8e2a-7178389c3dca", "title": "datawhalechina/zero-to-sglang", "topic": "efficiency-inference"}
+{"id": "afdc3393-0129-4ccf-9fb6-eaa49a8f40db", "title": "panxunying/ai-coding-welfare", "topic": "code-swe"}
+{"id": "d0d84880-eea5-46de-87a2-a2b3f6978dee", "title": "decionis/agent-safe-pipeline", "topic": "agents-tool-use"}
+{"id": "fe8eb559-42cc-4534-90cb-3af72d845f91", "title": "rome-os/rome", "topic": "agents-tool-use"}
+{"id": "80d8db03-7840-496a-a51e-ec00ad5e86da", "title": "carloslfu/slotstream", "topic": "other"}
+{"id": "1ce830b5-6aa3-43d8-a3b5-8baec26a028b", "title": "kydlikebtc/awesome-grokbot", "topic": "other"}
+{"id": "ed2301e3-4bf4-442b-86ef-6bdfc8b0ee24", "title": "useagenthq/useagent", "topic": "agents-tool-use"}
+{"id": "fb586598-5d3f-45b5-8066-b6b8119ee545", "title": "Dpro-at/Tel-Agent", "topic": "agents-tool-use"}
+{"id": "690ebd59-f622-4de9-9aa7-675f932467cc", "title": "Han-1413141/dsh-cost-meter", "topic": "other"}
+{"id": "0ca160f6-690f-4d1d-b7f5-c815dcdbb71a", "title": "fitchmultz/pi-posthorse", "topic": "agents-tool-use"}
+{"id": "c6cfa8dc-8ad9-41fe-9e9e-862f3ce49f8a", "title": "Dominic789654/awesome-deepseek-harness", "topic": "vision-multimodal"}
+{"id": "55026404-0478-43b0-b3c1-d24f1e2636a6", "title": "Hilbert-beinghappy/seektty", "topic": "other"}
+{"id": "63227861-b04b-4f43-9249-bda71887519e", "title": "leenkcool/Blue-Whale-Harness", "topic": "agents-tool-use"}
+{"id": "147f1bf9-31b8-4ecb-b47c-f00ddf67b06f", "title": "Continuum-AI-Corp/OrcaReplay", "topic": "agents-tool-use"}
+{"id": "c5ef2fc9-34ee-4682-9095-090d8bede570", "title": "Nehanth/swarmllm", "topic": "efficiency-inference"}
+{"id": "d4341072-2d52-40e0-af3c-74b8166508f5", "title": "elie222/botdirectory.ai", "topic": "agents-tool-use"}
+{"id": "126e01b0-50c8-488d-a422-df93b9516d82", "title": "bradeGithub/DSH-Plugins-Marketplace", "topic": "other"}
+{"id": "f6002602-b788-4f60-becc-6dd5ad19b380", "title": "jzjzzzzzzz/agent-me", "topic": "agents-tool-use"}
+{"id": "33200bae-b833-4376-a162-ed0e4d4c54e9", "title": "FuRongJun-1999/dsh-memory", "topic": "memory-retrieval"}
+{"id": "1276dad1-bdfb-47f9-864b-d5981f30d352", "title": "PerryLink/dsh-auto-review", "topic": "agents-tool-use"}
+{"id": "ee1f1855-db4c-4008-b6d4-0a9f7d2ae859", "title": "roy-tong/AgentMeasure", "topic": "agents-tool-use"}
+{"id": "821f4f23-05df-47c6-b04e-f29966970022", "title": "keli-wen/agy-staff", "topic": "other"}
+{"id": "6589ae19-0e99-4060-9522-71b02704569d", "title": "Omni-Scientist/Awesome-AI-Scientist", "topic": "safety-eval"}
+{"id": "d04a68ee-0a0b-45af-9207-55b508e9faf6", "title": "wemux-ai/wemux", "topic": "agents-tool-use"}
+{"id": "06484a3e-c618-42ed-ad13-e8c46529160d", "title": "zj-unicom-ai/UniEmployee", "topic": "other"}
+{"id": "48211809-2fa9-499e-b427-2822f6f0aee1", "title": "crabtalk/cydonia", "topic": "other"}
+{"id": "9ba6a04d-373f-4aeb-a1f6-6f94516d8719", "title": "openma-ai/Martty", "topic": "other"}
+{"id": "938dbd7e-af61-4cae-bf62-708a6bfcda1a", "title": "feibi-mochi/deepseek-harness-control-center", "topic": "other"}
+{"id": "e5531d7b-56e4-4530-ad10-76397cc2908a", "title": "Eleven617/mall-ai-after-sales-platform", "topic": "agents-tool-use"}
+{"id": "33ff36b9-adbc-4ba4-bc46-a9e3a5a8994a", "title": "yuzushi-dev/session-handoff", "topic": "other"}
+{"id": "4620c2ee-b346-4dc0-831c-81595cd4cd6f", "title": "Contrastive Projection: Reading Transformer Internals by Differencing Logit Lenses", "topic": "other"}
+{"id": "ff5b8b47-f1b6-4fb5-914b-0aadd2be6b94", "title": "Deep and shallow biases in language models", "topic": "safety-eval"}
+{"id": "c7cc1eb0-7a5d-4237-9c75-d3781b68b47f", "title": "Strangers to Themselves: What Language Models Say About Themselves Is Generic", "topic": "nlp-language"}
+{"id": "c6203303-30de-4a5c-86a8-74714cedf7b5", "title": "Grounded Evaluation and Repair for NL-to-PDDL Problem Generation", "topic": "rl-planning"}
+{"id": "9c3456fb-ce2a-42f6-bbb2-cda7e68f95b1", "title": "ProMeta: Few-shot PROTAC-targeted degradation prediction across E3 ligases", "topic": "other"}
+{"id": "953cf6ec-b606-4ebc-94a4-7b679ee9ccb1", "title": "Leveraging Fine-grained Error Correction in Korean Speech Recognition for Consultation Services", "topic": "speech-audio"}
+{"id": "01b12672-2555-47c6-b11a-554a37e20215", "title": "When Does Defendant Statement Matter? A Study of Bias and Persuasion in LLM-Simulated Jurors", "topic": "safety-eval"}
+{"id": "aaca007d-892e-4bb1-910a-aa190426ff56", "title": "Decision Transformer for UAV-Mounted RIS-Assisted Dynamic D2D Communications", "topic": "robotics-autonomy"}
+{"id": "82246397-9014-48d2-b701-1e900ddf9f87", "title": "Albedo Estimation via Latent Bridge Matching", "topic": "vision-multimodal"}
+{"id": "3e95e20d-541b-461f-9c0a-acdc6730816e", "title": "Forward-Free LLM Depth Pruning via Weight Redundancy", "topic": "vision-multimodal"}
+{"id": "15f27881-4278-4b60-97a5-e4b5467d452b", "title": "Scored vs. Generated Readouts in Behavioral Language Models: An Empirical Study of Elicitation Format", "topic": "nlp-language"}
+{"id": "67e7bd40-9261-4449-8a87-a2ea212b615c", "title": "AgentAudit: An Open, Extensible Framework for Full-Lifecycle Trust Evaluation of AI Agents", "topic": "agents-tool-use"}
+{"id": "10f1d66d-5b36-4896-913b-d6d63d78cb24", "title": "Shifting Relational Paradigms for Affective Computing: Affective Resonance, Vitality Affects, and Vocal Interaction Fields", "topic": "other"}
+{"id": "0a4bc26b-4409-41a8-8bdf-f1e9da0e2332", "title": "Exact Degeneracy Under Balanced k-Shot Sampling:Consequences for Small-Sample Discriminant Analysis on LLM Embeddings", "topic": "nlp-language"}
+{"id": "a6fdd5dc-1101-4908-b9e9-fb426692cde8", "title": "With a Thermomix You Lose the Ability to Cook: A Kitchen Machine Analogy for Applications of Generative AI in Education", "topic": "other"}
+{"id": "689ef4a2-fca7-44ca-9c47-6d4f669e787a", "title": "A Unifying Perspective on Probabilities as Model Predictions", "topic": "other"}
+{"id": "e8250176-3597-4e4b-b31a-4b7871205c30", "title": "When Does Low-Bit Quantization Preserve the Decisions of Vector Search?", "topic": "memory-retrieval"}
+{"id": "e7759383-e823-42c4-8874-f1c86707eab5", "title": "The Era by Eon Benchmark: A Generated Enterprise Estate with Exact Ground Truth for Benchmarking LLM Agents", "topic": "agents-tool-use"}
+{"id": "ef0eb298-4d0f-430c-80aa-50049c63f802", "title": "$S^3$-Bench: Evaluating Speech Interaction Models as Scientific Voice Assistants", "topic": "speech-audio"}
+{"id": "f74e07d6-0a3f-433a-96b8-463ce4370bec", "title": "Can AI Agents Detect and Repair Artifact Drift in Network Experiments?", "topic": "agents-tool-use"}
+{"id": "f18a92bc-835e-4db5-b93b-3b284d6f92e2", "title": "Subgroup Membership Inference Audits of Differentially Private Synthetic Text", "topic": "efficiency-inference"}
+{"id": "5c50faba-6ecf-4c3d-b98b-d86797804ae3", "title": "TempTPI: Informer-Based trajectory prediction for maritime vessels", "topic": "efficiency-inference"}
+{"id": "9168b72b-002e-4fd8-ba82-71ac36674684", "title": "HyperTrace: Hypothesis-Based Preference Tracing for Online LLM Personalization", "topic": "nlp-language"}
+{"id": "3412320a-4fce-464c-b37b-f81d6a3f2865", "title": "In Medical Claims Data, Enhancing Predictive Performance for Major Adverse Cardiovascular Events Using Cross Attention", "topic": "healthcare-ai"}
+{"id": "ec95ff3c-a526-4b4e-abd3-6262b83bf512", "title": "UnitBoost: Managing Compound LLM Systems with a Merge Operator, Not a Model", "topic": "agents-tool-use"}
+{"id": "c955e00d-9b6a-4776-b36d-5852fc96a171", "title": "Online Inverse Integer Linear Optimization via Small-Gradient Skipping: Constant Regret and Finite Mistakes", "topic": "agents-tool-use"}
+{"id": "64869831-5dc7-4a40-aa36-c96f53453f0d", "title": "uFlowCSP: Crystal Structure Prediction using Mean flow generative models", "topic": "other"}
+{"id": "74ffd814-484b-4558-ab32-1c5c3c1cd23e", "title": "CS-Guard: Benchmarking LLM Guardrails for Code Generation Security", "topic": "security"}
+{"id": "ca067e99-dca4-46cb-b4cb-0274374818dd", "title": "A practical DIRECT-type algorithm for medium-scale black-box global optimization", "topic": "security"}
+{"id": "be2657c4-9626-43c2-851c-edda44dd5696", "title": "Privacy-Preserving Split Learning for Federated LLM Fine-Tuning", "topic": "federated-privacy"}
+{"id": "5b49dd59-5783-42d0-89da-9ca5b94bce33", "title": "How Fragile Is Safety Alignment at Frontier Scale? A Single-Direction Attack on a 320B MoE", "topic": "security"}
+{"id": "cd9ff291-4703-4bbe-a1b3-5bd58f15f644", "title": "MUCnoHARM@GermEval Shared Task 2026: Retrieval-based In-Context Learning for Defamatory Offences, and Where It Falls Short", "topic": "speech-audio"}
+{"id": "4eb9e048-3a63-46f1-ab16-0f744df06a83", "title": "LogiScope-VQA: Benchmarking Vision-Language Models for Logistics Hazard Identification in Industrial Scenarios", "topic": "vision-multimodal"}
+{"id": "48578061-b190-4e08-b2e7-4d60e72aa8b1", "title": "Pairit: A Platform for Live Experiments on Human-AI Collaboration", "topic": "other"}
+{"id": "4de492db-c870-4da1-ba3c-f23b907c1e3a", "title": "Evaluating Model Retraining under Drift: Paired Comparisons of Cumulative Subgroup Disparity", "topic": "safety-eval"}
+{"id": "74b43d09-917c-4d66-90ec-07707fbc32ce", "title": "NEXUS-MI: Communication-Aware Federated Personalization for Gateway-Coordinated Motor-Imagery Brain-Computer Interfaces", "topic": "healthcare-ai"}
+{"id": "65e43920-f600-4c04-b9e3-2a8ab3ceaa1a", "title": "BRACE: Anchored Bellman-Residual Correction for Stale Critics in Asynchronous RL", "topic": "rl-planning"}
+{"id": "8a817a84-9ca3-4c00-81ec-cec446e78207", "title": "ROAM: Robust Organization of Atomic Memories for Agents through Semantic Relations", "topic": "agents-tool-use"}
+{"id": "82a50ff5-f7f9-4312-83b2-2dabddfe2151", "title": "Proof-Carrying Cognition: Closing the Verification Gap with Reality-Settled Reward", "topic": "rl-planning"}
+{"id": "ab2bd2c6-8c6d-4805-8a6d-f931ebeb60cb", "title": "Procedural Memory Under Change: Reuse and Interference in Controlled Web Tasks", "topic": "agents-tool-use"}
+{"id": "51553d2b-4190-41a4-b47e-2c267d85fa3f", "title": "SymbolicLight V2: Hybrid Neuromorphic Architecture and Sparse Execution for Low-Energy Language Inference", "topic": "efficiency-inference"}
+{"id": "5b06fd9f-0996-451e-8f47-e8d2bbc58514", "title": "Fine-Tuning a KV Cache Concatenation-Aware Model or Recomputing KV Caches? Why Not Both?", "topic": "memory-retrieval"}
+{"id": "2ddeae8c-327e-4d9f-b531-b7756dace683", "title": "CARRE: Counterfactual Action Retrieval and Reason Evaluation for Explainable Churn Prescription", "topic": "memory-retrieval"}
+{"id": "b18ddcdb-8cf4-473c-a57f-69134016c313", "title": "SocialRL: Refining LLMs' Social Intelligence through Multi-turn Reinforcement Learning and Reward Design", "topic": "agents-tool-use"}
+{"id": "20c24e3a-2b43-4323-9ba6-b960ea841108", "title": "MethaneFuse: Learning from Multi-Sensor Satellite Observations for Methane Plume Detection", "topic": "vision-multimodal"}
+{"id": "45a42801-ff38-47a9-bdf9-4b4dd2334950", "title": "LexAgentHallu: A Hierarchical Benchmark for Profiling Hallucinations in Legal Agents", "topic": "agents-tool-use"}
+{"id": "8bd50a6a-6fad-422d-ab4b-17cd5f3e5dd3", "title": "HiRAD: A Flexible Large-Scale AGV Routing System", "topic": "agents-tool-use"}
+{"id": "abcc7779-b068-46cd-a33f-699f1ef4dd5b", "title": "Distilling Image Prototypes for Guided Test-Time Adaptation", "topic": "vision-multimodal"}
+{"id": "374ad7e1-21fa-4ab1-9875-a288fc874ac1", "title": "Can Artificial Intelligence Support Healthcare and Mental Health Through Early Cyberbullying Detection ? The Impact of Emotion-Aware AI on Proactive Online Safety", "topic": "healthcare-ai"}
+{"id": "c779bef3-7fa9-4bc9-a78d-32ba2bdbf40e", "title": "EEGBind: Detecting Source-Level Interictal Epileptiform Discharges via EEG-Centric Multimodal Binding", "topic": "healthcare-ai"}
+{"id": "a80439ec-e552-48d6-8e55-d34d68b939c8", "title": "EFQ-Softmax: Exp-Free Quantization for Softmax", "topic": "efficiency-inference"}
+{"id": "13aaae59-19bd-4ffe-95d6-33645f5ec810", "title": "StreamAlign: Streaming Text-Aligned Speech Tokenization", "topic": "speech-audio"}
+{"id": "d6dbd674-ab8d-493f-8932-a09dbe200598", "title": "Scaling E-Commerce Attribute Extraction with Parallel Decoding", "topic": "code-swe"}
+{"id": "8e8fa3a9-ec7d-4563-9df8-1261b75097f7", "title": "Efficient Graph Neural Networks for Multicarrier Wideband Hybrid Beamforming Optimization", "topic": "memory-retrieval"}
+{"id": "5dfba6d6-f6ab-4baf-9d05-0a203e7abb25", "title": "Which Tokens Should SFT Actually Learn? A Token-Trimming Perspective on Mathematical Reasoning", "topic": "other"}
+{"id": "23b3d992-f4b3-4e3f-adbd-05b0633f3ddc", "title": "Decision Shifts, Lost Label Functionality, and an Inconclusive Grounding Audit in Correctness-Gated Multi-Teacher Distillation", "topic": "efficiency-inference"}
+{"id": "d9a7d718-bb70-4402-a74d-11bd5b088699", "title": "Kernel-Complexity Edge Sanitization for Training-Free Defense against Structural Graph Attacks", "topic": "security"}
+{"id": "a39c085f-09d1-48f2-869e-dedf260e97da", "title": "When Auditors Fabricate: Batch-Size Degradation and Confident Hallucination in LLM Detection of Planted Document Contamination", "topic": "vision-multimodal"}
+{"id": "8d9e479c-5ec6-4842-9f89-240fab3112c3", "title": "CT-SAFR: Safe and Interpretable Chain-of-Thought Reasoning for Autonomous Robots: A Multi-Layered Verification Framework for Trustworthy AI-Driven Robotic Decision Making", "topic": "robotics-autonomy"}
+{"id": "87fa9a7f-30e3-455f-bbd8-dee3b2de2eb4", "title": "Looped GPT-BERT: Trading Parameters for Computation in Small Language Modeling", "topic": "nlp-language"}
+{"id": "3e4c7070-def7-419e-ba07-f3c42df78a89", "title": "ALIGN-HOLD: Experience Alignment for Real-Time Hold Control in Large-Scale Ride-Hailing Matching at DiDi", "topic": "memory-retrieval"}
+{"id": "41ff4f2b-b711-4647-936b-b3d53a2285ea", "title": "Which Medical Questions Deserve Rationales? Perturbation-Sensitive Selection for Robust QA", "topic": "healthcare-ai"}
+{"id": "65afa26b-8f89-4799-ad04-686bd83b3ffb", "title": "Settling: Equilibrium Inference for Non-Convex Validity Sets", "topic": "efficiency-inference"}
+{"id": "829bb47a-8ba7-4826-9bbe-5774477e6f02", "title": "Safe to Stop? Risk-Constrained Stopping for Sequential Clinical Diagnosis Agents", "topic": "healthcare-ai"}
+{"id": "45b486d3-471c-4d48-a94d-0051a39df986", "title": "X2-NativeCursor: Native-Token Text Progress Tracking for Incremental-Text Streaming Codec TTS", "topic": "speech-audio"}
+{"id": "01900c00-537d-40f9-bb8a-cd3444e868b2", "title": "Muon-C: Operator-Aligned Muon for Convolutional Kernels", "topic": "other"}
+{"id": "d876337a-cc8f-4f48-9130-19b7f9dba3da", "title": "SEA-SpeechBench: A Large-Scale Multitask Benchmark for Speech Understanding Across Southeast Asia", "topic": "speech-audio"}
+{"id": "3b589471-ab8c-4c44-8042-1f86908ee352", "title": "Introducing Consort: A Spec-First Agent Framework for Enforced, Test-Driven Development on Live Database Branches", "topic": "agents-tool-use"}
+{"id": "ec6c65a2-bcaf-4c72-8515-9ba5e1ab0016", "title": "PRAGMA: Evaluating Personalized Guidance with Memory Alignment in Lifelong Conversations", "topic": "memory-retrieval"}
+{"id": "235d75b7-07a3-49a7-a0ed-e3633b005bfd", "title": "PELM: Power Efficient On-Device LLM Inference with Speculative Decoding and Dynamic Voltage Frequency Scaling", "topic": "efficiency-inference"}
+{"id": "26c86cc9-bfc9-4e12-918f-7c1f6dfa3f86", "title": "Cascading Gradient Inversion via LT-Code Inspired Peeling in Federated Learning", "topic": "security"}
+{"id": "9a738b78-e573-4ac9-bd41-f25a824499fa", "title": "RESCUE-BENCH: Towards Relation-Aware Multi-Party Emotional Support Conversation Systems", "topic": "other"}
+{"id": "6f5140e5-fc31-424f-ae3a-ce8bfb9da168", "title": "Why Learning Rediscovers the Closed-Form Diagonal Regularizer", "topic": "other"}
+{"id": "13c85a1c-6874-4f1b-970b-cf7535116b0c", "title": "Black-Box Red Teaming of Agentic AI: A Taxonomy-Driven Framework for Automated Risk Discovery", "topic": "security"}
+{"id": "69e8143d-56e6-4504-b17a-3cc290d4fddb", "title": "RobustSGPO: Search-Space Control for Agent Harness Evolution", "topic": "agents-tool-use"}
+{"id": "45972d59-4dbb-431d-b600-aea7bbc9eb50", "title": "LightMedSeg-ISLES: Stroke Lesion Segmentation with 81x Fewer Parameters than nnU-Net", "topic": "healthcare-ai"}
+{"id": "4c0a2413-4843-4e8e-9073-e2ed8bdca0e1", "title": "Who Are They to Each Other? Multi-Agent Reasoning for Speaker Relationship Inference", "topic": "speech-audio"}
+{"id": "ba0c1f25-fc03-4a6f-ac6b-f07c52853c2b", "title": "Seven Sources of Physical AI Capability Formation", "topic": "other"}
+{"id": "1fdc5a9a-e7d7-4f97-9ff7-928394344d9c", "title": "Hyperbolic Geometry for Open-World Object Detection in Remote Sensing Imagery", "topic": "vision-multimodal"}
+{"id": "cee1ccda-f48f-49a1-af99-71e01dc2fdd2", "title": "From State Synchronization to Cognitive Self-Evolution: An Operational Architecture for Cognitive Digital Twins", "topic": "efficiency-inference"}
+{"id": "1a88b1c0-0153-4b04-8680-27bad3bd9087", "title": "RouteBridge: Reliability-Routed Bidirectional Distillation Between Neural Radiance Fields and 3D Gaussian Splatting", "topic": "vision-multimodal"}
+{"id": "9444df78-1382-45f8-9cc6-f629e6e8631e", "title": "Watermarks Without Verification: AI Text Watermarking After the EU AI Act", "topic": "other"}
+{"id": "aa29a222-be12-4ebb-9241-03ed0438e23a", "title": "Compact Visuotactile World Models for Lifting: Prediction, Reward Alignment, and Force Constraints", "topic": "robotics-autonomy"}
+{"id": "a46d1593-8517-4644-bac9-6a8ca10029a4", "title": "Teacher Geometry Shapes Learnability in Teacher-Student Networks", "topic": "other"}
+{"id": "021f51bb-ee01-4eb0-89f8-ce4c54336c9b", "title": "Modality-Decoupled Federated Learning for Privacy-Preserving Embodied Intelligence in 6G", "topic": "robotics-autonomy"}
+{"id": "440f2e44-ec29-4698-9dd6-8c858062d2b6", "title": "A Function-Space Approach to the Statistical Mechanics of Learning Dynamics", "topic": "other"}
+{"id": "607166be-85b3-420a-a82e-b4ec2541d382", "title": "Distillation of Synthetic Data for Time Series Foundation Models", "topic": "efficiency-inference"}
+{"id": "36942764-8cc8-4260-a37d-1b9ae7df711a", "title": "CityPlanner: A Sandbox Agent for Executable Urban Planning", "topic": "agents-tool-use"}
+{"id": "cea266ea-ba66-4f83-bde5-bd7253e2c440", "title": "Myocardial Strain Drift Correction in Deep Learning Based Ultrasound Tracking", "topic": "other"}
+{"id": "bb65fa83-6830-48a3-bd66-f456e6ae4f0f", "title": "Beyond Top Words: MonoTM for Topic Modeling with Interpretable Monosemantic Features", "topic": "safety-eval"}
+{"id": "889d29dd-274f-4cad-b04f-c11f380106cb", "title": "Geometric organization of olfactory descriptor data in the Poincaré disk", "topic": "other"}
+{"id": "31bcd60c-3b52-4ea8-ba1a-cb8fd9b11356", "title": "Learning with Synthetic Data via SGD in High-Dimensional Linear Regression", "topic": "other"}
+{"id": "409738cc-638f-4888-b86e-ec89a8eb63d1", "title": "Reproducing Omitted Temporal Expressions in Japanese News for Retrieval-Augmented Applications", "topic": "memory-retrieval"}
+{"id": "a61d525e-371d-4c20-974c-46e1365a1ef1", "title": "Positional task conditioning for scalable defect detection across product families in large product catalogs", "topic": "vision-multimodal"}
+{"id": "cafe66be-9cf4-4063-a145-5589150d358f", "title": "Multi-Agent Agentic Graph Learning via Structural Signatures", "topic": "agents-tool-use"}
+{"id": "60e2a6a3-0473-459b-832b-54c3513b093a", "title": "Robust Industrial Cyber Physical Classification Using Neuromorphic Temporal Embeddings and Hybrid SNN XGBoost Under Machine Unlearning Attacks", "topic": "security"}
+{"id": "a83e4e9b-d1f1-4111-8356-96877f052d66", "title": "Towards Automatic Evolution Tree Generation from Citation Graphs", "topic": "other"}
+{"id": "32983ce6-d876-4656-a2ab-78a801d40cbe", "title": "The Vibe Shift in Software Engineering: Evaluating AI-Led Conversational Programming for Performance, Cognition, and Responsible Adoption", "topic": "safety-eval"}
+{"id": "3529861b-0452-46bf-8dc3-047e9af55ae5", "title": "High-probability guarantees for linear accessibility in feature superposition", "topic": "memory-retrieval"}
+{"id": "c6255201-2e3c-4636-a6b7-9e28248f4f14", "title": "BuzzASR: A Swarm of 100+ Monolingual Speech Recognition Models", "topic": "speech-audio"}
+{"id": "7473cfd4-86ea-40d3-8b85-81953d07fe05", "title": "Arbitrary Cipher Attacks Against Large Language Models Do Not Require Fine-Tuning", "topic": "security"}
+{"id": "42d20905-ed96-499c-a005-ee7c93568f7c", "title": "TEFM: Token-Efficient Faithful Modeling for Structured Data", "topic": "efficiency-inference"}
+{"id": "3936b0fb-6a27-4679-a026-639fa1aacca3", "title": "An Efficient and Effective Agentic Group Shilling Attack on Recommender Systems", "topic": "security"}
+{"id": "df3c1fe9-213d-4f29-a8cb-0c20c4bcb34f", "title": "A Statistical Approach to Estimating Sample Size of Machine Learning Models", "topic": "other"}
+{"id": "d591e6e5-22da-47f2-ae2d-52c81eab497d", "title": "Differentially Private Average Treatment Effect Estimation by Propensity Score Blocking", "topic": "agents-tool-use"}
+{"id": "280c49a9-3f5b-4e6c-aee3-65d8873ed9be", "title": "Oracle Complexity of Stochastic Fixed-Point Equations with Nonexpansive Maps", "topic": "theory-optimization"}
+{"id": "6dab4851-2057-42c1-bf36-b2d8b40081d3", "title": "Adaptive Distributed Physical-Layer Authentication and Attack Detection in 6G Non-Terrestrial Networks via Causal Meta-Learning", "topic": "security"}
+{"id": "88ab5b82-5f4d-426d-97ca-aeef88c1c48f", "title": "Inductive Biases in Field-Level Cosmological Inference from Galaxy Catalogs", "topic": "efficiency-inference"}
+{"id": "8b2fe7ca-a531-4939-9fbd-af5480167209", "title": "The Mutations of Machine Speech", "topic": "speech-audio"}
+{"id": "dc419694-ed08-4f17-9266-8314e533a07f", "title": "Efficient Fairness Auditing Across Guidance Scales in Text-to-Image Diffusion Models via Causal Abstraction", "topic": "vision-multimodal"}
+{"id": "29733a1b-6219-4ee1-878c-87c086420dcc", "title": "Infra-Bench CLS: A Global, Open-Source Benchmark for Critical Infrastructure Classification with Earth Observation Foundation Models", "topic": "safety-eval"}
+{"id": "a5b34cbe-421f-44eb-94fa-1daa84787f85", "title": "Gaussian Approximation for Multivariate Martingale Sums from Uniformly Ergodic Markov Chains", "topic": "theory-optimization"}
+{"id": "8adcc2b3-021e-418c-ad14-1d291aa8985e", "title": "Unthrottling the Tanh Jacobian in SAC: A Negative Result on Bang-Bang Control and MetaDrive", "topic": "theory-optimization"}
+{"id": "cfde0c9b-23e3-4226-aebf-8c44ad7f66d2", "title": "LeCor: Learning to Be Corrected by Meta-Learned Test-Time Training for Interactive 3D Lung-Tumour Segmentation", "topic": "vision-multimodal"}
+{"id": "9cd378a5-27ca-48da-bcc2-a9ffdf4526d9", "title": "From Fixed Keys to Readable Schemas: Small Language Models for Vehicle Agent Function Calls", "topic": "agents-tool-use"}
+{"id": "8fb72f1c-bb32-4120-bcb1-fc0e8f3cf189", "title": "Distributed Physical Layer Authentication and Collaborative RSMA in Non-Terrestrial Networks via Graph Reinforcement Learning", "topic": "rl-planning"}
+{"id": "34d40af0-d86d-4cc2-87f8-28eefae8df79", "title": "Mode Coverage in Normalizing Flow Boltzmann Generators via Log-Ratio Variation", "topic": "memory-retrieval"}
+{"id": "7574a3a3-4b4a-4ff9-9f7b-c276e30b3c58", "title": "Building the Harness Automatically: Self-Play in Code Distills a Text Harness for Black-Box Optimization", "topic": "agents-tool-use"}
+{"id": "4eac149c-a152-4c08-b475-9995ef857f2b", "title": "Exact-Form Regret for Gradient Descent, Mirror Descent and Follow-the-Regularized-Leader", "topic": "other"}
+{"id": "30bede5e-6d99-4f06-954d-6a2fc3e46446", "title": "ContractEval: Query-Conditioned Execution Matching for Procedural Instruction Conformance", "topic": "agents-tool-use"}
+{"id": "e23598b4-9059-4f1e-982e-587d92397d0f", "title": "A Block Tensor Train Burer-Monteiro Framework for Low-Rank Quantum State Tomography", "topic": "safety-eval"}
+{"id": "3c570951-2255-439a-afb0-22b2db23fa97", "title": "Uncertainty-Aware Sea-Ice Type Mapping with Multiple Ice Charts", "topic": "robotics-autonomy"}
+{"id": "47ae3b04-43c5-452d-9405-764afa72f9fe", "title": "Do Agents Know When They Succeed? Calibrating Agent Confidence from Internal Representations", "topic": "agents-tool-use"}
+{"id": "a46bf3aa-9cc1-464d-9cb4-988e4dee48d3", "title": "Concept drift mitigation through community and spectral graph analysis for the detectionof cyberattacks in network traffic", "topic": "security"}
+{"id": "c65200c0-6d02-4274-9cfe-1ac8c8691247", "title": "MiNCE: Nonparametric, Strongly Consistent Confidence Envelopes for Band-Limited Functions and their Smoothed Spectra", "topic": "security"}
+{"id": "58c9e25a-644a-45e8-8210-0b9d4a03db1b", "title": "Tensor-Train Weak SINDy: Identifying High-Dimensional Nonlinear Dynamics", "topic": "other"}
+{"id": "7fc93fdf-e722-4245-9da5-5ef128014298", "title": "Efficient Leakage-Free Neural Architecture Search under Leave-One-Subject-Out Evaluation", "topic": "efficiency-inference"}
+{"id": "75467264-03f1-4c15-81c0-0e4e568d20dd", "title": "SCCM : Stream Cruise Control Method for Automated Drift Detection and Adaptation", "topic": "vision-multimodal"}
+{"id": "c63b6ab4-01e4-4632-b21a-6d4965c70350", "title": "Applying foundation model embeddings towards urban livability evaluation", "topic": "safety-eval"}
+{"id": "739297eb-34db-4ce5-a9fd-85bab6ab8627", "title": "XAI-Arena: Can LLMs Assess the Quality of XAI Explanations?", "topic": "safety-eval"}
+{"id": "b67a643b-075c-4586-abb5-66d4bea60a1e", "title": "Edu-QuRating: Multi-Dimensional Educational Data Curation with Distilled Pairwise Judgements", "topic": "efficiency-inference"}
+{"id": "42791521-6e27-4292-a115-89f99be80cae", "title": "Valerant: An Automatic Navigable Game Map Generator via Action-Conditioned World Model Exploration", "topic": "robotics-autonomy"}
+{"id": "a671d3d4-dec6-474d-9dcf-ac1686e174bd", "title": "Decision-Focused Active Learning for Scale-Aware Critical-Materials Recovery", "topic": "other"}
+{"id": "73d8a08e-bea1-4fb8-8292-29b499179a9a", "title": "Benchmarking Hybrid Deep Research Across Database Querying and Web Search", "topic": "agents-tool-use"}
+{"id": "70b5ae7a-5469-4297-9772-3e1d46d40d49", "title": "Reliable Near-Field Multi-User Positioning Informed by Two-Stage MUSIC", "topic": "speech-audio"}
+{"id": "fff9c0fb-f41b-44fb-8792-2f42ed89931c", "title": "An Experimental Evaluation of Multimodal Prompt Injection Attacks on Agentic AI Frameworks", "topic": "security"}
+{"id": "985752c8-8f5b-4333-bf08-8ca3bbcdd237", "title": "X-amine509: Predicting the Practical Risk Level of Enterprise X.509 Certificates", "topic": "other"}
+{"id": "84b8c4b1-6dc4-4a13-91b8-7220de44eb21", "title": "VANTAGE-Bench: Evaluating the Infrastructure AI Gap in Vision-Language Models", "topic": "robotics-autonomy"}
+{"id": "dbf05ecf-4391-4494-9f0a-2dd6cf712e2d", "title": "The Menu Is an Execution Prior: State-Path Tool Menus for Online Agents", "topic": "agents-tool-use"}
+{"id": "5c0fb9af-55d7-4ada-824c-14552aea592d", "title": "XAI-Refine: An Automated Explanation-Knowledge Loop for Brain-Age Prediction", "topic": "efficiency-inference"}
+{"id": "e50eab5e-47c6-4b68-8a4a-1af76763ea5e", "title": "An Autonomous GeoAI Agent for Arctic Eco-Navigation", "topic": "robotics-autonomy"}
+{"id": "4f4e40bf-51fc-404a-9e4e-28aa30179718", "title": "What Does MMLU Actually Measure? A Psychometric Audit of Difficulty Structure in Aggregate Benchmark Scores", "topic": "memory-retrieval"}
+{"id": "5d66a491-379b-4ab6-9b2a-c90da83001e6", "title": "Constraint-Aware Discrete Black-Box Optimization Using Tensor Decomposition", "topic": "efficiency-inference"}
+{"id": "daaa6563-8486-4f6b-8fdb-6108a6617767", "title": "Explaining f-Divergence-Based Regularization via Local Curvature and Sharpness-Aware Minimization", "topic": "safety-eval"}
+{"id": "210b0b2d-0887-4f9f-95ac-47bcfdcc57ae", "title": "Do LLMs Make More Mistakes If They Do Not Believe the Input Data?", "topic": "memory-retrieval"}
