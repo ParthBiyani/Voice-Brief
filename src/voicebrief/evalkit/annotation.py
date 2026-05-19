@@ -162,7 +162,17 @@ class Persona:
 
     key: str
     description: str
+    # Rubric topics, used to label relevance.
     topics: frozenset[str]
+    # Topics the user would tick in the product's taxonomy. Drawn from the *source*
+    # vocabulary, not the rubric vocabulary.
+    #
+    # These exist because the first ablation run was unfair: personas carried only
+    # rubric topics ("agents-tool-use") while items carry source topics
+    # ("agentic-ai"), with zero overlap between the two. The topics-only arm could
+    # not score at all, which flattered the stack profile by comparison. An ablation
+    # whose control arm is handicapped is worse than no ablation.
+    declared_topics: frozenset[str]
     dependencies: frozenset[str]
     languages: frozenset[str]
 
@@ -177,6 +187,7 @@ PERSONAS: tuple[Persona, ...] = (
         topics=frozenset(
             {"agents-tool-use", "memory-retrieval", "framework-release", "nlp-language"}
         ),
+        declared_topics=frozenset({"agentic-ai", "tooling", "nlp", "open-source", "releases"}),
         dependencies=frozenset(
             {"langgraph", "langchain", "fastapi", "qdrant", "pydantic", "mcp", "llama_index"}
         ),
@@ -189,6 +200,9 @@ PERSONAS: tuple[Persona, ...] = (
             "front-ends. Cares about small models, quantization and latency."
         ),
         topics=frozenset({"efficiency-inference", "model-release", "framework-release"}),
+        declared_topics=frozenset(
+            {"edge-ai", "machine-learning", "open-source", "tooling", "releases"}
+        ),
         dependencies=frozenset({"ollama", "llama.cpp", "gguf", "flutter", "onnx", "vllm"}),
         languages=frozenset({"dart", "c++", "python"}),
     ),
@@ -201,6 +215,7 @@ PERSONAS: tuple[Persona, ...] = (
         topics=frozenset(
             {"vision-multimodal", "dataset-release", "safety-eval", "theory-optimization"}
         ),
+        declared_topics=frozenset({"computer-vision", "research", "machine-learning"}),
         dependencies=frozenset({"pytorch", "torch", "transformers", "diffusers", "timm"}),
         languages=frozenset({"python"}),
     ),

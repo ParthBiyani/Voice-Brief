@@ -21,13 +21,14 @@ import json
 import pathlib
 import platform
 import subprocess
+import uuid
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import numpy as np
 
-from voicebrief.evalkit.annotation import PERSONAS_BY_KEY, is_relevant
+from voicebrief.evalkit.annotation import PERSONAS_BY_KEY
 from voicebrief.evalkit.metrics import (
     MetricResult,
     adjusted_rand_index,
@@ -39,7 +40,9 @@ from voicebrief.evalkit.metrics import (
 )
 from voicebrief.pipeline.clustering import cluster_items, labels_from_clusters
 from voicebrief.pipeline.dedup import DedupCandidate, find_duplicates, pairs_from_groups
+from voicebrief.evalkit.ablation import persona_profile
 from voicebrief.pipeline.embedding import get_embedding_service, item_text
+from voicebrief.pipeline.ranking import RankCandidate, prerank
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATASETS = ROOT / "eval" / "datasets"
@@ -168,11 +171,15 @@ def eval_clustering(corpus: Corpus) -> list[MetricResult]:
 
 
 def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
-    """Rank each persona's candidate pool with the deterministic scorer.
+    """Rank each persona's candidate pool with the production ranker.
 
-    This measures the non-LLM ranking path. The LLM re-rank sits on top of it and is
-    evaluated separately once a provider is configured; keeping this path measurable
-    on its own is what makes the personalization ablation possible.
+    Calls `pipeline.ranking.prerank` directly rather than reimplementing scoring here.
+    An earlier version had its own scorer and reported P@10 = 0.4333 while the real
+    ranker achieved 0.5333 on identical data — a harness that measures a parallel
+    implementation measures the wrong system.
+
+    This is the pre-LLM path only. The LLM re-rank sits on top and is measured
+    separately, which is what keeps the personalization ablation interpretable.
     """
     labels = _read_jsonl(DATASETS / "relevance.jsonl")
     by_id = corpus.by_id
@@ -184,14 +191,34 @@ def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
             continue
 
         relevant = {r["item_id"] for r in rows if r["relevant"]}
-        scored = []
+        candidates, id_by_cluster = [], {}
         for row in rows:
             item = by_id[row["item_id"]]
-            scored.append((row["item_id"], _persona_score(persona, item)))
-        ranked = [i for i, _ in sorted(scored, key=lambda p: p[1], reverse=True)]
+            cluster_id = uuid.uuid4()
+            id_by_cluster[cluster_id] = row["item_id"]
+            candidates.append(
+                RankCandidate(
+                    cluster_id=cluster_id,
+                    title=item["title"],
+                    summary=item.get("summary", ""),
+                    url=item["url"],
+                    topics=item.get("topics", []),
+                    engagement=float(item.get("engagement", 0.0) or 0.0),
+                    trust_weight=0.6,
+                    cluster_size=1,
+                    source_slug=item.get("source", ""),
+                )
+            )
 
-        p_at_k = precision_at_k(ranked, relevant, k)
-        ndcg = ndcg_at_k(ranked, relevant, k)
+        ranked = prerank(
+            candidates,
+            profile=persona_profile(persona),
+            declared_topics=set(persona.declared_topics),
+        )
+        order = [id_by_cluster[s.candidate.cluster_id] for s in ranked]
+
+        p_at_k = precision_at_k(order, relevant, k)
+        ndcg = ndcg_at_k(order, relevant, k)
         precisions.append(p_at_k)
         ndcgs.append(ndcg)
         per_persona[persona_key] = {
@@ -208,33 +235,12 @@ def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
         ),
         MetricResult(
             "Ranking", f"nDCG@{k}", float(np.mean(ndcgs)) if ndcgs else 0.0,
-            target=None, detail=None,
+            target=None,
+            detail={"note": "pre-LLM heuristic path; LLM re-rank measured separately"},
         ),
     ]
 
 
-def _persona_score(persona, item: dict) -> float:
-    """Deterministic relevance scorer: topic overlap plus dependency mentions.
-
-    Intentionally the same shape as the production pre-LLM ranking signal, so the
-    number this harness reports is the number the system actually achieves without a
-    model in the loop.
-    """
-    text = f"{item['title']} {item.get('summary', '')}".lower()
-    topics = {t.lower() for t in item.get("topics", [])}
-
-    score = 0.0
-    score += 0.5 * len(topics & {t.replace("-", "") for t in persona.topics})
-    score += 0.5 * len(topics & persona.topics)
-    score += 1.5 * sum(1 for dep in persona.dependencies if dep in text)
-    score += 0.4 * sum(1 for lang in persona.languages if lang in text)
-    score += 0.3 * float(item.get("engagement", 0.0) or 0.0)
-    return score
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Runner
-# ─────────────────────────────────────────────────────────────────────────────
 def _git_sha() -> str:
     try:
         return subprocess.check_output(

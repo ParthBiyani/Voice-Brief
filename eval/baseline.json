@@ -1,10 +1,10 @@
 {
-  "generated_at": "2026-09-10T05:38:59.206047+00:00",
-  "git_sha": "adc2ec1",
+  "generated_at": "2026-09-10T05:55:10.433584+00:00",
+  "git_sha": "0e1c3a1",
   "python": "3.11.9",
   "corpus_size": 500,
   "dedup_threshold": 0.92,
-  "elapsed_seconds": 23.64,
+  "elapsed_seconds": 21.11,
   "metrics": [
     {
       "component": "Deduplication",
@@ -73,26 +73,26 @@
     {
       "component": "Ranking",
       "metric": "precision@10",
-      "value": 0.4333,
+      "value": 0.5333,
       "target": 0.7,
       "higher_is_better": true,
       "passed": false,
       "detail": {
         "agent-builder": {
           "p_at_k": 0.5,
-          "ndcg": 0.6489,
+          "ndcg": 0.5299,
           "pool": 76,
           "relevant": 14
         },
         "edge-ml": {
-          "p_at_k": 0.3,
-          "ndcg": 0.469,
+          "p_at_k": 0.5,
+          "ndcg": 0.6422,
           "pool": 76,
           "relevant": 10
         },
         "cv-researcher": {
-          "p_at_k": 0.5,
-          "ndcg": 0.6489,
+          "p_at_k": 0.6,
+          "ndcg": 0.5829,
           "pool": 76,
           "relevant": 21
         }
@@ -101,11 +101,13 @@
     {
       "component": "Ranking",
       "metric": "nDCG@10",
-      "value": 0.589,
+      "value": 0.585,
       "target": null,
       "higher_is_better": true,
       "passed": null,
-      "detail": {}
+      "detail": {
+        "note": "pre-LLM heuristic path; LLM re-rank measured separately"
+      }
     }
   ]
 }

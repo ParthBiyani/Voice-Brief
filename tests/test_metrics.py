@@ -158,3 +158,42 @@ class TestClusteredFraction:
 
     def test_empty(self):
         assert clustered_fraction({}) == 0.0
+
+
+class TestAblationFairness:
+    """The ablation's control arm must be genuinely competitive.
+
+    First run scored topics_only identically to no_personalization because personas
+    carried rubric-vocabulary topics while items carry source-vocabulary topics, with
+    zero overlap — the control could not score at all, which flattered the stack
+    profile. These guard that from silently returning.
+    """
+
+    def test_personas_declare_topics_from_the_source_vocabulary(self):
+        import json
+        import pathlib
+
+        from voicebrief.evalkit.annotation import PERSONAS
+
+        corpus_path = (
+            pathlib.Path(__file__).resolve().parents[1] / "eval" / "datasets" / "corpus.jsonl"
+        )
+        vocabulary = {
+            topic
+            for line in corpus_path.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+            for topic in json.loads(line).get("topics", [])
+        }
+        for persona in PERSONAS:
+            overlap = persona.declared_topics & vocabulary
+            assert overlap, (
+                f"{persona.key} declares {sorted(persona.declared_topics)}, none of which "
+                f"appear in the corpus — its control arm cannot score"
+            )
+
+    def test_every_persona_has_both_topic_sets(self):
+        from voicebrief.evalkit.annotation import PERSONAS
+
+        for persona in PERSONAS:
+            assert persona.topics, f"{persona.key} has no rubric topics"
+            assert persona.declared_topics, f"{persona.key} has no declared topics"

@@ -1,0 +1,67 @@
+{
+  "k": 10,
+  "per_persona": {
+    "agent-builder": {
+      "with_profile": {
+        "p_at_k": 0.5,
+        "ndcg": 0.5299
+      },
+      "topics_only": {
+        "p_at_k": 0.5,
+        "ndcg": 0.4199
+      },
+      "no_personalization": {
+        "p_at_k": 0.4,
+        "ndcg": 0.5638
+      },
+      "pool": 76,
+      "relevant": 14
+    },
+    "edge-ml": {
+      "with_profile": {
+        "p_at_k": 0.5,
+        "ndcg": 0.6422
+      },
+      "topics_only": {
+        "p_at_k": 0.5,
+        "ndcg": 0.6325
+      },
+      "no_personalization": {
+        "p_at_k": 0.0,
+        "ndcg": 0.0
+      },
+      "pool": 76,
+      "relevant": 10
+    },
+    "cv-researcher": {
+      "with_profile": {
+        "p_at_k": 0.6,
+        "ndcg": 0.5829
+      },
+      "topics_only": {
+        "p_at_k": 0.4,
+        "ndcg": 0.3063
+      },
+      "no_personalization": {
+        "p_at_k": 0.0,
+        "ndcg": 0.0
+      },
+      "pool": 76,
+      "relevant": 21
+    }
+  },
+  "mean": {
+    "with_profile": {
+      "p_at_k": 0.5333,
+      "ndcg": 0.585
+    },
+    "topics_only": {
+      "p_at_k": 0.4667,
+      "ndcg": 0.4529
+    },
+    "no_personalization": {
+      "p_at_k": 0.1333,
+      "ndcg": 0.1879
+    }
+  }
+}
