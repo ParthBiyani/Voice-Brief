@@ -58,6 +58,10 @@ class RankCandidate:
     trust_weight: float = 0.5
     cluster_size: int = 1
     source_slug: str = ""
+    # The items behind this cluster, carried through so the summarizer has the raw
+    # material without a second database round-trip per story.
+    sources: list = field(default_factory=list)
+    bodies: dict = field(default_factory=dict)
 
 
 @dataclass(slots=True)
