@@ -139,5 +139,87 @@ def enrich_command(
     console.print(table)
 
 
+brief_app = typer.Typer(no_args_is_help=True, help="Generate episodes")
+app.add_typer(brief_app, name="brief")
+
+
+@brief_app.command("generate")
+def brief_generate(
+    email: str = typer.Option("me@example.com", "--user", help="User to generate for"),
+    github: str = typer.Option("", "--github", help="GitHub login for the stack profile"),
+    topics: str = typer.Option("agentic-ai,tooling", "--topics"),
+    stories: int = typer.Option(6, "--stories"),
+    minutes: int = typer.Option(10, "--minutes"),
+    language: str = typer.Option("en", "--language", help="en or hi"),
+    style: str = typer.Option("solo_anchor", "--style"),
+    no_audio: bool = typer.Option(False, "--no-audio", help="Skip synthesis"),
+) -> None:
+    """Run the full pipeline and store an episode."""
+    import asyncio as _asyncio
+
+    from sqlalchemy import select
+
+    from voicebrief.db import session_scope
+    from voicebrief.db.models import Language, User
+    from voicebrief.pipeline.candidates import build_candidates
+    from voicebrief.pipeline.episodes import generate_episode
+
+    profile = None
+    if github:
+        from voicebrief.personalization.github_profile import GitHubProfileBuilder
+
+        profile = _asyncio.run(GitHubProfileBuilder().build(github))
+        console.print(
+            f"[dim]stack profile: {len(profile.dependencies)} dependencies "
+            f"across {len(profile.repos)} repos[/dim]"
+        )
+
+    with session_scope() as session:
+        user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
+        if user is None:
+            user = User(email=email, language=Language(language), github_login=github or None)
+            session.add(user)
+            session.flush()
+
+        candidates = build_candidates(session)
+        if not candidates:
+            console.print("[red]No clusters found. Run `ingest run` then `enrich` first.[/red]")
+            raise typer.Exit(1)
+        console.print(f"[dim]{len(candidates)} candidate stories[/dim]")
+
+        result = generate_episode(
+            session,
+            user_id=user.id,
+            candidates=candidates,
+            profile=profile,
+            declared_topics={t.strip() for t in topics.split(",") if t.strip()},
+            language=language,
+            style=style,
+            max_stories=stories,
+            target_minutes=minutes,
+            render_audio=not no_audio,
+        )
+
+    table = Table(title=result.title or "Episode")
+    table.add_column("metric")
+    table.add_column("value", justify="right")
+    for label, value in (
+        ("episode id", str(result.episode_id)),
+        ("words", str(result.word_count)),
+        ("duration", f"{result.duration_seconds / 60:.1f} min"),
+        ("generation time", f"{result.generation_seconds:.1f}s"),
+        ("cost", f"INR {result.cost_inr:.2f}"),
+        ("attribution rate", f"{result.attribution_rate:.3f}"),
+        ("hallucinated links", str(result.hallucinated_links)),
+        ("tts engine", result.engine),
+    ):
+        table.add_row(label, value)
+    console.print(table)
+    if result.errors:
+        console.print(f"[yellow]{len(result.errors)} non-fatal issue(s)[/yellow]")
+        for err in result.errors[:5]:
+            console.print(f"  [dim]{err}[/dim]")
+
+
 if __name__ == "__main__":
     app()
