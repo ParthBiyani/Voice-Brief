@@ -14,7 +14,9 @@ dependencies = [
     "alembic>=1.14",
     "psycopg[binary]>=3.2",
     "redis>=5.2",
-    "qdrant-client>=1.12",
+    # Kept within one minor of the server image in docker-compose.yml; a wider
+    # gap makes the client warn and risks wire-format drift.
+    "qdrant-client>=1.12,<1.14",
     "boto3>=1.35",
     "httpx>=0.28",
     "tenacity>=9.0",

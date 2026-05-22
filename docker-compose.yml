@@ -18,6 +18,10 @@ services:
       retries: 20
 
   qdrant:
+    # Pinned, and the client range in pyproject is pinned to match. Qdrant storage
+    # is not forward-compatible: 1.19 refuses to read segments written by 1.12
+    # ("unknown variant `on_disk`"), so bumping this image is a migration, not a
+    # version bump. Change both together or neither.
     image: qdrant/qdrant:v1.12.4
     ports: ["56333:6333", "56334:6334"]
     volumes: ["qdrantdata:/qdrant/storage"]

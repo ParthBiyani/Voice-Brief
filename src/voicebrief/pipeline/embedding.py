@@ -55,7 +55,14 @@ class EmbeddingService:
 
                     log.info("embedding.loading", model=self.model_name)
                     self._model = SentenceTransformer(self.model_name, device="cpu")
-                    actual = self._model.get_sentence_embedding_dimension()
+                    # Renamed in sentence-transformers 6; keep the old name working
+                    # so the package range in pyproject stays honest.
+                    getter = getattr(
+                        self._model,
+                        "get_embedding_dimension",
+                        self._model.get_sentence_embedding_dimension,
+                    )
+                    actual = getter()
                     if actual != self.dim:
                         raise ValueError(
                             f"{self.model_name} produces {actual}-d vectors but settings "
