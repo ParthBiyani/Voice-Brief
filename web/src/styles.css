@@ -1,0 +1,145 @@
+/* Deliberately hand-written and small. A component library would be more code than
+   the whole UI, and this app is one screen. */
+
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --border: #e6e4e0;
+  --text: #1c1b19;
+  --muted: #6b6862;
+  --accent: #2f5d50;
+  --accent-soft: #eaf2ef;
+  --warn: #8a4b20;
+  --radius: 10px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #16171a;
+    --surface: #1e2024;
+    --border: #2f3238;
+    --text: #eceae6;
+    --muted: #9a968e;
+    --accent: #7fc3ad;
+    --accent-soft: #21302c;
+    --warn: #d99a63;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.6 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 6px 12px;
+}
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: 0.55; cursor: default; }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+button.is-on { background: var(--accent-soft); border-color: var(--accent); }
+
+input {
+  font: inherit;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  width: 100%;
+}
+
+a { color: var(--accent); }
+
+.app { max-width: 1120px; margin: 0 auto; padding: 28px 20px 64px; }
+
+.app-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.app-head h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+.tagline { margin: 4px 0 0; color: var(--muted); }
+
+.banner { padding: 9px 13px; border-radius: 8px; margin: 0 0 16px; }
+.notice { color: var(--muted); background: var(--surface); border: 1px solid var(--border); }
+.error { color: var(--warn); border: 1px solid var(--warn); background: transparent; }
+
+.search { margin-bottom: 22px; }
+.search form { display: flex; gap: 8px; }
+.hits { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.hits button {
+  display: grid;
+  gap: 3px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 13px;
+}
+.hit-head { display: flex; justify-content: space-between; gap: 12px; }
+.hit-meta, .hit-episode { color: var(--muted); font-size: 13px; }
+.hit-excerpt { color: var(--muted); font-size: 13px; }
+
+.layout { display: grid; grid-template-columns: 290px 1fr; gap: 22px; align-items: start; }
+@media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+.episodes h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.episodes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.episodes button { display: grid; gap: 2px; width: 100%; text-align: left; padding: 9px 12px; }
+.episodes button.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.episode-title { font-weight: 550; }
+.episode-meta { color: var(--muted); font-size: 12px; }
+
+.player { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; }
+.player-head { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; align-items: baseline; }
+.player-head h2 { margin: 0; font-size: 19px; }
+.meta { display: flex; gap: 10px; color: var(--muted); font-size: 13px; }
+.badge { padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); }
+.badge-ready { color: var(--accent); border-color: var(--accent); }
+.badge-failed { color: var(--warn); border-color: var(--warn); }
+
+.player audio { width: 100%; margin: 14px 0 6px; }
+
+.transcript { list-style: none; margin: 0; padding: 0; }
+.segment { padding: 13px 0; border-top: 1px solid var(--border); }
+.segment.is-active { background: var(--accent-soft); margin: 0 -18px; padding: 13px 18px; }
+.segment-cold_open .script, .segment-sign_off .script { font-style: italic; color: var(--muted); }
+
+.segment-head { display: flex; gap: 10px; align-items: baseline; }
+.segment-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.timestamp {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  padding: 1px 7px;
+  color: var(--muted);
+  flex: none;
+}
+.script { margin: 7px 0; white-space: pre-wrap; }
+
+.citations { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; padding: 0; font-size: 13px; }
+.segment-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+.segment-actions button { font-size: 13px; padding: 4px 10px; }
+
+.chat { margin-top: 11px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; }
+.chat-presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 9px; }
+.chat-presets button { font-size: 13px; padding: 4px 10px; }
+.chat-form { display: flex; gap: 7px; }
+.chat-answer { margin-top: 11px; }
+.chat-answer p { margin: 0 0 6px; white-space: pre-wrap; }
+.chat-sources { color: var(--muted); font-size: 13px; }
+
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
