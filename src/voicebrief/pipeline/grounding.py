@@ -29,7 +29,11 @@ from voicebrief.logging import get_logger
 
 log = get_logger(__name__)
 
-_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Zऀ-ॿ])")
+# Devanagari ends a sentence with the danda (U+0964), not a full stop, and has no
+# case distinction — so the lookahead accepts any Devanagari letter as a sentence
+# start. Without this a whole Hindi transcript collapses into one line, which
+# breaks both the timestamped transcript and grounding verification.
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?।॥])\s+(?=[A-Zऀ-ॿ])")
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+")
 _WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#_-]*")
 
