@@ -50,10 +50,19 @@ fmt:  ## Auto-format
 eval:  ## Run the evaluation harness and diff against the last recorded run
 	$(PY) -m voicebrief.evalkit.run --compare
 
-.PHONY: help install up down migrate seed ingest brief api web test test-all lint fmt eval eval-record eval-sets
+.PHONY: help install up down migrate seed ingest brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
 
 eval-record:  ## Record the current run as the baseline for future comparisons
 	$(PY) -m voicebrief.evalkit.run --record
 
 eval-sets:  ## Regenerate cluster and relevance label sets from the frozen corpus
 	$(PY) scripts/build_eval_sets.py
+
+build:  ## Build the production image
+	docker build -t voicebrief:latest .
+
+deploy-up:  ## Run the full production stack locally
+	$(COMPOSE) -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+
+ablation:  ## Run the personalization ablation
+	$(PY) -m voicebrief.evalkit.ablation

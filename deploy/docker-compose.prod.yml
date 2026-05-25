@@ -1,0 +1,34 @@
+# Production overlay. Run with:
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d
+#
+# Adds the API and a cron sidecar; the datastores come from the base file.
+name: voicebrief
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file: [../.env]
+    environment:
+      VB_POSTGRES_DSN: postgresql+psycopg://voicebrief:voicebrief@postgres:5432/voicebrief
+      VB_QDRANT_URL: http://qdrant:6333
+      VB_REDIS_URL: redis://redis:6379/0
+      VB_S3_ENDPOINT: http://minio:9000
+    ports: ["8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      qdrant:   {condition: service_healthy}
+      minio:    {condition: service_healthy}
+    restart: unless-stopped
+
+  scheduler:
+    image: alpine:3.20
+    command: >
+      sh -c "apk add --no-cache curl tzdata >/dev/null &&
+             crontab /etc/crontabs/voicebrief &&
+             crond -f -l 8"
+    volumes:
+      - ./crontab:/etc/crontabs/voicebrief:ro
+    depends_on: [api]
+    restart: unless-stopped

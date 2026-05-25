@@ -1,0 +1,12 @@
+# VoiceBrief scheduling.
+#
+# Two ingest passes a day, matching the PRD's 06:00 / 18:00 IST cadence, then enrich.
+# Concurrent hits are safe: `run_ingest` takes a Postgres advisory lock and a second
+# caller becomes a no-op rather than a duplicate crawl. That lock is the entire
+# scheduler for v1 — Celery and Temporal are explicitly deferred (PRD §8).
+CRON_TZ=Asia/Kolkata
+
+0  6 * * * curl -fsS -X POST http://api:8000/ingest/run    >> /var/log/voicebrief.log 2>&1
+15 6 * * * curl -fsS -X POST http://api:8000/ingest/enrich >> /var/log/voicebrief.log 2>&1
+0 18 * * * curl -fsS -X POST http://api:8000/ingest/run    >> /var/log/voicebrief.log 2>&1
+15 18 * * * curl -fsS -X POST http://api:8000/ingest/enrich >> /var/log/voicebrief.log 2>&1
