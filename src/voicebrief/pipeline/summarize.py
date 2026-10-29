@@ -20,7 +20,7 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 
-from voicebrief.llm.base import Stage, Tier
+from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 
@@ -142,6 +142,8 @@ def summarize_cluster(
             max_tokens=1200,
             cache_system=True,
         )
+    except BudgetExceeded:
+        raise
     except Exception as exc:
         log.warning("summarize.failed", cluster=str(cluster_id), error=str(exc))
         return None
@@ -171,11 +173,19 @@ def summarize_cluster(
     if dropped:
         log.warning("summarize.dropped_uncited_facts", cluster=str(cluster_id), count=dropped)
 
+    facts = [f for f in facts if f["fact"]]
+    if not facts:
+        # A summary with no cited facts gives the writer nothing to ground on, and a
+        # script written from it is exactly the fabrication the pipeline exists to
+        # prevent. Drop the story; the next-ranked one takes its place.
+        log.warning("summarize.no_usable_facts", cluster=str(cluster_id))
+        return None
+
     return ClusterSummary(
         cluster_id=cluster_id,
         headline=str(payload.get("headline", "")).strip(),
         what_changed=str(payload.get("what_changed", "")).strip(),
         why_it_matters=str(payload.get("why_it_matters", "")).strip(),
-        key_facts=[f for f in facts if f["fact"]],
+        key_facts=facts,
         sources=sources,
     )
