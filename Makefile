@@ -23,7 +23,16 @@ seed:  ## Load the source registry from config/sources.yaml
 ingest:  ## Run one ingestion pass across all enabled sources
 	$(PY) -m voicebrief.cli ingest run
 
-brief:  ## Generate today's episode end to end
+enrich:  ## Embed, deduplicate and cluster the recent crawl
+	$(PY) -m voicebrief.cli enrich
+
+daily:  ## Ingest, enrich and generate today's brief (idempotent; what the scheduler runs)
+	$(PY) -m voicebrief.cli daily
+
+tts-setup:  ## Download the Kokoro voice model (about 350 MB, once)
+	$(PY) -m voicebrief.cli tts setup
+
+brief:  ## Generate an episode from what is already ingested
 	$(PY) -m voicebrief.cli brief generate
 
 api:  ## Serve the API with reload
@@ -50,7 +59,7 @@ fmt:  ## Auto-format
 eval:  ## Run the evaluation harness and diff against the last recorded run
 	$(PY) -m voicebrief.evalkit.run --compare
 
-.PHONY: help install up down migrate seed ingest brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
+.PHONY: help install up down migrate seed ingest enrich daily tts-setup brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
 
 eval-record:  ## Record the current run as the baseline for future comparisons
 	$(PY) -m voicebrief.evalkit.run --record

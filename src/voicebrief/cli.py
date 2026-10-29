@@ -145,65 +145,29 @@ brief_app = typer.Typer(no_args_is_help=True, help="Generate episodes")
 app.add_typer(brief_app, name="brief")
 
 
-@brief_app.command("generate")
-def brief_generate(
-    email: str = typer.Option("me@example.com", "--user", help="User to generate for"),
-    github: str = typer.Option("", "--github", help="GitHub login for the stack profile"),
-    topics: str = typer.Option("agentic-ai,tooling", "--topics"),
-    stories: int = typer.Option(6, "--stories"),
-    minutes: int = typer.Option(10, "--minutes"),
-    language: str = typer.Option("en", "--language", help="en or hi"),
-    style: str = typer.Option("solo_anchor", "--style"),
-    no_audio: bool = typer.Option(False, "--no-audio", help="Skip synthesis"),
-) -> None:
-    """Run the full pipeline and store an episode."""
-    import asyncio as _asyncio
+def _csv(value: str | None) -> list[str] | None:
+    items = [t.strip() for t in (value or "").split(",") if t.strip()]
+    return items or None
 
-    from sqlalchemy import select
 
-    from voicebrief.db import session_scope
-    from voicebrief.db.models import Language, User
-    from voicebrief.pipeline.candidates import build_candidates
-    from voicebrief.pipeline.episodes import generate_episode
+def _request(
+    email, github, topics, stories, minutes, language, style, no_audio
+):  # pragma: no cover - thin option plumbing
+    from voicebrief.pipeline.daily import BriefRequest
 
-    profile = None
-    if github:
-        from voicebrief.personalization.github_profile import GitHubProfileBuilder
+    return BriefRequest(
+        email=email,
+        github_login=github or None,
+        topics=_csv(topics),
+        language=language,
+        style=style,
+        stories=stories,
+        minutes=minutes,
+        render_audio=not no_audio,
+    )
 
-        profile = _asyncio.run(GitHubProfileBuilder().build(github))
-        console.print(
-            f"[dim]stack profile: {len(profile.dependencies)} dependencies "
-            f"across {len(profile.repos)} repos[/dim]"
-        )
 
-    with session_scope() as session:
-        user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
-        if user is None:
-            user = User(email=email, language=Language(language), github_login=github or None)
-            session.add(user)
-            session.flush()
-
-        candidates = build_candidates(session, user_id=user.id)
-        if not candidates:
-            console.print(
-                "[red]No fresh stories to cover. Run `ingest run` then `enrich`; or every recent story has already been aired.[/red]"
-            )
-            raise typer.Exit(1)
-        console.print(f"[dim]{len(candidates)} candidate stories[/dim]")
-
-        result = generate_episode(
-            session,
-            user_id=user.id,
-            candidates=candidates,
-            profile=profile,
-            declared_topics={t.strip() for t in topics.split(",") if t.strip()},
-            language=language,
-            style=style,
-            max_stories=stories,
-            target_minutes=minutes,
-            render_audio=not no_audio,
-        )
-
+def _print_episode(result) -> None:
     table = Table(title=result.title or "Episode")
     table.add_column("metric")
     table.add_column("value", justify="right")
@@ -224,10 +188,183 @@ def brief_generate(
         console.print(f"[yellow]{len(result.errors)} issue(s)[/yellow]")
         for err in result.errors[:5]:
             console.print(f"  [dim]{err}[/dim]")
+
+
+_EMAIL_OPT = typer.Option("me@example.com", "--user", help="User to generate for")
+_GITHUB_OPT = typer.Option("", "--github", help="GitHub login; saved for later runs")
+_TOPICS_OPT = typer.Option("", "--topics", help="Comma-separated; saved for later runs")
+_STORIES_OPT = typer.Option(None, "--stories", help="Stories per brief (default 6)")
+_MINUTES_OPT = typer.Option(None, "--minutes", help="Target length (default 10)")
+_LANG_OPT = typer.Option(None, "--language", help="en or hi; saved for later runs")
+_STYLE_OPT = typer.Option(None, "--style", help="solo_anchor or two_host")
+_NO_AUDIO_OPT = typer.Option(False, "--no-audio", help="Skip synthesis")
+
+
+@brief_app.command("generate")
+def brief_generate(
+    email: str = _EMAIL_OPT,
+    github: str = _GITHUB_OPT,
+    topics: str = _TOPICS_OPT,
+    stories: int | None = _STORIES_OPT,
+    minutes: int | None = _MINUTES_OPT,
+    language: str | None = _LANG_OPT,
+    style: str | None = _STYLE_OPT,
+    no_audio: bool = _NO_AUDIO_OPT,
+) -> None:
+    """Generate one episode from what is already ingested."""
+    from voicebrief.db import session_scope
+    from voicebrief.pipeline.daily import NoFreshStories, generate_brief
+
+    request = _request(email, github, topics, stories, minutes, language, style, no_audio)
+    try:
+        with session_scope() as session:
+            result = generate_brief(session, request)
+    except NoFreshStories as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    _print_episode(result)
     if result.status != "ready":
         # Scripts and the scheduled task rely on the exit code to tell a good brief from
         # one that needs a look.
         raise typer.Exit(2 if result.status == "degraded" else 1)
+
+
+@app.command("daily")
+def daily_command(
+    email: str = _EMAIL_OPT,
+    github: str = _GITHUB_OPT,
+    topics: str = _TOPICS_OPT,
+    stories: int | None = _STORIES_OPT,
+    minutes: int | None = _MINUTES_OPT,
+    language: str | None = _LANG_OPT,
+    style: str | None = _STYLE_OPT,
+    no_audio: bool = _NO_AUDIO_OPT,
+    force: bool = typer.Option(False, "--force", help="Generate even if today's brief exists"),
+    skip_ingest: bool = typer.Option(False, "--skip-ingest", help="Use what is already crawled"),
+) -> None:
+    """Ingest, enrich, generate and index today's brief. Safe to run repeatedly.
+
+    Exit codes: 0 done or nothing to do, 2 a brief was made but is degraded
+    (for example silent audio), 1 failure.
+    """
+    from voicebrief.pipeline.daily import run_daily
+
+    request = _request(email, github, topics, stories, minutes, language, style, no_audio)
+    result = run_daily(request, force=force, skip_ingest=skip_ingest)
+
+    if result.outcome == "locked":
+        console.print("[yellow]Another daily run is already in progress; nothing to do.[/yellow]")
+    elif result.outcome == "already_done":
+        console.print(
+            f"[green]Today's brief already exists[/green] ({result.status}): "
+            f"{result.title}\n  episode {result.episode_id}  (use --force to make another)"
+        )
+    elif result.outcome == "failed":
+        console.print(f"[red]Daily run failed:[/red] {result.error}")
+    else:
+        table = Table(title=result.title or "Today's brief")
+        table.add_column("metric")
+        table.add_column("value", justify="right")
+        for label, value in (
+            ("episode id", str(result.episode_id)),
+            ("status", result.status or ""),
+            ("new items", str(result.items_ingested)),
+            ("clusters", str(result.clusters)),
+            ("duration", f"{result.duration_seconds / 60:.1f} min"),
+            ("cost", f"INR {result.cost_inr:.2f}"),
+            (
+                "attribution",
+                "-" if result.attribution_rate is None else f"{result.attribution_rate:.3f}",
+            ),
+        ):
+            table.add_row(label, value)
+        console.print(table)
+        for issue in result.issues[:5]:
+            console.print(f"  [yellow]{issue}[/yellow]")
+    raise typer.Exit(result.exit_code)
+
+
+tts_app = typer.Typer(no_args_is_help=True, help="Speech engine setup")
+app.add_typer(tts_app, name="tts")
+
+
+@tts_app.command("setup")
+def tts_setup() -> None:
+    """Download the Kokoro voice model (about 350 MB, once) to the per-user model folder."""
+    import httpx
+    from rich.progress import (
+        BarColumn,
+        DownloadColumn,
+        Progress,
+        TextColumn,
+        TransferSpeedColumn,
+    )
+
+    from voicebrief.tts.engines import (
+        ONNX_MODEL_FILE,
+        ONNX_RELEASE,
+        ONNX_VOICES_FILE,
+        model_dir,
+    )
+
+    folder = model_dir()
+    folder.mkdir(parents=True, exist_ok=True)
+    console.print(f"[dim]model folder: {folder}[/dim]")
+
+    for name in (ONNX_MODEL_FILE, ONNX_VOICES_FILE):
+        target = folder / name
+        if target.is_file() and target.stat().st_size > 1_000_000:
+            console.print(f"[green]{name}[/green] already present")
+            continue
+        partial = target.with_suffix(target.suffix + ".part")
+        with (
+            httpx.stream("GET", f"{ONNX_RELEASE}/{name}", follow_redirects=True, timeout=60) as r,
+            Progress(
+                TextColumn(name),
+                BarColumn(),
+                DownloadColumn(),
+                TransferSpeedColumn(),
+                console=console,
+            ) as bar,
+        ):
+            r.raise_for_status()
+            task = bar.add_task("dl", total=int(r.headers.get("content-length", 0)) or None)
+            with partial.open("wb") as handle:
+                for chunk in r.iter_bytes(1 << 16):
+                    handle.write(chunk)
+                    bar.update(task, advance=len(chunk))
+        partial.replace(target)
+    console.print("[green]Voice model ready.[/green] Try: voicebrief tts test")
+
+
+@tts_app.command("test")
+def tts_test(
+    text: str = typer.Option(
+        "VoiceBrief is working. This is a short test of the voice you will hear each morning.",
+        "--text",
+    ),
+    voice: str = typer.Option("", "--voice", help="Defaults to the configured voice"),
+    out: Path = typer.Option(Path("tts-test.wav"), "--out"),
+) -> None:
+    """Synthesize one sentence and report speed, to confirm speech works."""
+    import time
+
+    from voicebrief.tts.engines import build_engine
+
+    settings = get_settings()
+    engine = build_engine(settings.tts_engine)
+    if engine.name == "null":
+        console.print("[red]No speech engine available.[/red] Run: voicebrief tts setup")
+        raise typer.Exit(1)
+
+    started = time.perf_counter()
+    clip = engine.synthesize(text, voice=voice or settings.tts_voice_en, out_path=out)
+    took = time.perf_counter() - started
+    console.print(
+        f"[green]{engine.name}[/green] wrote {out} - {clip.duration_seconds:.1f}s of audio "
+        f"in {took:.1f}s ({clip.duration_seconds / took:.1f}x realtime)"
+    )
 
 
 if __name__ == "__main__":
