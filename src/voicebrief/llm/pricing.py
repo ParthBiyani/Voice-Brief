@@ -41,9 +41,14 @@ class Price:
 
 # Anthropic first-party API rates.
 PRICES: dict[str, Price] = {
+    "claude-opus-5-5": Price(4.00, 20.00),
     "claude-opus-5": Price(5.00, 25.00),
     "claude-opus-4-8": Price(5.00, 25.00),
+    "claude-sonnet-5-5": Price(2.00, 10.00),
     "claude-sonnet-5": Price(2.00, 10.00),
+    # Haiku 5.5 is $0.10/$0.50 for prompts up to 100K tokens; this pipeline's prompts
+    # are a few thousand, so the base rate is the right one.
+    "claude-haiku-5-5": Price(0.10, 0.50),
     "claude-haiku-4-5": Price(1.00, 5.00),
     "claude-fable-5-1": Price(10.00, 50.00),
 }
@@ -72,6 +77,15 @@ def price_for(model: str) -> Price:
         f"No price recorded for model {model!r}. Add it to voicebrief.llm.pricing "
         f"before using it, or the cost ledger will under-report."
     )
+
+
+def ensure_priced(model: str) -> None:
+    """Raise now if a hosted model has no recorded price.
+
+    Called when a provider is built, so a misconfigured model id fails before any
+    request is made rather than after the money has been spent.
+    """
+    price_for(model)
 
 
 def cost_inr(

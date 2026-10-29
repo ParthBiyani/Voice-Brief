@@ -26,6 +26,14 @@ def session():
 
 
 @pytest.fixture(autouse=True)
+def _in_session_ledger(monkeypatch):
+    """These tests exercise the wrapper inside one rolled-back transaction, so the
+    ledger writes through that session. The durable (own-connection) path has its own
+    tests in test_llm_provider.py."""
+    monkeypatch.setattr(LLMClient, "_write_ledger", lambda self, entry: self.session.add(entry))
+
+
+@pytest.fixture(autouse=True)
 def _clean(session):
     session.query(CostEntry).delete()
     session.flush()
@@ -46,7 +54,7 @@ class FlakyProvider(EchoProvider):
         self.attempts += 1
         if self.remaining > 0:
             self.remaining -= 1
-            raise LLMError("transient upstream failure")
+            raise LLMError("transient upstream failure", retryable=True)
         return super().complete(**kwargs)
 
 
@@ -135,11 +143,31 @@ class TestBudget:
 
 
 class TestResilience:
-    def test_transient_failures_are_retried(self, session):
-        provider = FlakyProvider(failures=2)
+    def test_a_retryable_failure_gets_one_more_attempt(self, session):
+        provider = FlakyProvider(failures=1)
         client = LLMClient(session, provider)
         assert client.complete(prompt="eventually works", stage=Stage.ranking).text
-        assert provider.attempts == 3
+        assert provider.attempts == 2
+
+    def test_retries_stop_after_the_second_attempt(self, session):
+        provider = FlakyProvider(failures=5)
+        client = LLMClient(session, provider)
+        with pytest.raises(LLMError):
+            client.complete(prompt="never works", stage=Stage.ranking)
+        assert provider.attempts == 2
+
+    def test_a_non_retryable_failure_is_not_paid_for_twice(self, session):
+        class Declines(EchoProvider):
+            attempts = 0
+
+            def complete(self, **kwargs):
+                Declines.attempts += 1
+                raise LLMError("model declined the request (category=cyber)")
+
+        client = LLMClient(session, Declines())
+        with pytest.raises(LLMError):
+            client.complete(prompt="x", stage=Stage.script)
+        assert Declines.attempts == 1
 
     def test_persistent_failure_propagates(self, session):
         client = LLMClient(session, FlakyProvider(failures=99))

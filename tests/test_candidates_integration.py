@@ -116,19 +116,21 @@ class TestFreshness:
     def test_only_recently_seen_stories_are_candidates(self, session, source, user):
         fresh = make_story(session, source, title="Fresh story today", age_hours=3)
         make_story(session, source, title="Stale story last week", age_hours=24 * 7, size=9)
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert {c.cluster_id for c in got} >= {fresh.id}
         assert all("Stale" not in c.title for c in got)
 
     def test_a_huge_old_cluster_no_longer_crowds_out_todays_news(self, session, source, user):
         make_story(session, source, title="Old blockbuster story", age_hours=24 * 10, size=50)
         today = make_story(session, source, title="Small release today", age_hours=2)
-        ids = [c.cluster_id for c in build_candidates(session, user_id=user.id, now=NOW)]
+        ids = [
+            c.cluster_id for c in build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
+        ]
         assert today.id in ids
 
     def test_candidates_carry_freshness_for_the_recency_term(self, session, source, user):
         make_story(session, source, title="Release notes today", age_hours=4)
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert all(c.freshness is not None for c in got)
 
 
@@ -138,7 +140,7 @@ class TestNeverRepeat:
         story = make_story(session, source, title="Big launch yesterday", age_hours=10, url=url)
         air(session, user, [url], cluster=story)
         report = CandidateReport(window_hours=0)
-        got = build_candidates(session, user_id=user.id, now=NOW, report=report)
+        got = build_candidates(session, user_id=user.id, now=NOW, report=report, limit=100_000)
         assert story.id not in {c.cluster_id for c in got}
         assert report.excluded_aired >= 1
 
@@ -154,7 +156,7 @@ class TestNeverRepeat:
         for item in session.execute(select(Item).where(Item.cluster_id == old.id)).scalars():
             item.cluster_id = rebuilt.id
         session.flush()
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert rebuilt.id not in {c.cluster_id for c in got}
 
     def test_another_users_episode_does_not_hide_a_story(self, session, source, user):
@@ -164,7 +166,7 @@ class TestNeverRepeat:
         url = f"https://example.com/{uuid.uuid4().hex}"
         story = make_story(session, source, title="Shared story", age_hours=5, url=url)
         air(session, other, [url])
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert story.id in {c.cluster_id for c in got}
 
     def test_a_developing_story_with_new_coverage_is_kept(self, session, source, user):
@@ -178,7 +180,7 @@ class TestNeverRepeat:
             extra_urls=[f"https://b.com/{uuid.uuid4().hex}", f"https://c.com/{uuid.uuid4().hex}"],
         )
         air(session, user, [old_url])
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert story.id in {c.cluster_id for c in got}
 
 
@@ -194,7 +196,7 @@ class TestWindowWidensAfterAGap:
         session.add(episode)
         session.flush()
         story = make_story(session, source, title="Saturday release", age_hours=50)
-        got = build_candidates(session, user_id=user.id, now=NOW)
+        got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert story.id in {c.cluster_id for c in got}
 
 
