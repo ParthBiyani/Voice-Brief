@@ -320,7 +320,11 @@ class BriefGraph:
             if uses:
                 personal = (
                     f"\n\nTHIS LISTENER'S STACK: they use {uses}. "
-                    f"Make the connection explicit and concrete."
+                    f"If this story is genuinely about that same library or tool, say so "
+                    f"plainly in one or two sentences and name the repository. If the "
+                    f"overlap is only a shared generic word (a file format, a common noun), "
+                    f"say nothing about their stack at all. Never write that the sources "
+                    f"say nothing about their repository: leave the connection out instead."
                 )
 
         prompt = (
