@@ -18,7 +18,7 @@ import uuid
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,6 +42,7 @@ from voicebrief.api.schemas import (
 from voicebrief.config import get_settings
 from voicebrief.db import get_session, session_scope
 from voicebrief.db.models import Episode, Feedback, Language, Segment, User
+from voicebrief.history import record_interaction, timeline
 from voicebrief.logging import configure_logging, get_logger
 from voicebrief.pipeline.episodes import presigned_url
 
@@ -240,6 +241,7 @@ def generate(
         session.flush()
 
     episode_id = uuid.uuid4()
+    record_interaction("generate", "web", user_id=user.id, request=request.model_dump(mode="json"))
     background.add_task(_run_generation, episode_id, user.id, request)
 
     return GenerateAccepted(
@@ -370,6 +372,31 @@ def submit_feedback(
                 note=payload.note,
             )
         )
+
+    record_interaction(
+        "feedback",
+        "web",
+        user_id=user.id,
+        request={"vote": payload.vote, "note": payload.note},
+        segment_id=payload.segment_id,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# History
+# ─────────────────────────────────────────────────────────────────────────────
+@app.get("/history", tags=["history"])
+def history(
+    day: date | None = Query(None, alias="date", description="Local date, default today"),
+    session: Session = Depends(get_session),
+) -> dict:
+    """Everything that happened on one day: runs, episodes with their ranking
+    decisions and model calls, and every question asked and answered."""
+    from zoneinfo import ZoneInfo
+
+    settings = get_settings()
+    today = datetime.now(ZoneInfo(settings.timezone)).date()
+    return timeline(session, day or today, timezone=settings.timezone)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

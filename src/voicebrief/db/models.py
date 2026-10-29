@@ -413,6 +413,14 @@ class CostEntry(Base, TimestampMixin):
     latency_ms: Mapped[int | None] = mapped_column(Integer)
     trace_id: Mapped[str | None] = mapped_column(String(96))
 
+    # The full exchange, kept so any decision can be audited and any prompt replayed.
+    # Metadata above is kept forever; these bodies are pruned after the retention window.
+    prompt: Mapped[str | None] = mapped_column(Text)
+    system_prompt: Mapped[str | None] = mapped_column(Text)
+    response: Mapped[str | None] = mapped_column(Text)
+    stop_reason: Mapped[str | None] = mapped_column(String(24))
+    run_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+
     __table_args__ = (
         Index("ix_cost_entry_created_at", "created_at"),
         Index("ix_cost_entry_episode", "episode_id"),
@@ -438,3 +446,91 @@ class IngestRun(Base, TimestampMixin):
     error: Mapped[str | None] = mapped_column(Text)
 
     __table_args__ = (Index("ix_ingest_run_source_started", "source_id", "started_at"),)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# History and audit trail
+#
+# Everything the system did and everything it was asked, kept so that it can be
+# improved from evidence: why a story was picked, what a prompt actually said, which
+# answers a person got. Written through `voicebrief.history`, never directly.
+# ─────────────────────────────────────────────────────────────────────────────
+class RunLog(Base, TimestampMixin):
+    """One row per top-level run (a daily brief, an ingest pass, a manual generate)."""
+
+    __tablename__ = "run_log"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)  # daily | ingest | generate
+    trigger: Mapped[str] = mapped_column(String(24), default="cli", nullable=False)
+    status: Mapped[str] = mapped_column(String(16), default="running", nullable=False)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL")
+    )
+    episode_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("episode.id", ondelete="SET NULL")
+    )
+    # Counts and per-source outcomes: items ingested per source, enrich statistics,
+    # candidates considered and excluded, issues raised.
+    summary: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (Index("ix_run_log_started", "started_at"),)
+
+
+class RankingSnapshot(Base, TimestampMixin):
+    """Every story considered for an episode and what happened to it.
+
+    Answers "why did it pick this, and why did it skip that" after the fact. Together
+    with thumbs from `feedback` it is also the raw material for real relevance labels.
+    """
+
+    __tablename__ = "ranking_snapshot"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    episode_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("episode.id", ondelete="CASCADE"), nullable=False
+    )
+    # Deliberately not a foreign key: clusters are rebuilt on every enrich run.
+    cluster_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    outcome: Mapped[str] = mapped_column(String(16), nullable=False)  # picked|not_picked|aired
+    position: Mapped[int | None] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    url: Mapped[str | None] = mapped_column(Text)
+    source_slug: Mapped[str | None] = mapped_column(String(96))
+    cluster_size: Mapped[int | None] = mapped_column(Integer)
+    heuristic_score: Mapped[float | None] = mapped_column(Float)
+    llm_score: Mapped[float | None] = mapped_column(Float)
+    final_score: Mapped[float | None] = mapped_column(Float)
+    # Contribution of each ranking signal: recency, stack match, topics, trust, ...
+    signals: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    matched_dependencies: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    rationale: Mapped[str | None] = mapped_column(Text)
+
+    __table_args__ = (Index("ix_ranking_snapshot_episode", "episode_id", "position"),)
+
+
+class Interaction(Base, TimestampMixin):
+    """Everything a person asked and everything the system answered."""
+
+    __tablename__ = "interaction"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("app_user.id", ondelete="SET NULL")
+    )
+    channel: Mapped[str] = mapped_column(String(16), nullable=False)  # web | cli | slack
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    request: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    response: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    episode_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("episode.id", ondelete="SET NULL")
+    )
+    segment_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("segment.id", ondelete="SET NULL")
+    )
+    latency_ms: Mapped[int | None] = mapped_column(Integer)
+
+    __table_args__ = (Index("ix_interaction_kind_created", "kind", "created_at"),)

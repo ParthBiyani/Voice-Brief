@@ -27,6 +27,14 @@ from voicebrief.db.models import (
 pytestmark = pytest.mark.integration
 
 
+@pytest.fixture(autouse=True)
+def _keep_history_clean(monkeypatch):
+    """The API records questions and thumbs; tests must not add to the history a
+    person reads."""
+    for target in ("voicebrief.api.main", "voicebrief.api.memory"):
+        monkeypatch.setattr(f"{target}.record_interaction", lambda *a, **k: None)
+
+
 @pytest.fixture(scope="module")
 def client() -> TestClient:
     with TestClient(app) as c:

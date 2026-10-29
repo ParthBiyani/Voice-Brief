@@ -19,6 +19,14 @@ from voicebrief.pipeline.daily import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _keep_history_clean(monkeypatch):
+    """These tests drive the real run_daily; they must not leave runs or settings
+    changes behind in the history a person reads."""
+    for name in ("start_run", "finish_run", "record_interaction"):
+        monkeypatch.setattr(f"voicebrief.pipeline.daily.{name}", lambda *a, **k: None)
+
+
 def explode(*_args, **_kwargs):
     raise RuntimeError("enrich exploded")
 

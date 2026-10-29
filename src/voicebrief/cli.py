@@ -7,6 +7,7 @@ API, so a cron entry and a developer at a terminal drive the exact same code pat
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 
 import typer
@@ -28,6 +29,12 @@ console = Console()
 
 @app.callback()
 def _init() -> None:
+    # A Windows console is often cp1252, and story titles are arbitrary Unicode. An
+    # unencodable character would otherwise crash a report after the work was done.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(errors="replace")
     configure_logging(get_settings().log_level)
 
 
@@ -218,7 +225,7 @@ def brief_generate(
     request = _request(email, github, topics, stories, minutes, language, style, no_audio)
     try:
         with session_scope() as session:
-            result = generate_brief(session, request)
+            result = generate_brief(session, request).result
     except NoFreshStories as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
@@ -242,6 +249,7 @@ def daily_command(
     no_audio: bool = _NO_AUDIO_OPT,
     force: bool = typer.Option(False, "--force", help="Generate even if today's brief exists"),
     skip_ingest: bool = typer.Option(False, "--skip-ingest", help="Use what is already crawled"),
+    trigger: str = typer.Option("cli", "--trigger", help="schedule or cli; recorded in history"),
 ) -> None:
     """Ingest, enrich, generate and index today's brief. Safe to run repeatedly.
 
@@ -251,7 +259,7 @@ def daily_command(
     from voicebrief.pipeline.daily import run_daily
 
     request = _request(email, github, topics, stories, minutes, language, style, no_audio)
-    result = run_daily(request, force=force, skip_ingest=skip_ingest)
+    result = run_daily(request, force=force, skip_ingest=skip_ingest, trigger=trigger)
 
     if result.outcome == "locked":
         console.print("[yellow]Another daily run is already in progress; nothing to do.[/yellow]")
@@ -283,6 +291,109 @@ def daily_command(
         for issue in result.issues[:5]:
             console.print(f"  [yellow]{issue}[/yellow]")
     raise typer.Exit(result.exit_code)
+
+
+history_app = typer.Typer(no_args_is_help=True, help="Review what the system did and was asked")
+app.add_typer(history_app, name="history")
+
+
+@history_app.command("show")
+def history_show(
+    day: str = typer.Option("", "--date", help="YYYY-MM-DD in your timezone; default today"),
+    details: bool = typer.Option(False, "--details", help="Include skipped stories"),
+) -> None:
+    """A timeline of one day: runs, what was picked and why, model calls, questions asked."""
+    from datetime import date, datetime
+    from zoneinfo import ZoneInfo
+
+    from voicebrief.db import session_scope
+    from voicebrief.history import timeline
+
+    settings = get_settings()
+    chosen = date.fromisoformat(day) if day else datetime.now(ZoneInfo(settings.timezone)).date()
+    with session_scope() as session:
+        data = timeline(session, chosen, timezone=settings.timezone)
+
+    console.print(f"[bold]{data['date']}[/bold]")
+    if not (data["runs"] or data["episodes"] or data["interactions"]):
+        console.print("[dim]nothing recorded[/dim]")
+        return
+
+    for run in data["runs"]:
+        colour = {"ok": "green", "skipped": "dim", "degraded": "yellow"}.get(run["status"], "red")
+        summary = run["summary"] or {}
+        bits = []
+        if "ingest" in summary:
+            bits.append(f"{summary['ingest']['new_items']} new items")
+        if "candidates" in summary:
+            c = summary["candidates"]
+            bits.append(f"{c['considered']} candidates ({c['already_aired']} already aired)")
+        console.print(
+            f"  run [{colour}]{run['kind']}/{run['trigger']} {run['status']}[/{colour}] "
+            f"{run['started_at'][11:19]}Z  {'; '.join(bits)}  {run['error'] or ''}"
+        )
+
+    for episode in data["episodes"]:
+        console.print(
+            f"\n[bold]{episode['title']}[/bold]  [{episode['status']}]  "
+            f"INR {episode['cost_inr']:.2f}  {len(episode['llm_calls'])} model calls"
+        )
+        if episode["error"]:
+            console.print(f"  [yellow]{episode['error']}[/yellow]")
+        table = Table(show_header=True, header_style="dim")
+        for col in ("", "story", "source", "score", "signals"):
+            table.add_column(col)
+        for entry in episode["ranking"]:
+            if entry["outcome"] != "picked" and not details:
+                continue
+            mark = {"picked": "[green]*[/green]", "aired": "[dim]heard[/dim]"}.get(
+                entry["outcome"], "[dim]-[/dim]"
+            )
+            top = sorted((entry["signals"] or {}).items(), key=lambda kv: -abs(kv[1]))[:3]
+            table.add_row(
+                mark,
+                entry["title"][:70],
+                entry["source"] or "",
+                "" if entry["score"] is None else f"{entry['score']:.2f}",
+                ", ".join(f"{k} {v:+.1f}" for k, v in top)
+                + ("  stack: " + ", ".join(entry["stack_match"]) if entry["stack_match"] else ""),
+            )
+        console.print(table)
+
+    for item in data["interactions"]:
+        request = item["request"] or {}
+        asked = request.get("question") or request.get("q") or request.get("vote") or request
+        console.print(
+            f"  {item['at'][11:19]}Z [cyan]{item['kind']}[/cyan] ({item['channel']}) {asked}"
+        )
+
+
+@history_app.command("export")
+def history_export(
+    since: str = typer.Option("", "--since", help="YYYY-MM-DD; default the last 30 days"),
+    out: Path = typer.Option(Path("history.jsonl"), "--out"),
+) -> None:
+    """Write every record (runs, ranking decisions, model calls, questions, thumbs) as JSONL."""
+    import json
+    from datetime import UTC, datetime, timedelta
+
+    from voicebrief.db import session_scope
+    from voicebrief.history import export_records
+
+    start = (
+        datetime.fromisoformat(since).replace(tzinfo=UTC)
+        if since
+        else datetime.now(UTC) - timedelta(days=30)
+    )
+    counts: dict[str, int] = {}
+    with session_scope() as session, out.open("w", encoding="utf-8") as handle:
+        for record in export_records(session, start):
+            handle.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
+            counts[record["type"]] = counts.get(record["type"], 0) + 1
+
+    console.print(f"[green]Wrote {sum(counts.values())} records to {out}[/green]")
+    for kind, n in sorted(counts.items()):
+        console.print(f"  {kind}: {n}")
 
 
 tts_app = typer.Typer(no_args_is_help=True, help="Speech engine setup")

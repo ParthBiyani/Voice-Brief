@@ -80,6 +80,7 @@ class LLMClient:
         episode_id: uuid.UUID | None = None,
         daily_budget_inr: float | None = None,
         durable_ledger: bool = True,
+        run_id: uuid.UUID | None = None,
     ) -> None:
         settings = get_settings()
         self.session = session
@@ -94,6 +95,7 @@ class LLMClient:
         # it whenever generation failed and rolled back, so the money for a crashed
         # run was spent but never counted against the daily budget.
         self.durable_ledger = durable_ledger
+        self.run_id = run_id
 
     # ── budget ────────────────────────────────────────────────────────────────
     def spend_today(self) -> float:
@@ -160,7 +162,7 @@ class LLMClient:
                 cache_system=cache_system,
             )
 
-        self._record(completion)
+        self._record(completion, prompt=prompt, system=system)
         return completion
 
     @retry(
@@ -189,7 +191,9 @@ class LLMClient:
                 )
         self.session.add(entry)
 
-    def _record(self, completion: Completion) -> None:
+    def _record(
+        self, completion: Completion, *, prompt: str | None = None, system: str | None = None
+    ) -> None:
         usage = completion.usage
         cost = cost_inr(
             completion.model,
@@ -211,6 +215,11 @@ class LLMClient:
             cost_inr=cost,
             latency_ms=completion.latency_ms,
             trace_id=completion.request_id,
+            prompt=prompt,
+            system_prompt=system,
+            response=completion.text,
+            stop_reason=completion.stop_reason,
+            run_id=self.run_id,
         )
         self._write_ledger(entry)
         log.info(

@@ -27,6 +27,7 @@ from voicebrief.api.schemas import (
 )
 from voicebrief.db import get_session
 from voicebrief.db.models import Episode, Segment
+from voicebrief.history import record_interaction, timed
 from voicebrief.llm.base import Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
@@ -104,14 +105,15 @@ def search(
     session: Session = Depends(get_session),
 ) -> SearchResponse:
     """Semantic search across every past episode."""
-    service = get_embedding_service()
-    vector = service.encode_one(q)
+    with timed() as clock:
+        service = get_embedding_service()
+        vector = service.encode_one(q)
 
-    try:
-        neighbours = get_vector_store().search_memory(vector, limit=limit)
-    except Exception as exc:
-        log.warning("memory.search_failed", error=str(exc))
-        return SearchResponse(query=q, hits=[])
+        try:
+            neighbours = get_vector_store().search_memory(vector, limit=limit)
+        except Exception as exc:
+            log.warning("memory.search_failed", error=str(exc))
+            return SearchResponse(query=q, hits=[])
 
     hits = []
     for neighbour in neighbours:
@@ -131,6 +133,18 @@ def search(
                 citations=[Citation(**c) for c in payload.get("citations", [])],
             )
         )
+    record_interaction(
+        "search",
+        "web",
+        request={"q": q, "limit": limit},
+        response={
+            "hits": [
+                {"segment_id": str(h.segment_id), "heading": h.heading, "score": h.score}
+                for h in hits
+            ]
+        },
+        latency_ms=clock.get("ms"),
+    )
     return SearchResponse(query=q, hits=hits)
 
 
@@ -161,18 +175,33 @@ def segment_chat(
         f"LISTENER'S QUESTION: {question}"
     )
 
-    client = LLMClient(session, episode_id=segment.episode_id)
-    completion = client.complete(
-        prompt=prompt,
-        stage=Stage.segment_qa,
-        tier=Tier.utility,
-        system=QA_SYSTEM,
-        max_tokens=800,
-        cache_system=True,
-    )
+    with timed() as clock:
+        client = LLMClient(session, episode_id=segment.episode_id)
+        completion = client.complete(
+            prompt=prompt,
+            stage=Stage.segment_qa,
+            tier=Tier.utility,
+            system=QA_SYSTEM,
+            max_tokens=800,
+            cache_system=True,
+        )
 
+    answer = completion.text.strip()
+    record_interaction(
+        "qa",
+        "web",
+        request={"question": question, "preset": request.preset},
+        response={
+            "answer": answer,
+            "sources": [c.get("url") for c in citations],
+            "cost_inr": round(client.run_cost_inr, 4),
+        },
+        episode_id=segment.episode_id,
+        segment_id=segment_id,
+        latency_ms=clock.get("ms"),
+    )
     return ChatResponse(
-        answer=completion.text.strip(),
+        answer=answer,
         segment_id=segment_id,
         citations=[Citation(**c) for c in citations],
         cost_inr=round(client.run_cost_inr, 4),

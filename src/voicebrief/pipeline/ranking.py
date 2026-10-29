@@ -28,6 +28,7 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
@@ -68,6 +69,34 @@ AMBIGUOUS_DEPENDENCIES = frozenset(
         "video", "search", "graph", "chart", "table", "form", "router", "layout",
     }
 )  # fmt: skip
+
+# Common English words, taken from the embedding model's own vocabulary (see
+# `personalization/common_words.txt`). A dependency called `path`, `http` or `catalogue`
+# matches ordinary prose, and a hand-kept stop-list can never keep up with the names a
+# frozen requirements file drags in. Anything on this list needs package-style evidence.
+_COMMON_WORDS_FILE = Path(__file__).resolve().parent.parent / "personalization" / "common_words.txt"
+
+
+def _load_common_words() -> frozenset[str]:
+    try:
+        return frozenset(
+            w.strip() for w in _COMMON_WORDS_FILE.read_text(encoding="utf-8").splitlines() if w
+        )
+    except OSError:
+        return frozenset()
+
+
+COMMON_WORDS = _load_common_words()
+# Libraries whose names are words but which tech news uses as proper nouns ("React 19").
+KNOWN_LIBRARIES_THAT_ARE_WORDS = frozenset({"react"})
+
+
+def is_ambiguous_dependency(name: str) -> bool:
+    lowered = name.lower()
+    if lowered in KNOWN_LIBRARIES_THAT_ARE_WORDS:
+        return False
+    return lowered in AMBIGUOUS_DEPENDENCIES or lowered in COMMON_WORDS
+
 
 # Languages whose name is a common word or a single letter; matched only by the
 # unambiguous form (empty string = never matched from prose).
@@ -113,6 +142,8 @@ class RankedStory:
     # Which of the user's dependencies this story touches, and where they use them.
     matched_dependencies: dict[str, list[str]] = field(default_factory=dict)
     rationale: str = ""
+    # What each heuristic signal contributed, so a decision can be explained afterwards.
+    signals: dict[str, float] = field(default_factory=dict)
 
     @property
     def is_personal(self) -> bool:
@@ -137,7 +168,7 @@ def match_dependencies(text: str, profile: StackProfileData | None) -> dict[str,
     for name, info in profile.dependencies.items():
         if len(name) < 4:
             continue
-        if name.lower() in AMBIGUOUS_DEPENDENCIES:
+        if is_ambiguous_dependency(name):
             forms: tuple[str, ...] = (f"/{name}", f" {name}.js", f" {name}.py", f" {name}-js")
         else:
             # Dependency names appear as words, in slashes, or in "org/name" form.
@@ -167,6 +198,43 @@ def recency_score(freshness: datetime | None, *, now: datetime) -> float:
     return math.pow(0.5, age_hours / RECENCY_HALF_LIFE_HOURS)
 
 
+def score_parts(
+    candidate: RankCandidate,
+    *,
+    profile: StackProfileData | None,
+    declared_topics: set[str],
+    now: datetime | None = None,
+) -> tuple[float, dict[str, list[str]], dict[str, float]]:
+    """The heuristic score, the dependencies it matched, and each signal's contribution."""
+    text = f"{candidate.title} {candidate.summary}"
+    matched = match_dependencies(text, profile)
+
+    parts: dict[str, float] = {"stack": W_DEPENDENCY * min(len(matched), 3)}
+
+    if profile:
+        parts["language"] = W_LANGUAGE * sum(
+            1 for language in profile.languages if mentions_language(text, language)
+        )
+        parts["starred"] = W_STARRED * len(
+            {t.lower() for t in candidate.topics} & set(profile.starred_topics)
+        )
+
+    if declared_topics:
+        overlap = {t.lower() for t in candidate.topics} & declared_topics
+        parts["topics"] = W_TOPIC * min(len(overlap), 3)
+
+    parts["engagement"] = W_ENGAGEMENT * candidate.engagement
+    parts["trust"] = W_TRUST * candidate.trust_weight
+    # A story several sources covered independently is more likely to matter.
+    parts["coverage"] = W_CLUSTER_SIZE * min(candidate.cluster_size - 1, 3)
+    parts["recency"] = W_RECENCY * recency_score(candidate.freshness, now=now or datetime.now(UTC))
+    if candidate.substance_chars is not None and candidate.substance_chars < THIN_STORY_CHARS:
+        parts["thin_penalty"] = -W_THIN
+
+    rounded = {k: round(v, 4) for k, v in parts.items() if v}
+    return sum(parts.values()), matched, rounded
+
+
 def heuristic_score(
     candidate: RankCandidate,
     *,
@@ -174,32 +242,9 @@ def heuristic_score(
     declared_topics: set[str],
     now: datetime | None = None,
 ) -> tuple[float, dict[str, list[str]]]:
-    text = f"{candidate.title} {candidate.summary}"
-    matched = match_dependencies(text, profile)
-
-    score = 0.0
-    score += W_DEPENDENCY * min(len(matched), 3)
-
-    if profile:
-        score += W_LANGUAGE * sum(
-            1 for language in profile.languages if mentions_language(text, language)
-        )
-        score += W_STARRED * len(
-            {t.lower() for t in candidate.topics} & set(profile.starred_topics)
-        )
-
-    if declared_topics:
-        overlap = {t.lower() for t in candidate.topics} & declared_topics
-        score += W_TOPIC * min(len(overlap), 3)
-
-    score += W_ENGAGEMENT * candidate.engagement
-    score += W_TRUST * candidate.trust_weight
-    # A story several sources covered independently is more likely to matter.
-    score += W_CLUSTER_SIZE * min(candidate.cluster_size - 1, 3)
-    score += W_RECENCY * recency_score(candidate.freshness, now=now or datetime.now(UTC))
-    if candidate.substance_chars is not None and candidate.substance_chars < THIN_STORY_CHARS:
-        score -= W_THIN
-
+    score, matched, _ = score_parts(
+        candidate, profile=profile, declared_topics=declared_topics, now=now
+    )
     return score, matched
 
 
@@ -214,7 +259,7 @@ def prerank(
     now = now or datetime.now(UTC)
     ranked = []
     for candidate in candidates:
-        score, matched = heuristic_score(
+        score, matched, parts = score_parts(
             candidate, profile=profile, declared_topics=topics, now=now
         )
         ranked.append(
@@ -223,6 +268,7 @@ def prerank(
                 score=score,
                 heuristic_score=score,
                 matched_dependencies=matched,
+                signals=parts,
             )
         )
     ranked.sort(key=lambda s: s.score, reverse=True)
@@ -253,8 +299,12 @@ What earns a low score:
 - Incremental research with no practical implication for a practitioner.
 - Marketing, funding rounds, and product launches unrelated to their work.
 
-Judge relevance to this engineer, not general importance. A widely-covered story that
-does not touch their stack scores lower than a small release that does.
+Weigh two things together. Relevance to this engineer: a small release of something
+they depend on beats a widely-covered story that does not touch their stack. And genuine
+significance to any practitioner: a major model release, an important open-source
+release, a serious security incident or a notable research result is worth hearing about
+even without a stack tie, and should land around 5 to 7. Reserve scores below 3 for
+stories that are neither relevant to them nor significant to anyone.
 
 Return JSON only.\
 """
