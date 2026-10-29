@@ -180,9 +180,9 @@ def brief_generate(
             session.add(user)
             session.flush()
 
-        candidates = build_candidates(session)
+        candidates = build_candidates(session, user_id=user.id)
         if not candidates:
-            console.print("[red]No clusters found. Run `ingest run` then `enrich` first.[/red]")
+            console.print("[red]No fresh stories to cover. Run `ingest run` then `enrich`; or every recent story has already been aired.[/red]")
             raise typer.Exit(1)
         console.print(f"[dim]{len(candidates)} candidate stories[/dim]")
 

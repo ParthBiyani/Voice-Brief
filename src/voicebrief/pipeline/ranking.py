@@ -23,8 +23,11 @@ upstream engagement, because it is the only signal that can produce:
 from __future__ import annotations
 
 import json
+import math
+import re
 import uuid
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 
 from voicebrief.llm.base import Stage, Tier
 from voicebrief.llm.client import LLMClient
@@ -41,6 +44,27 @@ W_STARRED = 0.4
 W_ENGAGEMENT = 0.6
 W_TRUST = 1.0
 W_CLUSTER_SIZE = 0.5
+# Without a recency term the biggest cluster of all time beats today's single-item
+# release, which is exactly the story the dependency signal exists to surface.
+W_RECENCY = 2.0
+RECENCY_HALF_LIFE_HOURS = 24.0
+
+# Package names that are also everyday English words. A dependency called `next` or
+# `rich` matches ordinary prose, which would flag unrelated stories as "personal" and
+# put a confidently wrong "you use this" claim into the audio. These only count when
+# written the way a package is written: `org/name`, `name.js` or `name.py`.
+AMBIGUOUS_DEPENDENCIES = frozenset(
+    {
+        "next", "rich", "click", "black", "requests", "express", "build", "test", "tests",
+        "time", "start", "base", "core", "common", "utils", "types", "main", "app",
+        "server", "client",
+    }
+)  # fmt: skip
+
+# Languages whose name is a common word or a single letter; matched only by the
+# unambiguous form (empty string = never matched from prose).
+AMBIGUOUS_LANGUAGES = {"go": "golang", "c": "", "r": "", "d": "", "v": ""}
+_WORD_RE = re.compile(r"[a-z0-9+#]+")
 
 RERANK_CANDIDATES = 15
 
@@ -62,6 +86,12 @@ class RankCandidate:
     # material without a second database round-trip per story.
     sources: list = field(default_factory=list)
     bodies: dict = field(default_factory=dict)
+    # When the story effectively became news (see filtering.item_freshness). None means
+    # unknown and the recency term is skipped: the eval corpus has no ingest times, and
+    # inventing one would make the harness measure something fictional.
+    freshness: datetime | None = None
+    # URLs of every item in the story, used to recognise a story already aired.
+    item_urls: list = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -97,12 +127,34 @@ def match_dependencies(text: str, profile: StackProfileData | None) -> dict[str,
     for name, info in profile.dependencies.items():
         if len(name) < 4:
             continue
-        # Dependency names appear as words, in slashes, or in "org/name" form.
-        for form in (f" {name} ", f"/{name}", f" {name}.", f" {name},", f" {name}:"):
-            if form in haystack:
-                matched[name] = info.get("repos", [])
-                break
+        if name.lower() in AMBIGUOUS_DEPENDENCIES:
+            forms: tuple[str, ...] = (f"/{name}", f" {name}.js", f" {name}.py", f" {name}-js")
+        else:
+            # Dependency names appear as words, in slashes, or in "org/name" form.
+            forms = (f" {name} ", f"/{name}", f" {name}.", f" {name},", f" {name}:")
+        if any(form in haystack for form in forms):
+            matched[name] = info.get("repos", [])
     return matched
+
+
+def mentions_language(text: str, language: str) -> bool:
+    """Whole-word match. A substring test made `c` match nearly every sentence and
+    `go` match "google" and "ago"."""
+    language = language.lower()
+    words = _WORD_RE.findall(text.lower())
+    if language in AMBIGUOUS_LANGUAGES:
+        unambiguous = AMBIGUOUS_LANGUAGES[language]
+        return bool(unambiguous) and unambiguous in words
+    return language in words
+
+
+def recency_score(freshness: datetime | None, *, now: datetime) -> float:
+    if freshness is None:
+        return 0.0
+    if freshness.tzinfo is None:
+        freshness = freshness.replace(tzinfo=UTC)
+    age_hours = max((now - freshness).total_seconds() / 3600.0, 0.0)
+    return math.pow(0.5, age_hours / RECENCY_HALF_LIFE_HOURS)
 
 
 def heuristic_score(
@@ -110,6 +162,7 @@ def heuristic_score(
     *,
     profile: StackProfileData | None,
     declared_topics: set[str],
+    now: datetime | None = None,
 ) -> tuple[float, dict[str, list[str]]]:
     text = f"{candidate.title} {candidate.summary}"
     matched = match_dependencies(text, profile)
@@ -118,8 +171,9 @@ def heuristic_score(
     score += W_DEPENDENCY * min(len(matched), 3)
 
     if profile:
-        lowered = text.lower()
-        score += W_LANGUAGE * sum(1 for language in profile.languages if language in lowered)
+        score += W_LANGUAGE * sum(
+            1 for language in profile.languages if mentions_language(text, language)
+        )
         score += W_STARRED * len(
             {t.lower() for t in candidate.topics} & set(profile.starred_topics)
         )
@@ -132,6 +186,7 @@ def heuristic_score(
     score += W_TRUST * candidate.trust_weight
     # A story several sources covered independently is more likely to matter.
     score += W_CLUSTER_SIZE * min(candidate.cluster_size - 1, 3)
+    score += W_RECENCY * recency_score(candidate.freshness, now=now or datetime.now(UTC))
 
     return score, matched
 
@@ -141,11 +196,15 @@ def prerank(
     *,
     profile: StackProfileData | None = None,
     declared_topics: set[str] | None = None,
+    now: datetime | None = None,
 ) -> list[RankedStory]:
     topics = {t.lower() for t in (declared_topics or set())}
+    now = now or datetime.now(UTC)
     ranked = []
     for candidate in candidates:
-        score, matched = heuristic_score(candidate, profile=profile, declared_topics=topics)
+        score, matched = heuristic_score(
+            candidate, profile=profile, declared_topics=topics, now=now
+        )
         ranked.append(
             RankedStory(
                 candidate=candidate,
@@ -303,7 +362,19 @@ def rerank(
     head.sort(key=lambda s: s.score, reverse=True)
     scored = sum(1 for s in head if s.llm_score is not None)
     log.info("rank.reranked", scored=scored, of=len(head))
-    return head + stories[limit:]
+
+    # Stories the model never saw must live on the same scale as those it did. Left on
+    # the raw heuristic they could outrank a story the model explicitly scored low, so
+    # they are blended against the lowest model score seen: unreviewed never beats
+    # reviewed-and-judged-relevant, but still orders by heuristic among themselves.
+    tail = stories[limit:]
+    judged = [s.llm_score for s in head if s.llm_score is not None]
+    if judged:
+        floor = min(judged)
+        for story in tail:
+            story.score = 0.4 * story.heuristic_score + 0.6 * floor
+        tail.sort(key=lambda s: s.score, reverse=True)
+    return head + tail
 
 
 def select_for_episode(
