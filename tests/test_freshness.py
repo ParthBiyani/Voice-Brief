@@ -223,3 +223,38 @@ class TestThinStories:
             cand(substance_chars=1500), profile=None, declared_topics=set(), now=NOW
         )
         assert unknown == pytest.approx(rich)
+
+
+class TestCommonWordDependencies:
+    """A frozen requirements file drags in packages named `path`, `http`, `catalogue`.
+    Matching those in prose made an unrelated repo look like it touched the user's stack
+    and added three points to its score."""
+
+    @pytest.fixture
+    def profile(self) -> StackProfileData:
+        deps = ["path", "http", "catalogue", "build", "kokoro", "langgraph", "react", "pandas"]
+        return StackProfileData(
+            login="dev", dependencies={d: {"repos": ["dev/app"], "ecosystem": "x"} for d in deps}
+        )
+
+    @pytest.mark.parametrize("word", ["path", "http", "catalogue", "build"])
+    def test_ordinary_words_do_not_match_in_prose(self, profile, word):
+        text = f"A new open source project proposes a different {word} for agents"
+        assert word not in match_dependencies(text, profile)
+
+    @pytest.mark.parametrize("name", ["kokoro", "langgraph", "pandas"])
+    def test_distinctive_names_still_match_in_prose(self, profile, name):
+        assert name in match_dependencies(f"{name.title()} 2.0 ships a faster core", profile)
+
+    def test_react_is_treated_as_the_library_it_usually_is(self, profile):
+        assert "react" in match_dependencies("React 19 changes how effects run", profile)
+
+    def test_a_common_word_still_matches_when_written_like_a_package(self, profile):
+        assert "path" in match_dependencies("see the path.py module in the repo", profile)
+
+    def test_the_generated_word_list_is_present_and_sensible(self):
+        from voicebrief.pipeline.ranking import COMMON_WORDS
+
+        assert len(COMMON_WORDS) > 5000
+        assert {"path", "http", "next"} <= COMMON_WORDS
+        assert not ({"kokoro", "langgraph", "fastapi", "pydantic"} & COMMON_WORDS)
