@@ -21,7 +21,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from voicebrief.db.models import Item
 from voicebrief.logging import get_logger
@@ -61,6 +61,24 @@ class ScoredItem:
     item: Item
     score: float
     reasons: dict[str, float]
+
+
+# A story first seen today is news today, however old its upstream timestamp is: the
+# weekend arXiv batch is submitted days earlier, and a trending Hugging Face model or
+# GitHub repo was created long before it trended. Ingest time is the honest signal for
+# "new to this reader", so upstream age is capped at this many hours before first sight.
+FIRST_SEEN_GRACE_HOURS = 24.0
+
+
+def item_freshness(published_at: datetime, first_seen_at: datetime | None) -> datetime:
+    """When a story effectively became news: the later of publication and first sight."""
+    if published_at.tzinfo is None:
+        published_at = published_at.replace(tzinfo=UTC)
+    if first_seen_at is None:
+        return published_at
+    if first_seen_at.tzinfo is None:
+        first_seen_at = first_seen_at.replace(tzinfo=UTC)
+    return max(published_at, first_seen_at - timedelta(hours=FIRST_SEEN_GRACE_HOURS))
 
 
 def _recency_score(published_at: datetime, *, now: datetime) -> float:
@@ -110,12 +128,10 @@ def score_item(
     now: datetime | None = None,
 ) -> ScoredItem:
     now = now or datetime.now(UTC)
-    published = item.published_at
-    if published.tzinfo is None:
-        published = published.replace(tzinfo=UTC)
+    freshness = item_freshness(item.published_at, getattr(item, "created_at", None))
 
     reasons = {
-        "recency": _recency_score(published, now=now),
+        "recency": _recency_score(freshness, now=now),
         "trust": trust_weight,
         "engagement": float(item.engagement or 0.0),
         "topic": _topic_score(list(item.topics or []), user_topics),
