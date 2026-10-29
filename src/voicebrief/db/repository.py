@@ -17,6 +17,11 @@ from sqlalchemy.orm import Session
 from voicebrief.db.models import Item, Source, SourceKind
 from voicebrief.sources.base import RawItem, SourceConfig
 
+# Poll when 90% of the interval has elapsed, and never back a failing source off by
+# more than a day.
+DUE_SLACK = 0.9
+MAX_BACKOFF = timedelta(hours=24)
+
 
 def upsert_source(session: Session, spec: dict) -> Source:
     """Idempotent by slug.
@@ -73,11 +78,32 @@ def due_sources(session: Session, *, now: datetime | None = None) -> Sequence[So
         if source.last_polled_at is None:
             due.append(source)
             continue
-        backoff = min(2**source.consecutive_failures, 16)
-        interval = timedelta(minutes=source.poll_interval_minutes * backoff)
-        if now - source.last_polled_at >= interval:
+        base = timedelta(minutes=source.poll_interval_minutes)
+        # Failure backoff is capped at a day (never below the source's own interval): at
+        # 16x a 12-hour feed would stay dark for eight days after a transient outage.
+        backoff = min(base * min(2**source.consecutive_failures, 16), max(base, MAX_BACKOFF))
+        # `last_polled_at` is the *start* of the previous run, so a cron firing exactly one
+        # interval later lands a few milliseconds short. Without slack that skipped the
+        # whole batch until the next run.
+        if now - source.last_polled_at >= backoff * DUE_SLACK:
             due.append(source)
     return due
+
+
+def disable_sources_not_in(session: Session, slugs: Iterable[str]) -> list[str]:
+    """Disable registry rows that are no longer in the seed file.
+
+    Rows are disabled rather than deleted so their items and ingest history survive.
+    """
+    keep = set(slugs)
+    gone = [
+        s
+        for s in session.execute(select(Source).where(Source.enabled.is_(True))).scalars()
+        if s.slug not in keep
+    ]
+    for source in gone:
+        source.enabled = False
+    return [s.slug for s in gone]
 
 
 def to_source_config(source: Source) -> SourceConfig:

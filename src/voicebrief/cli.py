@@ -37,7 +37,7 @@ def sources_sync(
 ) -> None:
     """Upsert the source registry from YAML. Idempotent; safe to re-run."""
     from voicebrief.db import session_scope
-    from voicebrief.db.repository import upsert_source
+    from voicebrief.db.repository import disable_sources_not_in, upsert_source
 
     spec = yaml.safe_load(path.read_text(encoding="utf-8"))
     entries = spec.get("sources", [])
@@ -45,8 +45,11 @@ def sources_sync(
     with session_scope() as session:
         for entry in entries:
             upsert_source(session, entry)
+        retired = disable_sources_not_in(session, (e["slug"] for e in entries))
 
     console.print(f"[green]Synced {len(entries)} sources from {path}[/green]")
+    if retired:
+        console.print(f"[yellow]Disabled {len(retired)} retired: {', '.join(retired)}[/yellow]")
 
 
 @sources_app.command("list")
@@ -182,7 +185,9 @@ def brief_generate(
 
         candidates = build_candidates(session, user_id=user.id)
         if not candidates:
-            console.print("[red]No fresh stories to cover. Run `ingest run` then `enrich`; or every recent story has already been aired.[/red]")
+            console.print(
+                "[red]No fresh stories to cover. Run `ingest run` then `enrich`; or every recent story has already been aired.[/red]"
+            )
             raise typer.Exit(1)
         console.print(f"[dim]{len(candidates)} candidate stories[/dim]")
 

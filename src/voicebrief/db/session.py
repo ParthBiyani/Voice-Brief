@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
 from functools import lru_cache
@@ -56,7 +57,9 @@ def advisory_lock(session: Session, key: str) -> Iterator[bool]:
     A cron hit to an endpoint plus one of these is sufficient concurrency control;
     Celery and Temporal are deferred (PRD §8).
     """
-    lock_id = abs(hash(key)) % (2**31)
+    # crc32, not hash(): Python randomises str hashes per process, so a CLI run and an
+    # API run computed different ids and never actually excluded each other.
+    lock_id = zlib.crc32(key.encode()) % (2**31)
     acquired = session.execute(
         text("SELECT pg_try_advisory_lock(:lock_id)"), {"lock_id": lock_id}
     ).scalar_one()
