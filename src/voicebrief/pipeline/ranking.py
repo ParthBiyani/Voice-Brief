@@ -82,9 +82,7 @@ class RankedStory:
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 1 — heuristic
 # ─────────────────────────────────────────────────────────────────────────────
-def match_dependencies(
-    text: str, profile: StackProfileData | None
-) -> dict[str, list[str]]:
+def match_dependencies(text: str, profile: StackProfileData | None) -> dict[str, list[str]]:
     """Find the user's actual dependencies mentioned in a story.
 
     Matching is on word boundaries against a lowercased haystack. Short names are
@@ -121,9 +119,7 @@ def heuristic_score(
 
     if profile:
         lowered = text.lower()
-        score += W_LANGUAGE * sum(
-            1 for language in profile.languages if language in lowered
-        )
+        score += W_LANGUAGE * sum(1 for language in profile.languages if language in lowered)
         score += W_STARRED * len(
             {t.lower() for t in candidate.topics} & set(profile.starred_topics)
         )
@@ -149,9 +145,7 @@ def prerank(
     topics = {t.lower() for t in (declared_topics or set())}
     ranked = []
     for candidate in candidates:
-        score, matched = heuristic_score(
-            candidate, profile=profile, declared_topics=topics
-        )
+        score, matched = heuristic_score(candidate, profile=profile, declared_topics=topics)
         ranked.append(
             RankedStory(
                 candidate=candidate,
@@ -283,7 +277,7 @@ def rerank(
             # The system prompt and profile are identical across runs in a session.
             cache_system=True,
         )
-    except Exception as exc:  # noqa: BLE001 — ranking must never fail an episode
+    except Exception as exc:
         log.warning("rank.rerank_failed", error=str(exc), fallback="heuristic order")
         return stories
 

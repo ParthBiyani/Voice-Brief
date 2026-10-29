@@ -181,8 +181,11 @@ def find_duplicates(
         similarity = vectors @ vectors.T
         # Upper triangle only; the matrix is symmetric and the diagonal is self-match.
         rows, cols = np.triu_indices(len(candidates), k=1)
-        for i, j in zip(rows[similarity[rows, cols] >= threshold],
-                        cols[similarity[rows, cols] >= threshold], strict=True):
+        for i, j in zip(
+            rows[similarity[rows, cols] >= threshold],
+            cols[similarity[rows, cols] >= threshold],
+            strict=True,
+        ):
             uf.union(int(i), int(j))
             reasons.setdefault(int(j), "semantic")
 
@@ -193,9 +196,7 @@ def find_duplicates(
         members = [candidates[i] for i in indices]
         canonical = _elect_canonical(members)
         others = [m.id for m in members if m.id != canonical.id]
-        group_reason = next(
-            (reasons[i] for i in sorted(indices) if i in reasons), "semantic"
-        )
+        group_reason = next((reasons[i] for i in sorted(indices) if i in reasons), "semantic")
         groups.append(
             DuplicateGroup(canonical_id=canonical.id, member_ids=others, reason=group_reason)
         )

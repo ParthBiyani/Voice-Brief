@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -14,7 +14,7 @@ REPOS_URL = "https://api.github.com/repos"
 
 
 def repo(repo_id: int, name: str, stars: int = 200, topics: list[str] | None = None) -> dict:
-    recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat().replace("+00:00", "Z")
+    recent = (datetime.now(UTC) - timedelta(days=1)).isoformat().replace("+00:00", "Z")
     return {
         "id": repo_id,
         "full_name": name,
@@ -31,7 +31,7 @@ def repo(repo_id: int, name: str, stars: int = 200, topics: list[str] | None = N
 
 
 def release(tag: str, *, prerelease: bool = False, draft: bool = False, days_ago: int = 1) -> dict:
-    published = (datetime.now(timezone.utc) - timedelta(days=days_ago)).isoformat()
+    published = (datetime.now(UTC) - timedelta(days=days_ago)).isoformat()
     return {
         "tag_name": tag,
         "name": f"Release {tag}",
@@ -45,7 +45,7 @@ def release(tag: str, *, prerelease: bool = False, draft: bool = False, days_ago
 
 @pytest.fixture
 def since() -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=30)
+    return datetime.now(UTC) - timedelta(days=30)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -123,7 +123,9 @@ class TestGitHubSearch:
             )
         )
         async with httpx.AsyncClient() as client:
-            items = {i.title: i.engagement for i in await search_adapter(["llm"]).fetch(client, since)}
+            items = {
+                i.title: i.engagement for i in await search_adapter(["llm"]).fetch(client, since)
+            }
         assert items["a/b"] == pytest.approx(0.5)
         assert items["c/d"] == 1.0
 
@@ -193,7 +195,10 @@ class TestGitHubReleases:
             )
         )
         async with httpx.AsyncClient() as client:
-            items = {i.raw["tag"]: i.engagement for i in await releases_adapter(["o/r"]).fetch(client, since)}
+            items = {
+                i.raw["tag"]: i.engagement
+                for i in await releases_adapter(["o/r"]).fetch(client, since)
+            }
         assert items["v1"] > items["v2-rc1"]
 
     @respx.mock

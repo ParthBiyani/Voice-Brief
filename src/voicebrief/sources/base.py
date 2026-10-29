@@ -13,10 +13,10 @@ from __future__ import annotations
 import hashlib
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
-from pydantic import BaseModel, Field, HttpUrl, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from voicebrief.config import get_settings
 from voicebrief.logging import get_logger
@@ -44,7 +44,7 @@ class RawItem(BaseModel):
     @field_validator("published_at")
     @classmethod
     def _ensure_tz(cls, v: datetime) -> datetime:
-        return v.replace(tzinfo=timezone.utc) if v.tzinfo is None else v
+        return v.replace(tzinfo=UTC) if v.tzinfo is None else v
 
     @field_validator("title", "summary", "body")
     @classmethod

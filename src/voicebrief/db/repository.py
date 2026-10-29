@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Iterable, Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -56,9 +56,7 @@ def upsert_source(session: Session, spec: dict) -> Source:
     )
     # populate_existing: without it the identity map hands back the pre-update
     # object on a re-upsert, so callers silently observe stale values.
-    return session.execute(
-        stmt, execution_options={"populate_existing": True}
-    ).scalar_one()
+    return session.execute(stmt, execution_options={"populate_existing": True}).scalar_one()
 
 
 def due_sources(session: Session, *, now: datetime | None = None) -> Sequence[Source]:
@@ -67,7 +65,7 @@ def due_sources(session: Session, *, now: datetime | None = None) -> Sequence[So
     A source that has failed repeatedly is backed off rather than disabled, so it
     recovers on its own once upstream is healthy again.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     rows = session.execute(select(Source).where(Source.enabled.is_(True))).scalars().all()
 
     due = []
@@ -142,9 +140,6 @@ def recent_items(
 
 def items_needing_embedding(session: Session, *, limit: int = 500) -> Sequence[Item]:
     stmt = (
-        select(Item)
-        .where(Item.embedded.is_(False))
-        .order_by(Item.published_at.desc())
-        .limit(limit)
+        select(Item).where(Item.embedded.is_(False)).order_by(Item.published_at.desc()).limit(limit)
     )
     return session.execute(stmt).scalars().all()

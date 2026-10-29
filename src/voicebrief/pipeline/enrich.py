@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import asdict, dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import numpy as np
 from sqlalchemy import select
@@ -54,7 +54,7 @@ def enrich(
     now: datetime | None = None,
 ) -> EnrichResult:
     settings = get_settings()
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     keep = keep or 300
     since = now - timedelta(hours=lookback_hours)
 

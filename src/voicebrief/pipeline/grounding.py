@@ -40,15 +40,121 @@ _WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#_-]*")
 # Content-free words carry no grounding signal; a sentence made only of these is
 # connective tissue, not a claim.
 STOPWORDS = frozenset(
-    """
-    a an the and or but if then than that this these those there here it its is are was
-    were be been being have has had do does did will would can could should may might
-    of in on at to from by for with without about into over under again further once
-    all any both each few more most other some such no nor not only own same so too very
-    as we you they he she i our your their them us who whom which what when where why how
-    now new also just still yet while because since after before during between up down
-    out off above below through
-    """.split()
+    [
+        "a",
+        "an",
+        "the",
+        "and",
+        "or",
+        "but",
+        "if",
+        "then",
+        "than",
+        "that",
+        "this",
+        "these",
+        "those",
+        "there",
+        "here",
+        "it",
+        "its",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "being",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "can",
+        "could",
+        "should",
+        "may",
+        "might",
+        "of",
+        "in",
+        "on",
+        "at",
+        "to",
+        "from",
+        "by",
+        "for",
+        "with",
+        "without",
+        "about",
+        "into",
+        "over",
+        "under",
+        "again",
+        "further",
+        "once",
+        "all",
+        "any",
+        "both",
+        "each",
+        "few",
+        "more",
+        "most",
+        "other",
+        "some",
+        "such",
+        "no",
+        "nor",
+        "not",
+        "only",
+        "own",
+        "same",
+        "so",
+        "too",
+        "very",
+        "as",
+        "we",
+        "you",
+        "they",
+        "he",
+        "she",
+        "i",
+        "our",
+        "your",
+        "their",
+        "them",
+        "us",
+        "who",
+        "whom",
+        "which",
+        "what",
+        "when",
+        "where",
+        "why",
+        "how",
+        "now",
+        "new",
+        "also",
+        "just",
+        "still",
+        "yet",
+        "while",
+        "because",
+        "since",
+        "after",
+        "before",
+        "during",
+        "between",
+        "up",
+        "down",
+        "out",
+        "off",
+        "above",
+        "below",
+        "through",
+    ]
 )
 
 # A sentence with fewer content words than this is narration ("Here is what changed"),
@@ -106,11 +212,7 @@ def is_claim(sentence: str) -> bool:
     lead_values = spoken_numbers(lead)
     if lead_values and found <= lead_values:
         # Every number in the sentence is the opening enumerator.
-        return any(
-            "." in v or float(v) > _ENUMERATOR_CEILING
-            for v in lead_values
-            if _is_number(v)
-        )
+        return any("." in v or float(v) > _ENUMERATOR_CEILING for v in lead_values if _is_number(v))
     return True
 
 
@@ -132,11 +234,7 @@ class GroundingReport:
 
     @property
     def grounded_ratio(self) -> float:
-        return (
-            self.supported_sentences / self.total_sentences
-            if self.total_sentences
-            else 1.0
-        )
+        return self.supported_sentences / self.total_sentences if self.total_sentences else 1.0
 
 
 def split_sentences(text: str) -> list[str]:
@@ -184,17 +282,43 @@ def content_words(text: str) -> set[str]:
 # Measured on the first real episode, that alone dropped the attribution rate from
 # well above target to 0.43 — the verifier was wrong, not the script.
 _NUMBER_WORDS = {
-    "zero": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
-    "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
-    "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17,
-    "eighteen": 18, "nineteen": 19, "twenty": 20, "thirty": 30, "forty": 40,
-    "fifty": 50, "sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+    "zero": 0,
+    "one": 1,
+    "two": 2,
+    "three": 3,
+    "four": 4,
+    "five": 5,
+    "six": 6,
+    "seven": 7,
+    "eight": 8,
+    "nine": 9,
+    "ten": 10,
+    "eleven": 11,
+    "twelve": 12,
+    "thirteen": 13,
+    "fourteen": 14,
+    "fifteen": 15,
+    "sixteen": 16,
+    "seventeen": 17,
+    "eighteen": 18,
+    "nineteen": 19,
+    "twenty": 20,
+    "thirty": 30,
+    "forty": 40,
+    "fifty": 50,
+    "sixty": 60,
+    "seventy": 70,
+    "eighty": 80,
+    "ninety": 90,
 }
-_MULTIPLIERS = {"hundred": 100, "thousand": 1_000, "million": 1_000_000,
-                "billion": 1_000_000_000, "trillion": 1_000_000_000_000}
-_SPOKEN_NUMBER_TOKENS = frozenset(
-    [*_NUMBER_WORDS, *_MULTIPLIERS, "point", "percent"]
-)
+_MULTIPLIERS = {
+    "hundred": 100,
+    "thousand": 1_000,
+    "million": 1_000_000,
+    "billion": 1_000_000_000,
+    "trillion": 1_000_000_000_000,
+}
+_SPOKEN_NUMBER_TOKENS = frozenset([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "percent"])
 _NUMBER_TOKEN = re.compile(
     r"\b(" + "|".join([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "and", "percent"]) + r")\b",
     re.IGNORECASE,

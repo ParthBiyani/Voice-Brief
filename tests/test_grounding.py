@@ -15,8 +15,8 @@ import pytest
 from voicebrief.pipeline.grounding import (
     content_words,
     is_claim,
-    spoken_numbers,
     split_sentences,
+    spoken_numbers,
     verify_segment,
 )
 from voicebrief.pipeline.summarize import ClusterSummary, SourceRef
@@ -31,9 +31,7 @@ def summary(facts: list[str], *, headline="A release", urls=("https://example.co
         headline=headline,
         what_changed=facts[0] if facts else "",
         why_it_matters="",
-        key_facts=[
-            {"fact": f, "url": urls[0], "title": headline, "item_id": "1"} for f in facts
-        ],
+        key_facts=[{"fact": f, "url": urls[0], "title": headline, "item_id": "1"} for f in facts],
         sources=sources,
     )
 
@@ -156,9 +154,7 @@ class TestVerification:
         stack profile. Flagging it would penalise the product's whole point."""
         s = summary(["A transformers-compatible model was released"])
         script = "It is transformers compatible, the library you use in Voice-Brief."
-        report = verify_segment(
-            script, s, extra_vocabulary={"voice-brief", "transformers", "you"}
-        )
+        report = verify_segment(script, s, extra_vocabulary={"voice-brief", "transformers", "you"})
         assert report.grounded_ratio == 1.0
 
     def test_narration_is_excluded_from_the_denominator(self):

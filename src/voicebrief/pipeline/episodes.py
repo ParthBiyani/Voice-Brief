@@ -143,7 +143,7 @@ def generate_episode(
             language=language,
             style=style,
         )
-    except Exception as exc:  # noqa: BLE001 — record the failure, do not lose it
+    except Exception as exc:
         episode.status = EpisodeStatus.failed
         episode.error = f"{type(exc).__name__}: {exc}"[:2000]
         session.flush()

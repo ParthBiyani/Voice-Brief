@@ -37,13 +37,37 @@ _PAPER_SECTION = re.compile(
 )
 
 SOURCE_EXTENSIONS = {
-    ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java", ".kt",
-    ".rb", ".dart", ".c", ".cpp", ".h", ".sql",
+    ".py",
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".go",
+    ".rs",
+    ".java",
+    ".kt",
+    ".rb",
+    ".dart",
+    ".c",
+    ".cpp",
+    ".h",
+    ".sql",
 }
 DOC_EXTENSIONS = {".md", ".rst", ".txt"}
 SKIP_DIRS = {
-    "node_modules", ".git", "dist", "build", "__pycache__", ".venv", "venv",
-    "target", "vendor", ".next", "coverage", ".pytest_cache", "migrations",
+    "node_modules",
+    ".git",
+    "dist",
+    "build",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "target",
+    "vendor",
+    ".next",
+    "coverage",
+    ".pytest_cache",
+    "migrations",
 }
 
 
@@ -252,9 +276,7 @@ def build_repo_document(files: dict[str, str], title: str) -> ParsedDocument:
             )
 
     centrality = import_centrality(files)
-    source_files = [
-        p for p in files if Path(p).suffix.lower() in SOURCE_EXTENSIONS
-    ]
+    source_files = [p for p in files if Path(p).suffix.lower() in SOURCE_EXTENSIONS]
     source_files.sort(key=lambda p: (-centrality.get(p, 0), len(p)))
 
     for path in source_files[:60]:
@@ -285,6 +307,18 @@ def build_repo_document(files: dict[str, str], title: str) -> ParsedDocument:
     )
 
 
+def _imported_stem(target: str) -> str:
+    """Reduce an import target to the file stem it most likely refers to.
+
+    Done with string operations rather than ``Path``: on Windows ``Path("//utils")``
+    is a UNC root with an empty name, which silently dropped every relative JS import.
+    """
+    if "/" in target:  # './utils', '../lib/db.js'
+        base = target.rstrip("/").rsplit("/", 1)[-1]
+        return base.rsplit(".", 1)[0] if "." in base else base
+    return target.rsplit(".", 1)[-1]  # 'pkg.module' -> 'module'
+
+
 def import_centrality(files: dict[str, str]) -> dict[str, int]:
     """Count how many other files import each module.
 
@@ -299,8 +333,7 @@ def import_centrality(files: dict[str, str]) -> dict[str, int]:
             continue
         for match in _IMPORT_RE.finditer(content):
             target = next((g for g in match.groups() if g), "")
-            name = Path(target.replace(".", "/")).name or target
-            imported = stems.get(name)
+            imported = stems.get(_imported_stem(target))
             # A file importing itself is not evidence of centrality.
             if imported and imported != path:
                 counts[imported] += 1
@@ -319,8 +352,11 @@ def parse_upload(filename: str, data: bytes) -> ParsedDocument:
     if suffix == ".zip":
         return parse_repo_zip(data, title)
     if suffix in DOC_EXTENSIONS:
-        return parse_text(data.decode("utf-8", errors="replace"), title,
-                          kind="markdown" if suffix == ".md" else "text")
+        return parse_text(
+            data.decode("utf-8", errors="replace"),
+            title,
+            kind="markdown" if suffix == ".md" else "text",
+        )
 
     raise ValueError(
         f"Unsupported file type {suffix!r}. Supported: .pdf, .docx, .md, .txt, .rst, .zip"

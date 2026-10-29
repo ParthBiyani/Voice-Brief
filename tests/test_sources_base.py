@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from pydantic import ValidationError
@@ -23,10 +23,10 @@ class TestRawItem:
         assert make_item().title == "A Title with whitespace"
 
     def test_naive_datetime_is_assumed_utc(self):
-        assert make_item().published_at.tzinfo == timezone.utc
+        assert make_item().published_at.tzinfo == UTC
 
     def test_aware_datetime_is_preserved(self):
-        tz = timezone.utc
+        tz = UTC
         item = make_item(published_at=datetime(2026, 6, 1, 12, 0, tzinfo=tz))
         assert item.published_at.tzinfo == tz
 

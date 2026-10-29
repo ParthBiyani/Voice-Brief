@@ -22,7 +22,7 @@ import re
 import tomllib
 from collections import Counter
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -48,11 +48,41 @@ MANIFESTS = {
 # Dependencies too ubiquitous to say anything about a person. Keeping them would make
 # every user's profile look identical and drown the signal that matters.
 STOPWORDS = {
-    "pytest", "black", "ruff", "mypy", "flake8", "isort", "setuptools", "wheel", "pip",
-    "typing-extensions", "six", "certifi", "urllib3", "charset-normalizer", "idna",
-    "packaging", "attrs", "click", "colorama", "python-dateutil", "pyyaml",
-    "eslint", "prettier", "typescript", "jest", "webpack", "babel", "@types/node",
-    "vite", "nodemon", "ts-node", "rimraf", "cross-env", "flutter_lints", "lints",
+    "pytest",
+    "black",
+    "ruff",
+    "mypy",
+    "flake8",
+    "isort",
+    "setuptools",
+    "wheel",
+    "pip",
+    "typing-extensions",
+    "six",
+    "certifi",
+    "urllib3",
+    "charset-normalizer",
+    "idna",
+    "packaging",
+    "attrs",
+    "click",
+    "colorama",
+    "python-dateutil",
+    "pyyaml",
+    "eslint",
+    "prettier",
+    "typescript",
+    "jest",
+    "webpack",
+    "babel",
+    "@types/node",
+    "vite",
+    "nodemon",
+    "ts-node",
+    "rimraf",
+    "cross-env",
+    "flutter_lints",
+    "lints",
 }
 
 _PY_REQ = re.compile(r"^\s*([A-Za-z0-9._-]+)")
@@ -109,7 +139,7 @@ class GitHubProfileBuilder:
                 await client.aclose()
 
     async def _build(self, client: httpx.AsyncClient, login: str) -> StackProfileData:
-        profile = StackProfileData(login=login, built_at=datetime.now(timezone.utc))
+        profile = StackProfileData(login=login, built_at=datetime.now(UTC))
 
         repos = await self._list_repos(client, login)
         if not repos:
@@ -132,9 +162,7 @@ class GitHubProfileBuilder:
                 log.debug("profile.repo_skipped", repo=repo["full_name"], error=str(result))
                 continue
             for name, ecosystem in result:
-                entry = profile.dependencies.setdefault(
-                    name, {"repos": [], "ecosystem": ecosystem}
-                )
+                entry = profile.dependencies.setdefault(name, {"repos": [], "ecosystem": ecosystem})
                 if repo["full_name"] not in entry["repos"]:
                     entry["repos"].append(repo["full_name"])
 
@@ -214,9 +242,7 @@ class GitHubProfileBuilder:
             return None
         return {entry["path"] for entry in tree if entry.get("type") == "blob"}
 
-    async def _get_file(
-        self, client: httpx.AsyncClient, full_name: str, path: str
-    ) -> str | None:
+    async def _get_file(self, client: httpx.AsyncClient, full_name: str, path: str) -> str | None:
         try:
             response = await client.get(
                 f"{API}/repos/{full_name}/contents/{path}", headers=self._headers()
@@ -289,7 +315,7 @@ def parse_manifest(filename: str, content: str) -> list[str]:
             return _parse_go_mod(content)
         if filename == "Cargo.toml":
             return _parse_cargo(content)
-    except Exception as exc:  # noqa: BLE001 — one bad manifest, not one bad profile
+    except Exception as exc:
         log.debug("profile.manifest_unparseable", filename=filename, error=str(exc))
     return []
 

@@ -101,8 +101,12 @@ class TestBudget:
     def test_exhausted_budget_blocks_the_call(self, session):
         session.add(
             CostEntry(
-                stage="script", provider="anthropic", model="claude-sonnet-5",
-                input_tokens=1, output_tokens=1, cost_inr=50.0,
+                stage="script",
+                provider="anthropic",
+                model="claude-sonnet-5",
+                input_tokens=1,
+                output_tokens=1,
+                cost_inr=50.0,
             )
         )
         session.flush()
@@ -114,8 +118,12 @@ class TestBudget:
         """Retrying a budget breach would just burn wall-clock to fail again."""
         session.add(
             CostEntry(
-                stage="script", provider="anthropic", model="claude-sonnet-5",
-                input_tokens=1, output_tokens=1, cost_inr=99.0,
+                stage="script",
+                provider="anthropic",
+                model="claude-sonnet-5",
+                input_tokens=1,
+                output_tokens=1,
+                cost_inr=99.0,
             )
         )
         session.flush()
@@ -142,8 +150,10 @@ class TestResilience:
         """A dead flagship must cost quality, not the whole episode."""
         client = LLMClient(session, TierSensitiveProvider())
         completion = client.complete(
-            prompt="write something", stage=Stage.script,
-            tier=Tier.flagship, fallback_tier=Tier.utility,
+            prompt="write something",
+            stage=Stage.script,
+            tier=Tier.flagship,
+            fallback_tier=Tier.utility,
         )
         assert completion.model == "echo-utility"
 
@@ -168,8 +178,11 @@ class TestStructuredOutput:
     def test_stub_output_is_deterministic(self, session):
         """The eval harness diffs runs; a varying stub would fake regressions."""
         client = LLMClient(session, EchoProvider())
-        schema = {"type": "object", "properties": {"score": {"type": "integer"}},
-                  "required": ["score"]}
+        schema = {
+            "type": "object",
+            "properties": {"score": {"type": "integer"}},
+            "required": ["score"],
+        }
         a = client.complete(prompt="same prompt", stage=Stage.ranking, schema=schema)
         b = client.complete(prompt="same prompt", stage=Stage.ranking, schema=schema)
         assert a.parsed == b.parsed

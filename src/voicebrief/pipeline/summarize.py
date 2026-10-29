@@ -107,9 +107,7 @@ def _render_sources(sources: list[SourceRef], bodies: dict[uuid.UUID, str]) -> s
     for index, source in enumerate(sources):
         body = (bodies.get(source.item_id) or "")[:1200]
         lines.append(
-            f"[{index}] {source.title}\n"
-            f"    from: {source.source_slug} | {source.url}\n"
-            f"    {body}"
+            f"[{index}] {source.title}\n    from: {source.source_slug} | {source.url}\n    {body}"
         )
     return "\n\n".join(lines)
 
@@ -144,7 +142,7 @@ def summarize_cluster(
             max_tokens=1200,
             cache_system=True,
         )
-    except Exception as exc:  # noqa: BLE001 — one story, not the episode
+    except Exception as exc:
         log.warning("summarize.failed", cluster=str(cluster_id), error=str(exc))
         return None
 

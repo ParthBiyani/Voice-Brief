@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Annotated, TypedDict
 
 from langgraph.graph import END, StateGraph
@@ -211,7 +211,7 @@ class BriefGraph:
             "segments": segments,
             "word_count": words,
             "estimated_minutes": round(words / WORDS_PER_MINUTE, 1),
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "language": state.get("language", "en"),
             "style": state.get("style", "solo_anchor"),
         }
@@ -228,8 +228,10 @@ class BriefGraph:
         # themselves rather than the summarizer's compression of them.
         source_text = {
             story.candidate.cluster_id: " ".join(
-                [*(story.candidate.bodies or {}).values(),
-                 *[s.title for s in (story.candidate.sources or [])]]
+                [
+                    *(story.candidate.bodies or {}).values(),
+                    *[s.title for s in (story.candidate.sources or [])],
+                ]
             )
             for story, _ in state.get("summaries", [])
         }
@@ -270,8 +272,10 @@ class BriefGraph:
             ),
             "hallucinated_links": hallucinated_links,
         }
-        log.info("brief.verified", **{k: v for k, v in episode["grounding"].items()
-                                      if k != "hallucinated_links"})
+        log.info(
+            "brief.verified",
+            **{k: v for k, v in episode["grounding"].items() if k != "hallucinated_links"},
+        )
         return {"episode": episode}
 
     # ── writers ───────────────────────────────────────────────────────────────
@@ -316,7 +320,7 @@ class BriefGraph:
                 cache_system=True,
                 fallback_tier=Tier.utility,
             )
-        except Exception as exc:  # noqa: BLE001 — drop a story, keep the episode
+        except Exception as exc:
             log.warning("brief.segment_failed", cluster=str(summary.cluster_id), error=str(exc))
             return None
 
@@ -326,8 +330,7 @@ class BriefGraph:
             heading=summary.headline or story.candidate.title,
             script=completion.text.strip(),
             citations=[
-                {"url": s.url, "title": s.title, "item_id": str(s.item_id)}
-                for s in summary.sources
+                {"url": s.url, "title": s.title, "item_id": str(s.item_id)} for s in summary.sources
             ],
             cluster_id=summary.cluster_id,
         )
@@ -370,7 +373,7 @@ class BriefGraph:
                 fallback_tier=Tier.utility,
             )
             text = completion.text.strip()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("brief.simple_segment_failed", kind=kind, error=str(exc))
             text = ""
         return Segment(position=0, kind=kind, heading=heading, script=text)
@@ -378,7 +381,7 @@ class BriefGraph:
     @staticmethod
     def _title(state: BriefState, segments: list[Segment]) -> str:
         stories = [s for s in segments if s.kind == "story"]
-        date = datetime.now(timezone.utc).strftime("%d %b %Y")
+        date = datetime.now(UTC).strftime("%d %b %Y")
         if not stories:
             return f"VoiceBrief — {date}"
         return f"{stories[0].heading} — and {len(stories) - 1} more · {date}"

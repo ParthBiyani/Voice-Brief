@@ -19,13 +19,13 @@ from voicebrief.pipeline.dedup import (
     normalized_title,
     pairs_from_groups,
     title_fingerprint,
-    url_fingerprint,
 )
 
 
 def cand(title="A Story", url="https://example.com/a", **over) -> DedupCandidate:
-    base = dict(id=uuid.uuid4(), title=title, url=url, trust_weight=0.5, engagement=0.0,
-                published_ts=1000.0)
+    base = dict(
+        id=uuid.uuid4(), title=title, url=url, trust_weight=0.5, engagement=0.0, published_ts=1000.0
+    )
     return DedupCandidate(**{**base, **over})
 
 
@@ -90,23 +90,26 @@ class TestExactMatching:
 
 class TestSemanticMatching:
     def test_similar_vectors_group_above_threshold(self):
-        a, b = cand(title="Alpha one two", url="https://a.com/1"), cand(
-            title="Beta three four", url="https://b.com/2"
+        a, b = (
+            cand(title="Alpha one two", url="https://a.com/1"),
+            cand(title="Beta three four", url="https://b.com/2"),
         )
         vectors = np.stack([unit(1, 0, 0), unit(0.99, 0.14, 0)])
         groups = find_duplicates([a, b], vectors, threshold=0.92)
         assert len(groups) == 1
 
     def test_dissimilar_vectors_do_not_group(self):
-        a, b = cand(title="Alpha one two", url="https://a.com/1"), cand(
-            title="Beta three four", url="https://b.com/2"
+        a, b = (
+            cand(title="Alpha one two", url="https://a.com/1"),
+            cand(title="Beta three four", url="https://b.com/2"),
         )
         vectors = np.stack([unit(1, 0, 0), unit(0, 1, 0)])
         assert find_duplicates([a, b], vectors, threshold=0.92) == []
 
     def test_threshold_is_respected(self):
-        a, b = cand(title="Alpha one", url="https://a.com/1"), cand(
-            title="Beta two", url="https://b.com/2"
+        a, b = (
+            cand(title="Alpha one", url="https://a.com/1"),
+            cand(title="Beta two", url="https://b.com/2"),
         )
         vectors = np.stack([unit(1, 0, 0), unit(0.95, 0.31, 0)])
         assert find_duplicates([a, b], vectors, threshold=0.99) == []
@@ -133,8 +136,12 @@ class TestCanonicalElection:
         assert groups[0].canonical_id == high.id
 
     def test_engagement_breaks_a_trust_tie(self):
-        quiet = cand(title="Same story here", url="https://a.com/1", trust_weight=0.5, engagement=0.1)
-        loud = cand(title="same story here", url="https://b.com/2", trust_weight=0.5, engagement=0.9)
+        quiet = cand(
+            title="Same story here", url="https://a.com/1", trust_weight=0.5, engagement=0.1
+        )
+        loud = cand(
+            title="same story here", url="https://b.com/2", trust_weight=0.5, engagement=0.9
+        )
         assert find_duplicates([quiet, loud])[0].canonical_id == loud.id
 
     def test_earliest_publication_breaks_remaining_ties(self):
@@ -163,8 +170,9 @@ class TestEdgeCases:
         assert find_duplicates([cand()]) == []
 
     def test_mismatched_vector_count_falls_back_to_exact_only(self):
-        a, b = cand(title="Alpha one", url="https://a.com/1"), cand(
-            title="Beta two", url="https://b.com/2"
+        a, b = (
+            cand(title="Alpha one", url="https://a.com/1"),
+            cand(title="Beta two", url="https://b.com/2"),
         )
         assert find_duplicates([a, b], np.stack([unit(1, 0, 0)])) == []
 

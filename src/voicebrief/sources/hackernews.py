@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 
@@ -67,7 +67,7 @@ class HackerNewsAdapter(SourceAdapter):
         if score < min_score:
             return None
 
-        published = datetime.fromtimestamp(int(story.get("time", 0)), tz=timezone.utc)
+        published = datetime.fromtimestamp(int(story.get("time", 0)), tz=UTC)
         if published < since:
             return None
 

@@ -16,7 +16,7 @@ Nothing in the pipeline constructs a provider directly.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -96,7 +96,7 @@ class LLMClient:
 
     # ── budget ────────────────────────────────────────────────────────────────
     def spend_today(self) -> float:
-        since = datetime.now(timezone.utc) - timedelta(days=1)
+        since = datetime.now(UTC) - timedelta(days=1)
         total = self.session.execute(
             select(func.coalesce(func.sum(CostEntry.cost_inr), 0)).where(
                 CostEntry.created_at >= since
@@ -146,8 +146,9 @@ class LLMClient:
             if fallback_tier is None or fallback_tier is tier:
                 raise
             # A stage that can degrade should degrade rather than fail the episode.
-            log.warning("llm.tier_fallback", stage=stage.value, frm=tier.value,
-                        to=fallback_tier.value)
+            log.warning(
+                "llm.tier_fallback", stage=stage.value, frm=tier.value, to=fallback_tier.value
+            )
             completion = self._complete_with_retry(
                 prompt=prompt,
                 stage=stage,

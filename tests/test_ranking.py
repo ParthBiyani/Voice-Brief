@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -28,7 +28,7 @@ def profile() -> StackProfileData:
         },
         repos=["dev/ContextPilot", "dev/PlacementPilot", "dev/TripMate"],
         starred_topics=["agents", "rag"],
-        built_at=datetime.now(timezone.utc),
+        built_at=datetime.now(UTC),
     )
 
 
@@ -128,7 +128,9 @@ class TestHeuristicScore:
 
     def test_cluster_size_contributes(self, profile):
         big, _ = heuristic_score(cand("x", cluster_size=4), profile=profile, declared_topics=set())
-        small, _ = heuristic_score(cand("x", cluster_size=1), profile=profile, declared_topics=set())
+        small, _ = heuristic_score(
+            cand("x", cluster_size=1), profile=profile, declared_topics=set()
+        )
         assert big > small
 
     def test_works_without_a_profile(self):
@@ -189,6 +191,4 @@ class TestSelection:
     def test_output_is_ordered_by_score(self, profile):
         stories = prerank([cand(f"story number {i}") for i in range(20)], profile=profile)
         selected = select_for_episode(stories, max_stories=10)
-        assert [s.score for s in selected] == sorted(
-            (s.score for s in selected), reverse=True
-        )
+        assert [s.score for s in selected] == sorted((s.score for s in selected), reverse=True)

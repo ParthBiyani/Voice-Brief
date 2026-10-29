@@ -72,9 +72,7 @@ class AnthropicProvider(LLMProvider):
 
         settings = get_settings()
         key = api_key or (
-            settings.anthropic_api_key.get_secret_value()
-            if settings.anthropic_api_key
-            else None
+            settings.anthropic_api_key.get_secret_value() if settings.anthropic_api_key else None
         )
         if not key:
             raise LLMError(

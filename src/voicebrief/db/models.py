@@ -53,7 +53,7 @@ class EpisodeStatus(str, enum.Enum):
 
 
 class EpisodeMode(str, enum.Enum):
-    brief = "brief"          # Mode 1 — daily personalized brief
+    brief = "brief"  # Mode 1 — daily personalized brief
     knowledge = "knowledge"  # Mode 2 — knowledge-to-podcast
 
 
@@ -249,7 +249,9 @@ class Episode(Base, TimestampMixin):
     user_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("app_user.id", ondelete="CASCADE"), nullable=False
     )
-    mode: Mapped[EpisodeMode] = mapped_column(Enum(EpisodeMode, name="episode_mode"), nullable=False)
+    mode: Mapped[EpisodeMode] = mapped_column(
+        Enum(EpisodeMode, name="episode_mode"), nullable=False
+    )
     status: Mapped[EpisodeStatus] = mapped_column(
         Enum(EpisodeStatus, name="episode_status"), default=EpisodeStatus.pending, nullable=False
     )

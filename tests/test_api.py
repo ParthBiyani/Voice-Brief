@@ -109,7 +109,9 @@ class TestEpisodes:
 
     def test_segments_are_ordered_by_position(self, client, episode):
         episode_id, *_ = episode
-        positions = [s["position"] for s in client.get(f"/episodes/{episode_id}").json()["segments"]]
+        positions = [
+            s["position"] for s in client.get(f"/episodes/{episode_id}").json()["segments"]
+        ]
         assert positions == sorted(positions)
 
     def test_missing_episode_is_404(self, client):
@@ -216,9 +218,7 @@ class TestSearch:
 
 class TestSegmentChat:
     def test_unknown_segment_is_404(self, client):
-        response = client.post(
-            f"/segments/{uuid.uuid4()}/chat", json={"question": "what?"}
-        )
+        response = client.post(f"/segments/{uuid.uuid4()}/chat", json={"question": "what?"})
         assert response.status_code == 404
 
     def test_empty_question_without_preset_is_rejected(self, client, episode):

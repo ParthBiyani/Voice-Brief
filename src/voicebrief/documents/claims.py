@@ -22,8 +22,6 @@ import uuid
 from dataclasses import dataclass, field
 from itertools import combinations
 
-import numpy as np
-
 from voicebrief.llm.base import Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
@@ -192,7 +190,7 @@ def extract_claims(
             max_tokens=2000,
             cache_system=True,
         )
-    except Exception as exc:  # noqa: BLE001 — one document, not the episode
+    except Exception as exc:
         log.warning("claims.extract_failed", document=document_title, error=str(exc))
         return []
 
@@ -237,21 +235,19 @@ def candidate_pairs(
             pairs.append((claims[i], claims[j], similarity))
 
     pairs.sort(key=lambda p: -p[2])
-    log.info("claims.pairs", considered=len(claims), candidates=len(pairs), kept=min(len(pairs), limit))
+    log.info(
+        "claims.pairs", considered=len(claims), candidates=len(pairs), kept=min(len(pairs), limit)
+    )
     return pairs[:limit]
 
 
-def relate_claims(
-    client: LLMClient, pairs: list[tuple[Claim, Claim, float]]
-) -> list[Relation]:
+def relate_claims(client: LLMClient, pairs: list[tuple[Claim, Claim, float]]) -> list[Relation]:
     """Label every candidate pair in one batched call."""
     if not pairs:
         return []
 
     listing = "\n\n".join(
-        f"[{index}]\n"
-        f"  A ({a.document_title}): {a.text}\n"
-        f"  B ({b.document_title}): {b.text}"
+        f"[{index}]\n  A ({a.document_title}): {a.text}\n  B ({b.document_title}): {b.text}"
         for index, (a, b, _) in enumerate(pairs)
     )
 
@@ -265,7 +261,7 @@ def relate_claims(
             max_tokens=4000,
             cache_system=True,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.warning("claims.relate_failed", error=str(exc))
         return []
 
@@ -291,9 +287,7 @@ def relate_claims(
     return relations
 
 
-def build_graph(
-    client: LLMClient, documents: list[tuple[uuid.UUID, str, list]]
-) -> ClaimGraph:
+def build_graph(client: LLMClient, documents: list[tuple[uuid.UUID, str, list]]) -> ClaimGraph:
     """Extract claims from every document, then relate them across documents."""
     claims: list[Claim] = []
     for document_id, title, chunks in documents:
