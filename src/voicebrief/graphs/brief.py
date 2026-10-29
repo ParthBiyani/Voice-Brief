@@ -60,6 +60,7 @@ class BriefState(TypedDict, total=False):
     style: Annotated[str, _keep_last]
 
     selected: Annotated[list, _keep_last]
+    ranking_trace: Annotated[list, _keep_last]
     summaries: Annotated[list, _keep_last]
     segments: Annotated[list, _keep_last]
     episode: Annotated[dict, _keep_last]
@@ -153,7 +154,32 @@ class BriefGraph:
         )
         stories = rerank(preranked, self.client, profile=profile)
         selected = select_for_episode(stories, max_stories=self.max_stories)
-        return {"selected": selected, "errors": state.get("errors", [])}
+
+        # Every candidate and its fate, kept so the choice can be explained later.
+        picked = {id(s) for s in selected}
+        trace = [
+            {
+                "cluster_id": s.candidate.cluster_id,
+                "rank": rank,
+                "picked": id(s) in picked,
+                "title": s.candidate.title,
+                "url": s.candidate.url,
+                "source_slug": s.candidate.source_slug,
+                "cluster_size": s.candidate.cluster_size,
+                "heuristic_score": round(s.heuristic_score, 4),
+                "llm_score": s.llm_score,
+                "score": round(s.score, 4),
+                "signals": s.signals,
+                "matched_dependencies": sorted(s.matched_dependencies),
+                "rationale": s.rationale,
+            }
+            for rank, s in enumerate(stories, start=1)
+        ]
+        return {
+            "selected": selected,
+            "ranking_trace": trace,
+            "errors": state.get("errors", []),
+        }
 
     def summarize_node(self, state: BriefState) -> dict:
         summaries = []
@@ -437,5 +463,6 @@ class BriefGraph:
         )
         episode = result.get("episode", {})
         episode["errors"] = result.get("errors", [])
+        episode["ranking"] = result.get("ranking_trace", [])
         episode["cost_inr"] = round(self.client.run_cost_inr, 4)
         return episode

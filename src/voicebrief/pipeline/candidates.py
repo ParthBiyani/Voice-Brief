@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import uuid
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
@@ -54,6 +54,8 @@ class CandidateReport:
     fresh_clusters: int = 0
     excluded_aired: int = 0
     candidates: int = 0
+    # Stories skipped because they were already aired, kept for the ranking snapshot.
+    excluded: list = field(default_factory=list)
 
 
 def normalize_url(url: str) -> str:
@@ -176,6 +178,15 @@ def build_candidates(
         urls = [m.url for m in members]
         if is_aired(urls, aired):
             stats.excluded_aired += 1
+            if len(stats.excluded) < 50:
+                stats.excluded.append(
+                    {
+                        "cluster_id": cluster.id,
+                        "title": members[0].title,
+                        "url": members[0].url,
+                        "cluster_size": cluster.size,
+                    }
+                )
             continue
 
         items = members[:MAX_SOURCES_PER_CLUSTER]

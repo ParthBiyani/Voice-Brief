@@ -22,7 +22,7 @@ import uuid
 import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
@@ -33,6 +33,12 @@ from voicebrief.config import get_settings
 from voicebrief.db import session_scope
 from voicebrief.db.models import Episode, EpisodeStatus, EpisodeStyle, Language, User
 from voicebrief.db.session import get_engine
+from voicebrief.history import (
+    finish_run,
+    prune_llm_bodies,
+    record_interaction,
+    start_run,
+)
 from voicebrief.logging import get_logger
 
 log = get_logger(__name__)
@@ -60,6 +66,16 @@ class BriefRequest:
     stories: int | None = None
     minutes: int | None = None
     render_audio: bool = True
+
+
+@dataclass(slots=True)
+class BriefOutcome:
+    """A generated episode plus what the selection step saw."""
+
+    result: object  # GenerationResult
+    candidates_considered: int
+    excluded_aired: int
+    window_hours: float
 
 
 @dataclass(slots=True)
@@ -148,15 +164,31 @@ def resolve_user(session: Session, request: BriefRequest) -> User:
         user = User(email=request.email)
         session.add(user)
 
-    if request.github_login:
-        user.github_login = request.github_login
-    if request.topics:
-        user.topics = list(request.topics)
-    if request.language:
-        user.language = Language(request.language)
-    if request.style:
-        user.style = EpisodeStyle(request.style)
+    changes: dict[str, dict] = {}
+
+    def apply(name: str, new, current) -> None:
+        if new is not None and new != current:
+            changes[name] = {"from": current, "to": new}
+            setattr(user, name, new)
+
+    apply("github_login", request.github_login or None, user.github_login)
+    apply("topics", list(request.topics) if request.topics else None, list(user.topics or []))
+    apply(
+        "language",
+        Language(request.language) if request.language else None,
+        user.language,
+    )
+    apply("style", EpisodeStyle(request.style) if request.style else None, user.style)
     session.flush()
+
+    if changes:
+        record_interaction(
+            "settings",
+            "cli",
+            user_id=user.id,
+            request={name: change["to"] for name, change in changes.items()},
+            response={"previous": {n: c["from"] for n, c in changes.items()}},
+        )
     return user
 
 
@@ -202,26 +234,29 @@ def resolve_profile(session: Session, user: User, *, refresh: bool = False):
     return built
 
 
-def generate_brief(session: Session, request: BriefRequest):
+def generate_brief(
+    session: Session, request: BriefRequest, *, run_id: uuid.UUID | None = None
+) -> BriefOutcome:
     """Everything between "fresh clusters exist" and "an episode is stored".
 
     Shared by `brief generate` and `daily`, so there is one definition of how a brief
     is made. Raises `NoFreshStories` when there is nothing new to say.
     """
-    from voicebrief.pipeline.candidates import build_candidates
+    from voicebrief.pipeline.candidates import CandidateReport, build_candidates
     from voicebrief.pipeline.episodes import generate_episode
 
     user = resolve_user(session, request)
     profile = resolve_profile(session, user)
 
-    candidates = build_candidates(session, user_id=user.id)
+    report = CandidateReport(window_hours=0)
+    candidates = build_candidates(session, user_id=user.id, report=report)
     if not candidates:
         raise NoFreshStories(
             "no fresh stories to cover: run ingest and enrich, or every recent story "
             "has already been aired"
         )
 
-    return generate_episode(
+    result = generate_episode(
         session,
         user_id=user.id,
         candidates=candidates,
@@ -232,6 +267,14 @@ def generate_brief(session: Session, request: BriefRequest):
         max_stories=request.stories or DEFAULT_STORIES,
         target_minutes=request.minutes or DEFAULT_MINUTES,
         render_audio=request.render_audio,
+        excluded=report.excluded,
+        run_id=run_id,
+    )
+    return BriefOutcome(
+        result=result,
+        candidates_considered=report.candidates,
+        excluded_aired=report.excluded_aired,
+        window_hours=report.window_hours,
     )
 
 
@@ -241,6 +284,7 @@ def run_daily(
     force: bool = False,
     skip_ingest: bool = False,
     now: datetime | None = None,
+    trigger: str = "cli",
 ) -> DailyResult:
     """Ingest, enrich, generate and index today's brief, once."""
     now = now or datetime.now(UTC)
@@ -251,12 +295,19 @@ def run_daily(
             log.warning("daily.skipped", reason="another daily run holds the lock")
             return DailyResult(outcome="locked")
 
+        run_id = start_run("daily", trigger)
         try:
             with session_scope() as session:
                 user = resolve_user(session, request)
                 existing = todays_episode(session, user.id, now=now, timezone=timezone)
                 if existing is not None and not force:
                     log.info("daily.already_done", episode=str(existing.id))
+                    finish_run(
+                        run_id,
+                        "skipped",
+                        summary={"reason": "today's brief already exists"},
+                        episode_id=existing.id,
+                    )
                     return DailyResult(
                         outcome="already_done",
                         episode_id=existing.id,
@@ -266,21 +317,35 @@ def run_daily(
                 topics = set(user.topics or DEFAULT_TOPICS)
 
             result = DailyResult(outcome="generated")
+            summary: dict = {"forced": force}
 
             if not skip_ingest:
                 from voicebrief.pipeline.ingest import run_ingest
 
                 stats = asyncio.run(run_ingest())
                 result.items_ingested = sum(s.inserted for s in stats)
+                summary["ingest"] = {
+                    "new_items": result.items_ingested,
+                    "sources_polled": len(stats),
+                    "sources_failed": sum(1 for s in stats if not s.ok),
+                    "by_source": [asdict(s) for s in stats],
+                }
 
             from voicebrief.pipeline.enrich import enrich
 
             with session_scope() as session:
                 enriched = enrich(session, user_topics=topics)
             result.clusters = enriched.clusters
+            summary["enrich"] = asdict(enriched)
 
             with session_scope() as session:
-                generated = generate_brief(session, request)
+                outcome = generate_brief(session, request, run_id=run_id)
+            generated = outcome.result
+            summary["candidates"] = {
+                "considered": outcome.candidates_considered,
+                "already_aired": outcome.excluded_aired,
+                "window_hours": round(outcome.window_hours, 1),
+            }
 
             result.episode_id = generated.episode_id
             result.status = generated.status
@@ -289,9 +354,36 @@ def run_daily(
             result.cost_inr = generated.cost_inr
             result.attribution_rate = generated.attribution_rate
             result.issues = list(generated.errors)
+            summary.update(
+                {
+                    "status": generated.status,
+                    "cost_inr": generated.cost_inr,
+                    "attribution_rate": generated.attribution_rate,
+                    "issues": result.issues[:10],
+                }
+            )
+            finish_run(
+                run_id,
+                "ok" if generated.status == "ready" else generated.status,
+                summary=summary,
+                episode_id=generated.episode_id,
+            )
+            _prune_history()
             return result
 
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             log.error("daily.failed", error=error)
+            finish_run(run_id, "failed", error=error)
             return DailyResult(outcome="failed", status="failed", error=error[:500])
+
+
+def _prune_history() -> None:
+    """Housekeeping that must never cost a brief."""
+    try:
+        with session_scope() as session:
+            pruned = prune_llm_bodies(session)
+        if pruned:
+            log.info("history.pruned", llm_bodies=pruned)
+    except Exception as exc:
+        log.warning("history.prune_failed", error=str(exc))

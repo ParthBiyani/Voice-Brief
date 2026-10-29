@@ -57,6 +57,9 @@ class Settings(BaseSettings):
         default="qwen2.5:7b-instruct-q4_K_M", alias="VB_OLLAMA_SCRIPT_MODEL"
     )
     daily_budget_inr: float = Field(default=50.0, alias="VB_DAILY_BUDGET_INR")
+    # How long full prompts and responses are kept. Cost, tokens and timing are kept
+    # indefinitely; only the (large, sometimes sensitive) text bodies are pruned.
+    history_retention_days: int = Field(default=90, alias="VB_HISTORY_RETENTION_DAYS")
 
     # Embeddings
     embed_model: str = Field(default="BAAI/bge-small-en-v1.5", alias="VB_EMBED_MODEL")

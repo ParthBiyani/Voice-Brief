@@ -79,7 +79,7 @@ try {
     # 3. Today's brief.
     $env:PYTHONUTF8 = '1'
     if (-not $env:OMP_NUM_THREADS) { $env:OMP_NUM_THREADS = '4' }
-    $arguments = @('-m', 'voicebrief.cli', 'daily')
+    $arguments = @('-m', 'voicebrief.cli', 'daily', '--trigger', 'schedule')
     if ($Force) { $arguments += '--force' }
 
     Write-Log ("Running: voicebrief " + ($arguments[2..($arguments.Length - 1)] -join ' '))

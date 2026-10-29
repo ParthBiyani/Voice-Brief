@@ -32,6 +32,7 @@ from sqlalchemy.orm import Session
 from voicebrief.config import get_settings
 from voicebrief.db.models import Episode, EpisodeMode, EpisodeStatus, Segment
 from voicebrief.graphs.brief import BriefGraph
+from voicebrief.history import record_ranking
 from voicebrief.llm.client import LLMClient, episode_cost_inr
 from voicebrief.logging import get_logger
 from voicebrief.personalization.github_profile import StackProfileData
@@ -193,6 +194,8 @@ def generate_episode(
     max_stories: int = 8,
     target_minutes: int = 12,
     render_audio: bool = True,
+    excluded: list[dict] | None = None,
+    run_id: uuid.UUID | None = None,
 ) -> GenerationResult:
     settings = get_settings()
     started = time.perf_counter()
@@ -210,7 +213,7 @@ def generate_episode(
     # they reference this row, and a crash must leave this row behind as evidence.
     session.commit()
 
-    client = LLMClient(session, episode_id=episode.id)
+    client = LLMClient(session, episode_id=episode.id, run_id=run_id)
 
     try:
         graph = BriefGraph(client, max_stories=max_stories, target_minutes=target_minutes)
@@ -307,6 +310,7 @@ def generate_episode(
     episode.cost_inr = episode_cost_inr(session, episode.id)
     session.flush()
 
+    record_ranking(session, episode.id, written.get("ranking", []), excluded)
     _index_for_search(session, episode.id)
 
     result = GenerationResult(
