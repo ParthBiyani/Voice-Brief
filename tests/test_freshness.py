@@ -205,3 +205,21 @@ class TestRerankScale:
         # And it still sits where its own blended score puts it relative to head-a.
         tail = next(s for s in ranked if s.candidate.title == "tail")
         assert tail.score == pytest.approx(0.4 * 8.0 + 0.6 * 3)
+
+
+class TestThinStories:
+    def test_a_story_with_no_source_text_ranks_below_a_substantive_one(self):
+        thin, _ = heuristic_score(
+            cand(substance_chars=60), profile=None, declared_topics=set(), now=NOW
+        )
+        rich, _ = heuristic_score(
+            cand(substance_chars=1500), profile=None, declared_topics=set(), now=NOW
+        )
+        assert rich > thin
+
+    def test_unknown_substance_is_not_penalised(self):
+        unknown, _ = heuristic_score(cand(), profile=None, declared_topics=set(), now=NOW)
+        rich, _ = heuristic_score(
+            cand(substance_chars=1500), profile=None, declared_topics=set(), now=NOW
+        )
+        assert unknown == pytest.approx(rich)
