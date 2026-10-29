@@ -300,7 +300,7 @@ def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: Generate
 
         with session_scope() as session:
             _emit(episode_id, "selecting")
-            candidates = build_candidates(session)
+            candidates = build_candidates(session, user_id=user_id)
             if not candidates:
                 _emit(episode_id, "failed", error="no clusters available; run ingest first")
                 return

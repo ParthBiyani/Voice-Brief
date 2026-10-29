@@ -17,12 +17,12 @@ from dataclasses import asdict, dataclass
 from datetime import UTC, datetime, timedelta
 
 import numpy as np
-from sqlalchemy import select
+from sqlalchemy import delete, exists, select
 from sqlalchemy.orm import Session
 
 from voicebrief.config import get_settings
 from voicebrief.db.models import Cluster as ClusterRow
-from voicebrief.db.models import Item, Source
+from voicebrief.db.models import Item, Segment, Source
 from voicebrief.logging import get_logger
 from voicebrief.pipeline.clustering import cluster_items
 from voicebrief.pipeline.dedup import DedupCandidate, find_duplicates
@@ -64,8 +64,8 @@ def enrich(
     items = list(
         session.execute(
             select(Item)
-            .where(Item.published_at >= since)
-            .order_by(Item.published_at.desc())
+            .where(Item.created_at >= since)
+            .order_by(Item.created_at.desc())
             .limit(settings.max_items_per_run)
         ).scalars()
     )
@@ -104,7 +104,11 @@ def enrich(
     for item in kept_items:
         item.embedded = True
 
-    # 3 — dedup
+    # 3 — dedup. Flags from earlier runs are cleared first: an item once marked a
+    # duplicate would otherwise stay one even after its canonical twin aged out.
+    for item in kept_items:
+        item.duplicate_of_id = None
+
     candidates = [
         DedupCandidate(
             id=i.id,
@@ -130,18 +134,16 @@ def enrich(
     # sizes with copies of one story and skew the ranker toward well-syndicated news.
     unique_items = [i for i in kept_items if i.id not in duplicate_ids]
     index_by_id = {item.id: idx for idx, item in enumerate(kept_items)}
-    unique_vectors = np.stack([vectors[index_by_id[i.id]] for i in unique_items])
-
-    clusters = cluster_items(
-        [i.id for i in unique_items],
-        unique_vectors,
-        topics_by_id={i.id: list(i.topics or []) for i in unique_items},
-    )
+    clusters = []
+    if unique_items:
+        unique_vectors = np.stack([vectors[index_by_id[i.id]] for i in unique_items])
+        clusters = cluster_items(
+            [i.id for i in unique_items],
+            unique_vectors,
+            topics_by_id={i.id: list(i.topics or []) for i in unique_items},
+        )
 
     # 5 — persist clusters
-    session.query(ClusterRow).filter(ClusterRow.run_date >= now.date()).delete(
-        synchronize_session=False
-    )
     for cluster in clusters:
         row = ClusterRow(
             run_date=now,
@@ -155,6 +157,9 @@ def enrich(
             if member := by_id.get(member_id):
                 member.cluster_id = row.id
 
+    session.flush()
+    _drop_orphan_clusters(session)
+
     result = EnrichResult(
         considered=len(items),
         filtered=len(kept_items),
@@ -166,3 +171,16 @@ def enrich(
     )
     log.info("enrich.done", **asdict(result))
     return result
+
+
+def _drop_orphan_clusters(session: Session) -> None:
+    """Remove clusters that no longer own any item and were never aired.
+
+    Re-enriching moves items onto fresh cluster rows, so the previous ones empty out.
+    Deleting by date instead (the original approach) also wiped clusters that earlier
+    episodes still referenced, and a second enrich run in one day erased the morning's
+    story links. A cluster an episode segment points at is kept as a tombstone.
+    """
+    has_items = exists().where(Item.cluster_id == ClusterRow.id)
+    was_aired = exists().where(Segment.cluster_id == ClusterRow.id)
+    session.execute(delete(ClusterRow).where(~has_items, ~was_aired))
