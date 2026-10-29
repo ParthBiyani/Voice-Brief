@@ -46,6 +46,20 @@ MIN_SAMPLES = 1
 # than the slightly higher noise rate leaf produces.
 CLUSTER_SELECTION = "leaf"
 
+# A story is several items about the *same thing*, not several items about the same
+# topic. HDBSCAN only finds dense regions, and in an AI news corpus where everything is
+# mildly similar to everything else a dense region is routinely "agent posts" or
+# "trending repos". Measured on a real crawl, the mean-to-centroid cohesion that was
+# already computed cannot tell these apart (junk groups scored 0.87-0.95, because two
+# points always sit near their own midpoint). Mean *pairwise* similarity can:
+#
+#     same story      Gemini launch 0.86 | Mistral Large 4 coverage 0.79-0.81 | DHS leak 0.77
+#     same topic only PyTorch release + Nim release 0.70 | Wii + MacBook 0.64
+#
+# A group whose members are not, on average, at least this similar to each other is
+# broken up, shedding its weakest member until it holds or only singletons remain.
+MIN_PAIRWISE_SIMILARITY = 0.76
+
 # Below this, HDBSCAN has too little to work with and returns all-noise; fall back to
 # treating every item as its own singleton rather than silently emptying the brief.
 MIN_ITEMS_FOR_CLUSTERING = 10
@@ -79,6 +93,8 @@ def cluster_items(
     min_cluster_size: int = MIN_CLUSTER_SIZE,
     min_samples: int = MIN_SAMPLES,
     keep_noise_as_singletons: bool = True,
+    min_pairwise: float | None = MIN_PAIRWISE_SIMILARITY,
+    solo_ids: set[uuid.UUID] | None = None,
 ) -> list[Cluster]:
     """Group items into stories.
 
@@ -86,6 +102,11 @@ def cluster_items(
     HDBSCAN's noise points become one-item clusters — a genuinely unique story is not
     less newsworthy for being unique, and dropping them would quietly bias the brief
     toward whatever gets written about most.
+
+    `solo_ids` are items that are each their own story whatever they resemble: entries
+    from trending lists (a Hugging Face model, a GitHub repo) share template text with
+    their neighbours but are unrelated to them. `min_pairwise` enforces that surviving
+    multi-item groups really are one story; None disables it.
     """
     if len(item_ids) != len(vectors):
         raise ValueError(f"{len(item_ids)} ids but {len(vectors)} vectors")
@@ -133,6 +154,11 @@ def cluster_items(
             next_synthetic += 1
         grouped.setdefault(label, []).append(index)
 
+    solo = solo_ids or set()
+    grouped, next_synthetic = _split_groups(
+        grouped, vectors, item_ids, solo, min_pairwise, next_synthetic
+    )
+
     for label, indices in grouped.items():
         member_vectors = vectors[indices]
         centroid = member_vectors.mean(axis=0)
@@ -167,6 +193,50 @@ def cluster_items(
         noise=noise,
     )
     return clusters
+
+
+def _split_groups(
+    grouped: dict[int, list[int]],
+    vectors: np.ndarray,
+    item_ids: list[uuid.UUID],
+    solo: set[uuid.UUID],
+    min_pairwise: float | None,
+    next_label: int,
+) -> tuple[dict[int, list[int]], int]:
+    """Break loose groups apart: solo items leave, then weak members are shed.
+
+    Everything shed becomes a singleton, so no item is lost, only un-merged.
+    """
+    result: dict[int, list[int]] = {}
+
+    def singleton(index: int) -> None:
+        nonlocal next_label
+        result[next_label] = [index]
+        next_label += 1
+
+    for label, indices in grouped.items():
+        if len(indices) == 1:
+            result[label] = indices
+            continue
+
+        keep = [i for i in indices if item_ids[i] not in solo]
+        for i in indices:
+            if item_ids[i] in solo:
+                singleton(i)
+
+        while min_pairwise is not None and len(keep) > 1:
+            sims = vectors[keep] @ vectors[keep].T
+            n = len(keep)
+            per_member = (sims.sum(axis=1) - 1.0) / (n - 1)
+            if per_member.mean() >= min_pairwise:
+                break
+            singleton(keep.pop(int(np.argmin(per_member))))
+
+        if len(keep) > 1:
+            result[label] = keep
+        elif keep:
+            singleton(keep[0])
+    return result, next_label
 
 
 def _dominant_topics(

@@ -55,6 +55,7 @@ sources:
     trust_weight: 0.70
     default_topics: [agentic-ai, tooling, open-source]
     config:
+      cluster: solo   # each entry is its own story; see clustering.py
       adapter: github_search
       # One query per topic, merged — the Search API cannot express OR here.
       topics: [llm, agents, rag, llmops, agentic-ai]
@@ -92,6 +93,7 @@ sources:
     trust_weight: 0.68
     default_topics: [machine-learning, open-source, edge-ai]
     config:
+      cluster: solo   # each entry is its own story; see clustering.py
       adapter: huggingface
       sort: trendingScore
       limit: 100
@@ -104,6 +106,7 @@ sources:
     trust_weight: 0.55
     default_topics: [machine-learning, research]
     config:
+      cluster: solo   # each entry is its own story; see clustering.py
       adapter: huggingface
       kind: datasets
       sort: trendingScore

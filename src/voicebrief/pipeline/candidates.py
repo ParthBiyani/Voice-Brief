@@ -205,6 +205,7 @@ def build_candidates(
                 bodies={i.id: (i.summary or i.body or "")[:MAX_BODY_CHARS] for i in items},
                 freshness=newest,
                 item_urls=urls,
+                substance_chars=sum(len(m.summary or m.body or "") for m in members),
             )
         )
 

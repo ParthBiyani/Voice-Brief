@@ -319,6 +319,7 @@ _MULTIPLIERS = {
     "trillion": 1_000_000_000_000,
 }
 _SPOKEN_NUMBER_TOKENS = frozenset([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "percent"])
+_TENS_STRINGS = frozenset(str(v) for v in range(20, 100, 10))
 _NUMBER_TOKEN = re.compile(
     r"\b(" + "|".join([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "and", "percent"]) + r")\b",
     re.IGNORECASE,
@@ -356,16 +357,27 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
 
         total = 0
         current = 0
-        decimal = ""
         mantissa = None  # "three billion" should also satisfy a source saying "3B"
+        # One digit group per "point". "one point seven point one" is the version 1.7.1,
+        # which two groups express and a single running decimal cannot: the second
+        # "point" used to overwrite the first group and yield "1.1".
+        groups: list[list[str]] = []
         j = i
         while j < len(tokens):
             token = tokens[j]
-            if token in _NUMBER_WORDS:
-                if decimal != "":
-                    decimal += str(_NUMBER_WORDS[token])
+            if token == "point":
+                groups.append([])
+            elif token in _NUMBER_WORDS:
+                value = _NUMBER_WORDS[token]
+                if groups:
+                    group = groups[-1]
+                    # "five point twenty two" is the group 22, not 2, 0 and 2.
+                    if group and group[-1] in _TENS_STRINGS and 1 <= value <= 9:
+                        group[-1] = str(int(group[-1]) + value)
+                    else:
+                        group.append(str(value))
                 else:
-                    current += _NUMBER_WORDS[token]
+                    current += value
             elif token in _MULTIPLIERS:
                 multiplier = _MULTIPLIERS[token]
                 if multiplier >= 1000:
@@ -375,9 +387,7 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
                     current = 0
                 else:
                     current = max(current, 1) * multiplier
-            elif token == "point":
-                decimal = "."
-            elif token == "and" and decimal == "":
+            elif token == "and" and not groups:
                 pass  # "two hundred and five"
             else:
                 break
@@ -385,10 +395,11 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
 
         value = total + current
         if j > i:
-            found.add(f"{value}{decimal}" if decimal not in ("", ".") else str(value))
+            parts = [str(value), *("".join(g) for g in groups if g)]
+            found.add(".".join(parts))
             # Also record the bare integer part: "four point two" should satisfy a
             # source that only mentions version 4.
-            if decimal:
+            if len(parts) > 1:
                 found.add(str(value))
             # And the mantissa, so "three billion parameters" matches a source that
             # writes the same figure as "3B".
@@ -415,16 +426,49 @@ def _numbers(text: str) -> set[str]:
     # Suffixed magnitudes: a source writing "3B" or "27B" is stating the same figure
     # a script speaks as "three billion". Emit both forms so neither side has to
     # guess which rendering the other chose.
-    for value, suffix in re.findall(r"(\d+(?:\.\d+)?)\s*([BMK])\b", text):
+    for value, suffix in re.findall(r"(\d+(?:\.\d+)?)\s*([TBMK])\b", text):
         digits.add(value)
-        scale = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[suffix]
+        scale = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000, "T": 1_000_000_000_000}[suffix]
         digits.add(str(int(float(value) * scale)))
 
+    # The same magnitude written out: "49 billion" is 49000000000.
+    for value, word in re.findall(
+        r"(\d+(?:\.\d+)?)\s*(thousand|million|billion|trillion)\b", text, re.IGNORECASE
+    ):
+        digits.add(value)
+        digits.add(str(int(float(value) * _MULTIPLIERS[word.lower()])))
+
     normalised = {d.rstrip(".") for d in digits}
+    # A version stands for each of its prefixes: a script saying "five point twenty-two"
+    # is correct about a source that writes 5.22.0.
+    for d in list(normalised):
+        pieces = d.split(".")
+        for end in range(2, len(pieces)):
+            normalised.add(".".join(pieces[:end]))
     # A decimal also stands for its integer part: "version 4.2" satisfies "version
     # four", which is how a brief usually says it out loud.
     normalised |= {d.split(".")[0] for d in normalised if "." in d}
     return normalised | spoken_numbers(text)
+
+
+# Sentences with at most this many content words are judged by their figures alone.
+SHORT_CLAIM_WORDS = 2
+# Small cardinals a writer produces by counting what is in front of it ("two new
+# releases", "four repositories"). They are not figures from the sources, and holding
+# them to the strict rule flagged nearly every correct sentence that counted anything.
+# Percentages are excluded: "ten percent" is a figure and must be sourced.
+SMALL_COUNT_CEILING = 10
+
+
+def _small_counts(sentence: str) -> set[str]:
+    if "percent" in sentence.lower() or "%" in sentence:
+        return set()
+    written = set(re.findall(r"\d+(?:\.\d+)*", sentence))
+    return {
+        n
+        for n in spoken_numbers(sentence)
+        if n.isdigit() and int(n) <= SMALL_COUNT_CEILING and n not in written
+    }
 
 
 def verify_segment(
@@ -486,9 +530,23 @@ def verify_segment(
 
         # A number not present in the sources is a fabrication regardless of how well
         # the surrounding prose overlaps.
-        invented = _numbers(sentence) - source_numbers
+        invented = (_numbers(sentence) - source_numbers) - _small_counts(sentence)
         if invented:
             report.unsupported.append(sentence)
+            continue
+
+        if len(words) <= SHORT_CLAIM_WORDS:
+            # "Start with one point seven point two." Its figures were just checked
+            # against the sources and what is left is a word or two of narration, which
+            # no overlap ratio can meaningfully judge.
+            report.supported_sentences += 1
+            continue
+
+        if not words:
+            # A claim made only of figures ("Version 5.22.0.") has no prose to overlap.
+            # Its numbers were just checked against the sources, so it is supported;
+            # dividing by zero here used to take down the whole verification step.
+            report.supported_sentences += 1
             continue
 
         overlap = len(words & source_words) / len(words)

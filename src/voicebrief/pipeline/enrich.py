@@ -134,6 +134,11 @@ def enrich(
     # sizes with copies of one story and skew the ranker toward well-syndicated news.
     unique_items = [i for i in kept_items if i.id not in duplicate_ids]
     index_by_id = {item.id: idx for idx, item in enumerate(kept_items)}
+    # Trending-list sources (Hugging Face models, GitHub repos) are flagged in the
+    # registry: each entry is its own story, however similar its boilerplate is.
+    solo_sources = {s.id for s in sources if (s.config or {}).get("cluster") == "solo"}
+    solo_ids = {i.id for i in unique_items if i.source_id in solo_sources}
+
     clusters = []
     if unique_items:
         unique_vectors = np.stack([vectors[index_by_id[i.id]] for i in unique_items])
@@ -141,6 +146,7 @@ def enrich(
             [i.id for i in unique_items],
             unique_vectors,
             topics_by_id={i.id: list(i.topics or []) for i in unique_items},
+            solo_ids=solo_ids,
         )
 
     # 5 — persist clusters

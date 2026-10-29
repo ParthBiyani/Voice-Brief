@@ -48,6 +48,11 @@ W_CLUSTER_SIZE = 0.5
 # release, which is exactly the story the dependency signal exists to surface.
 W_RECENCY = 2.0
 RECENCY_HALF_LIFE_HOURS = 24.0
+# A story with almost no source text (a trending repo with a one-line description)
+# yields a segment that can only say "the sources give no further detail". It is
+# demoted below substantive stories but not removed, so a quiet day still fills.
+W_THIN = 2.0
+THIN_STORY_CHARS = 250
 
 # Package names that are also everyday English words. A dependency called `next` or
 # `rich` matches ordinary prose, which would flag unrelated stories as "personal" and
@@ -92,6 +97,8 @@ class RankCandidate:
     freshness: datetime | None = None
     # URLs of every item in the story, used to recognise a story already aired.
     item_urls: list = field(default_factory=list)
+    # Total characters of source text behind the story; None when unknown (eval corpus).
+    substance_chars: int | None = None
 
 
 @dataclass(slots=True)
@@ -187,6 +194,8 @@ def heuristic_score(
     # A story several sources covered independently is more likely to matter.
     score += W_CLUSTER_SIZE * min(candidate.cluster_size - 1, 3)
     score += W_RECENCY * recency_score(candidate.freshness, now=now or datetime.now(UTC))
+    if candidate.substance_chars is not None and candidate.substance_chars < THIN_STORY_CHARS:
+        score -= W_THIN
 
     return score, matched
 
@@ -379,6 +388,63 @@ def rerank(
     return head + tail
 
 
+# Split on hyphens and slashes too, so "mistralai/Mistral-Large-4-1T" yields "mistral".
+_TOKEN_RE = re.compile(r"[a-z0-9]+")
+_TITLE_STOPWORDS = frozenset(
+    {
+        "the", "and", "for", "with", "from", "that", "this", "its", "has", "now", "new",
+        "are", "was", "will", "you", "your", "our", "how", "why", "what", "into", "out",
+        "release", "released", "releases", "version", "update", "updates", "announcing",
+        "introducing", "model", "models", "dataset", "open", "source",
+    }
+)  # fmt: skip
+
+
+def story_tokens(story: RankedStory) -> frozenset[str]:
+    """Distinctive words across a story's titles — what it is *about*."""
+    titles = [story.candidate.title, *(getattr(s, "title", "") for s in story.candidate.sources)]
+    tokens: set[str] = set()
+    for title in titles:
+        tokens.update(
+            t
+            for t in _TOKEN_RE.findall((title or "").lower())
+            if len(t) > 2 and t not in _TITLE_STOPWORDS
+        )
+    return frozenset(tokens)
+
+
+def covers_same_ground(a: frozenset[str], b: frozenset[str]) -> bool:
+    """Two stories about the same event, even when clustering kept them apart.
+
+    Embedding clustering leaves a launch, the post announcing its weights and the
+    library release that supports it as separate groups (they sit at 0.79-0.81, under
+    the dedup threshold). Read aloud back to back that is the same news three times.
+    """
+    shared = a & b
+    return len(shared) >= 2 and len(shared) / max(min(len(a), len(b)), 1) >= 0.4
+
+
+def _without_repeats(ordered: list[RankedStory], limit: int) -> list[RankedStory]:
+    """Greedy pick in score order, deferring stories that repeat an earlier pick."""
+    picked: list[RankedStory] = []
+    deferred: list[RankedStory] = []
+    seen: list[frozenset[str]] = []
+    for story in ordered:
+        tokens = story_tokens(story)
+        repeats = any(covers_same_ground(tokens, earlier) for earlier in seen)
+        # Deferred stories still count as "already told": a third fragment of the same
+        # event may overlap the second more than the first.
+        seen.append(tokens)
+        if repeats:
+            deferred.append(story)
+            continue
+        picked.append(story)
+        if len(picked) == limit:
+            return picked
+    # Better a slightly repetitive brief than a short one when the day is thin.
+    return picked + deferred[: limit - len(picked)]
+
+
 def select_for_episode(
     stories: list[RankedStory], *, max_stories: int = 10, min_personal: int = 2
 ) -> list[RankedStory]:
@@ -386,10 +452,11 @@ def select_for_episode(
 
     Guarantees at least `min_personal` stack-relevant stories when any exist. Without
     this the ranker drifts toward whatever is objectively biggest that day, and the
-    brief stops being personal — which is the entire product.
+    brief stops being personal — which is the entire product. No two picks should cover
+    the same event.
     """
     ordered = sorted(stories, key=lambda s: s.score, reverse=True)
-    selected = ordered[:max_stories]
+    selected = _without_repeats(ordered, max_stories)
 
     if min_personal and sum(1 for s in selected if s.is_personal) < min_personal:
         personal = [s for s in ordered if s.is_personal and s not in selected]

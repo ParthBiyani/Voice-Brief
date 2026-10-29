@@ -13,6 +13,7 @@ import uuid
 import pytest
 
 from voicebrief.pipeline.grounding import (
+    _numbers,
     content_words,
     is_claim,
     split_sentences,
@@ -177,3 +178,87 @@ class TestSentenceSplitting:
 
     def test_empty_text(self):
         assert split_sentences("   ") == []
+
+
+class TestSpokenVersionsAndMagnitudes:
+    """Regressions from the first real episodes: correct sentences scored 0.66 because
+    the verifier could not read the way a script says versions and sizes aloud."""
+
+    @pytest.mark.parametrize(
+        ("spoken", "expected"),
+        [
+            ("version one point seven point one", "1.7.1"),
+            ("eighty-three point zero point zero", "83.0.0"),
+            ("five point twenty-two", "5.22"),
+            ("version four point two", "4.2"),
+            ("one trillion total parameters", "1000000000000"),
+            ("forty-nine billion are active", "49000000000"),
+            ("thirty-eight hundred GPUs", "3800"),
+            ("one hundred twenty-eight routed experts", "128"),
+        ],
+    )
+    def test_speech_is_read_back_as_the_number_a_source_would_write(self, spoken, expected):
+        assert expected in spoken_numbers(spoken)
+
+    def test_a_version_in_the_source_supports_its_shorter_spoken_form(self):
+        # The source says 5.22.0; the script says "five point twenty-two".
+        assert "5.22" in _numbers("huggingface/transformers v5.22.0")
+
+    def test_trillion_suffix_in_a_source_matches_a_spoken_trillion(self):
+        assert "1000000000000" in _numbers("Mistral Large 4 is a 1T parameter model")
+
+    def test_a_fabricated_version_is_still_caught(self):
+        source = _numbers("langchain-core 1.7.1 released")
+        assert "1.7.9" not in source
+        assert "1.7.9" in spoken_numbers("version one point seven point nine")
+
+
+class TestFigureOnlyClaims:
+    def test_a_claim_of_only_numbers_does_not_crash_and_is_checked_by_its_numbers(self):
+        facts = summary(["Version 5.22.0 shipped"])
+        report = verify_segment("5.22.0.", facts, source_text="transformers v5.22.0 shipped")
+        assert report.supported_sentences == 1
+
+    def test_a_figure_only_claim_with_an_invented_number_is_unsupported(self):
+        facts = summary(["Version 5.22.0 shipped"])
+        report = verify_segment("9.99.9.", facts, source_text="transformers v5.22.0 shipped")
+        assert report.unsupported
+
+
+class TestCountingAndShortClaims:
+    def test_counting_what_is_in_front_of_you_is_not_an_invented_figure(self):
+        facts = summary(["langchain-core 1.7.1 and 1.7.2 were released"])
+        report = verify_segment(
+            "langchain-core has two new releases.", facts, source_text="langchain-core 1.7.1 1.7.2"
+        )
+        assert report.supported_sentences == 1
+
+    def test_a_percentage_is_still_a_figure_that_must_be_sourced(self):
+        facts = summary(["Throughput improved"])
+        report = verify_segment(
+            "Throughput improved by ten percent.", facts, source_text="Throughput improved"
+        )
+        assert report.unsupported
+
+    def test_a_larger_invented_count_is_still_caught(self):
+        facts = summary(["The release fixes bugs"])
+        report = verify_segment(
+            "The release fixes forty bugs.", facts, source_text="The release fixes bugs"
+        )
+        assert report.unsupported
+
+    def test_a_short_sentence_with_a_verified_version_is_supported(self):
+        facts = summary(["Version 1.7.2 shipped"])
+        report = verify_segment(
+            "Start with one point seven point two.", facts, source_text="Version 1.7.2 shipped"
+        )
+        assert report.supported_sentences == 1
+
+    def test_written_out_magnitudes_in_a_source_match_a_spoken_figure(self):
+        facts = summary(["49 billion parameters are active per token"])
+        report = verify_segment(
+            "Forty-nine billion parameters are active per token.",
+            facts,
+            source_text="49 billion parameters are active per token",
+        )
+        assert report.supported_sentences == 1
