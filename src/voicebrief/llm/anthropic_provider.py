@@ -63,6 +63,47 @@ _ADAPTIVE_THINKING_MODELS = (
 )
 
 
+# Structured outputs reject these JSON-Schema keywords with a 400. A rerank schema that
+# bounded its score to 0-10 failed on every call and silently fell back to heuristic
+# order, so the LLM re-rank stage never actually ran.
+_UNSUPPORTED_KEYWORDS = (
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minLength",
+    "maxLength",
+    "maxItems",
+)
+
+
+def sanitize_schema(schema):
+    """A copy of `schema` the API will accept.
+
+    Schemas stay expressive for the other providers and for validation; only the
+    keywords this API refuses are removed here. A stripped numeric range is moved into
+    the field description so the model is still told the bounds. Callers clamp the
+    values they get back.
+    """
+    if isinstance(schema, list):
+        return [sanitize_schema(item) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+
+    cleaned = {k: sanitize_schema(v) for k, v in schema.items() if k not in _UNSUPPORTED_KEYWORDS}
+    # minItems is only accepted as 0 or 1.
+    if cleaned.get("minItems", 0) > 1:
+        cleaned.pop("minItems")
+
+    low, high = schema.get("minimum"), schema.get("maximum")
+    if low is not None or high is not None:
+        hint = f"Value from {low if low is not None else 'any'} to {high if high is not None else 'any'}."
+        description = cleaned.get("description")
+        cleaned["description"] = f"{description} {hint}" if description else hint
+    return cleaned
+
+
 def supports_adaptive_thinking(model: str) -> bool:
     return model.startswith(_ADAPTIVE_THINKING_MODELS)
 
@@ -156,7 +197,7 @@ class AnthropicProvider(LLMProvider):
         if schema:
             # Prefill is unavailable on this model generation, so structured output is
             # the supported way to guarantee parseable JSON.
-            output_config["format"] = {"type": "json_schema", "schema": schema}
+            output_config["format"] = {"type": "json_schema", "schema": sanitize_schema(schema)}
 
         if output_config:
             kwargs["output_config"] = output_config
