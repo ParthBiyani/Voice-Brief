@@ -101,6 +101,11 @@ class StackProfileData:
     starred_topics: list[str] = field(default_factory=list)
     recent_commit_terms: list[str] = field(default_factory=list)
     built_at: datetime | None = None
+    # False when the build was cut short (rate limit). An incomplete profile must never
+    # replace a good one: unauthenticated GitHub allows 60 requests an hour, and a
+    # build that ran dry used to come back with zero dependencies and no warning.
+    complete: bool = True
+    incomplete_reason: str | None = None
 
     def dependency_names(self) -> set[str]:
         return set(self.dependencies)
@@ -113,11 +118,27 @@ class StackProfileData:
         return not self.dependencies and not self.languages
 
 
+class RateLimited(RuntimeError):
+    """GitHub refused a request because the hourly quota is spent."""
+
+
+def is_rate_limited(response: httpx.Response) -> bool:
+    if response.status_code == 429:
+        return True
+    if response.status_code != 403:
+        return False
+    return (
+        response.headers.get("x-ratelimit-remaining") == "0"
+        or "rate limit" in response.text.lower()
+    )
+
+
 class GitHubProfileBuilder:
     def __init__(self, client: httpx.AsyncClient | None = None) -> None:
         self.settings = get_settings()
         self._client = client
         self._owns_client = client is None
+        self._rate_limited = False
 
     def _headers(self) -> dict[str, str]:
         headers = {
@@ -172,6 +193,19 @@ class GitHubProfileBuilder:
         profile.starred_topics = await self._starred_topics(client, login)
         profile.recent_commit_terms = self._commit_terms(repos)
 
+        if self._rate_limited:
+            authenticated = bool(self.settings.github_token)
+            profile.complete = False
+            profile.incomplete_reason = "GitHub rate limit reached part-way through" + (
+                "" if authenticated else "; set GITHUB_TOKEN to raise the limit to 5000/hour"
+            )
+            log.warning(
+                "profile.incomplete",
+                login=login,
+                reason=profile.incomplete_reason,
+                dependencies=len(profile.dependencies),
+            )
+
         log.info(
             "profile.built",
             login=login,
@@ -189,6 +223,8 @@ class GitHubProfileBuilder:
         )
         if response.status_code == 404:
             raise LookupError(f"GitHub user {login!r} not found")
+        if is_rate_limited(response):
+            raise RateLimited("GitHub rate limit reached while listing repositories")
         response.raise_for_status()
         # Forks tell you what someone glanced at, not what they build.
         return [r for r in response.json() if not r.get("fork")]
@@ -207,7 +243,11 @@ class GitHubProfileBuilder:
         typical account to roughly 40-60 requests total.
         """
         async with semaphore:
+            if self._rate_limited:
+                return []  # quota is gone; further requests would only be refused
             present = await self._root_files(client, full_name)
+            if present is None and self._rate_limited:
+                return []
             if present is None:
                 # Tree unavailable (empty repo, or rate limited). Fall back to probing
                 # the two most common manifests rather than giving up on the repo.
@@ -234,6 +274,9 @@ class GitHubProfileBuilder:
             )
         except httpx.HTTPError:
             return None
+        if is_rate_limited(response):
+            self._rate_limited = True
+            return None
         if response.status_code != 200:
             return None
         try:
@@ -248,6 +291,9 @@ class GitHubProfileBuilder:
                 f"{API}/repos/{full_name}/contents/{path}", headers=self._headers()
             )
         except httpx.HTTPError:
+            return None
+        if is_rate_limited(response):
+            self._rate_limited = True
             return None
         if response.status_code != 200:
             return None
