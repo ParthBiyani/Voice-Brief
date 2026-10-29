@@ -234,6 +234,54 @@ def resolve_profile(session: Session, user: User, *, refresh: bool = False):
     return built
 
 
+def resolve_personal(session: Session, user: User, *, refresh: bool = False):
+    """Personal context from ProjectMind: cached for a day, never a reason to fail.
+
+    ProjectMind is a separate, independently changing program. If it is not configured,
+    slow, broken or returns nothing, whatever was cached last is used instead.
+    """
+    from voicebrief.personalization.profile_cache import load_personal, save_personal
+    from voicebrief.personalization.projectmind import (
+        CONTEXT_TTL_HOURS,
+        configured_command,
+        fetch_personal_context,
+    )
+
+    cached = load_personal(session, user.id)
+    now = datetime.now(UTC)
+    if (
+        cached
+        and not refresh
+        and cached.fetched_at
+        and (now - cached.fetched_at).total_seconds() < CONTEXT_TTL_HOURS * 3600
+    ):
+        return cached
+    if configured_command() is None:
+        return cached
+
+    fetched = fetch_personal_context()
+    if fetched is not None:
+        save_personal(session, user.id, fetched)
+        return fetched
+    if cached:
+        log.warning("daily.personal_kept_stale", reason="ProjectMind returned nothing")
+    return cached
+
+
+def attach_personal(profile, context, *, login: str | None):
+    """Fold personal context into the profile the ranker and writer already consume."""
+    if context is None or context.is_empty:
+        return profile
+    from voicebrief.personalization.github_profile import StackProfileData
+
+    profile = profile or StackProfileData(login=login or "")
+    profile.interests = list(context.interests)
+    profile.avoid = list(context.avoid)
+    profile.notes = list(context.statements)
+    profile.projects = list(context.projects)
+    return profile
+
+
 def generate_brief(
     session: Session, request: BriefRequest, *, run_id: uuid.UUID | None = None
 ) -> BriefOutcome:
@@ -247,6 +295,10 @@ def generate_brief(
 
     user = resolve_user(session, request)
     profile = resolve_profile(session, user)
+    try:
+        profile = attach_personal(profile, resolve_personal(session, user), login=user.github_login)
+    except Exception as exc:  # personal context is an enhancement, never a precondition
+        log.warning("daily.personal_failed", error=f"{type(exc).__name__}: {exc}"[:200])
 
     report = CandidateReport(window_hours=0)
     candidates = build_candidates(session, user_id=user.id, report=report)

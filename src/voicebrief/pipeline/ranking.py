@@ -28,6 +28,7 @@ import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
@@ -49,6 +50,10 @@ W_CLUSTER_SIZE = 0.5
 # release, which is exactly the story the dependency signal exists to surface.
 W_RECENCY = 2.0
 RECENCY_HALF_LIFE_HOURS = 24.0
+# Personal context from ProjectMind: a tool the listener reaches for is worth a nudge,
+# one they moved away from is a smaller one in the other direction.
+W_INTEREST = 1.0
+W_MOVED_AWAY = 1.5
 # A story with almost no source text (a trending repo with a one-line description)
 # yields a segment that can only say "the sources give no further detail". It is
 # demoted below substantive stories but not removed, so a quiet day still fills.
@@ -141,13 +146,15 @@ class RankedStory:
     llm_score: float | None = None
     # Which of the user's dependencies this story touches, and where they use them.
     matched_dependencies: dict[str, list[str]] = field(default_factory=dict)
+    # Tools from the listener's stated interests (ProjectMind) the story is about.
+    matched_interests: list[str] = field(default_factory=list)
     rationale: str = ""
     # What each heuristic signal contributed, so a decision can be explained afterwards.
     signals: dict[str, float] = field(default_factory=dict)
 
     @property
     def is_personal(self) -> bool:
-        return bool(self.matched_dependencies)
+        return bool(self.matched_dependencies or self.matched_interests)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -176,6 +183,37 @@ def match_dependencies(text: str, profile: StackProfileData | None) -> dict[str,
         if any(form in haystack for form in forms):
             matched[name] = info.get("repos", [])
     return matched
+
+
+def _term_pattern(terms: tuple[str, ...]) -> re.Pattern[str] | None:
+    usable = [t for t in terms if t and len(t) >= 3 and not is_ambiguous_dependency(t)]
+    if not usable:
+        return None
+    alternation = "|".join(sorted((re.escape(t) for t in usable), key=len, reverse=True))
+    return re.compile(rf"(?<![a-z0-9])(?:{alternation})(?![a-z0-9])")
+
+
+@lru_cache(maxsize=8)
+def _interest_pattern(terms: tuple[str, ...]) -> re.Pattern[str] | None:
+    return _term_pattern(terms)
+
+
+def match_interests(text: str, profile: StackProfileData | None) -> tuple[list[str], list[str]]:
+    """(interests the story is about, tools-moved-away-from it is about).
+
+    Same discipline as dependency matching: whole words only, and a name that is also an
+    ordinary English word does not count on its own.
+    """
+    if profile is None or not (profile.interests or profile.avoid):
+        return [], []
+    lowered = text.lower()
+    interests: list[str] = []
+    avoided: list[str] = []
+    if pattern := _interest_pattern(tuple(profile.interests)):
+        interests = sorted(set(pattern.findall(lowered)))
+    if pattern := _interest_pattern(tuple(profile.avoid)):
+        avoided = sorted(set(pattern.findall(lowered)))
+    return interests, avoided
 
 
 def mentions_language(text: str, language: str) -> bool:
@@ -218,6 +256,11 @@ def score_parts(
         parts["starred"] = W_STARRED * len(
             {t.lower() for t in candidate.topics} & set(profile.starred_topics)
         )
+        interests, avoided = match_interests(text, profile)
+        if interests:
+            parts["interests"] = W_INTEREST * min(len(interests), 3)
+        if avoided and not interests:
+            parts["moved_away"] = -W_MOVED_AWAY
 
     if declared_topics:
         overlap = {t.lower() for t in candidate.topics} & declared_topics
@@ -262,12 +305,14 @@ def prerank(
         score, matched, parts = score_parts(
             candidate, profile=profile, declared_topics=topics, now=now
         )
+        interests, _avoided = match_interests(f"{candidate.title} {candidate.summary}", profile)
         ranked.append(
             RankedStory(
                 candidate=candidate,
                 score=score,
                 heuristic_score=score,
                 matched_dependencies=matched,
+                matched_interests=interests,
                 signals=parts,
             )
         )
@@ -332,11 +377,27 @@ RERANK_SCHEMA = {
 }
 
 
+def _personal_brief(profile: StackProfileData) -> str:
+    """What the listener has told their memory system, for the re-rank prompt."""
+    lines: list[str] = []
+    if profile.notes:
+        lines.append("\nHow they say they work (from their own notes):")
+        lines.extend(f"- {note[:220]}" for note in profile.notes[:12])
+    if profile.avoid:
+        lines.append("Tools they have moved away from: " + ", ".join(profile.avoid[:12]))
+    if profile.projects:
+        lines.append("Recently building: " + ", ".join(profile.projects[:8]))
+    return "\n".join(lines)
+
+
 def _profile_brief(profile: StackProfileData | None) -> str:
     if profile is None or profile.is_empty:
         return "No stack profile available. Judge on general practitioner relevance."
 
     languages = ", ".join(list(profile.languages)[:6]) or "unknown"
+    personal = _personal_brief(profile)
+    if not profile.has_stack:
+        return personal or "No stack profile available. Judge on general practitioner relevance."
     deps = sorted(profile.dependencies, key=lambda d: -len(profile.dependencies[d]["repos"]))
     dependency_lines = [
         f"- {name} (used in {', '.join(r.split('/')[-1] for r in profile.dependencies[name]['repos'][:3])})"
@@ -345,7 +406,7 @@ def _profile_brief(profile: StackProfileData | None) -> str:
     return (
         f"Languages: {languages}\n"
         f"Repositories: {len(profile.repos)}\n"
-        f"Dependencies they actually build on:\n" + "\n".join(dependency_lines)
+        f"Dependencies they actually build on:\n" + "\n".join(dependency_lines) + personal
     )
 
 
@@ -376,6 +437,11 @@ def rerank(
         + (
             f"\n    touches their dependencies: {', '.join(s.matched_dependencies)}"
             if s.matched_dependencies
+            else ""
+        )
+        + (
+            f"\n    matches their stated interests: {', '.join(s.matched_interests)}"
+            if s.matched_interests
             else ""
         )
         for i, s in enumerate(head)

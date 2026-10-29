@@ -106,6 +106,13 @@ class StackProfileData:
     # build that ran dry used to come back with zero dependencies and no warning.
     complete: bool = True
     incomplete_reason: str | None = None
+    # Personal context from ProjectMind (see personalization/projectmind.py): tools the
+    # listener reaches for, tools they moved away from, what they have told their memory
+    # system about how they work, and what they have been building.
+    interests: list[str] = field(default_factory=list)
+    avoid: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+    projects: list[str] = field(default_factory=list)
 
     def dependency_names(self) -> set[str]:
         return set(self.dependencies)
@@ -115,7 +122,12 @@ class StackProfileData:
 
     @property
     def is_empty(self) -> bool:
-        return not self.dependencies and not self.languages
+        return not (self.dependencies or self.languages or self.interests or self.notes)
+
+    @property
+    def has_stack(self) -> bool:
+        """Whether a GitHub-derived stack exists (separate from personal context)."""
+        return bool(self.dependencies or self.languages)
 
 
 class RateLimited(RuntimeError):
