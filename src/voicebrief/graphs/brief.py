@@ -26,7 +26,7 @@ from typing import Annotated, TypedDict
 
 from langgraph.graph import END, StateGraph
 
-from voicebrief.llm.base import Stage, Tier
+from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 from voicebrief.personalization.github_profile import StackProfileData
@@ -186,6 +186,7 @@ class BriefGraph:
             90, (self.target_minutes * WORDS_PER_MINUTE - 260) // max(len(summaries), 1)
         )
 
+        errors = list(state.get("errors", []))
         segments: list[Segment] = [
             self._write_cold_open(summaries, language, style),
             self._write_agenda(summaries, language, style),
@@ -196,9 +197,20 @@ class BriefGraph:
             )
             if segment:
                 segments.append(segment)
+            else:
+                errors.append(f"script failed for {story.candidate.title[:60]}")
 
         segments.append(self._write_sign_off(len(segments), language, style))
-        return {"segments": segments, "errors": state.get("errors", [])}
+
+        # An empty framing segment would be synthesised as silence and listed in the
+        # transcript as a blank line. Drop it and say so.
+        kept: list[Segment] = []
+        for segment in segments:
+            if segment.script.strip():
+                kept.append(segment)
+            else:
+                errors.append(f"{segment.kind} was empty and was left out")
+        return {"segments": kept, "errors": errors}
 
     def assemble_node(self, state: BriefState) -> dict:
         segments: list[Segment] = state.get("segments", [])
@@ -247,6 +259,7 @@ class BriefGraph:
         total_sentences = 0
         supported_sentences = 0
         hallucinated_links: list[str] = []
+        per_segment: list[dict] = []
 
         for segment in segments:
             if segment.kind != "story" or segment.cluster_id not in summaries:
@@ -263,8 +276,16 @@ class BriefGraph:
             total_sentences += report.total_sentences
             supported_sentences += report.supported_sentences
             hallucinated_links.extend(report.hallucinated_links)
+            per_segment.append(
+                {
+                    "heading": segment.heading,
+                    "grounded_ratio": round(report.grounded_ratio, 4),
+                    "unsupported": list(report.unsupported)[:10],
+                }
+            )
 
         episode["grounding"] = {
+            "segments": per_segment,
             "sentences": total_sentences,
             "supported": supported_sentences,
             "attribution_rate": round(
@@ -320,6 +341,8 @@ class BriefGraph:
                 cache_system=True,
                 fallback_tier=Tier.utility,
             )
+        except BudgetExceeded:
+            raise
         except Exception as exc:
             log.warning("brief.segment_failed", cluster=str(summary.cluster_id), error=str(exc))
             return None
@@ -373,6 +396,8 @@ class BriefGraph:
                 fallback_tier=Tier.utility,
             )
             text = completion.text.strip()
+        except BudgetExceeded:
+            raise
         except Exception as exc:
             log.warning("brief.simple_segment_failed", kind=kind, error=str(exc))
             text = ""

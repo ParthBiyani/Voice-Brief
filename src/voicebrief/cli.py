@@ -209,6 +209,7 @@ def brief_generate(
     table.add_column("value", justify="right")
     for label, value in (
         ("episode id", str(result.episode_id)),
+        ("status", result.status),
         ("words", str(result.word_count)),
         ("duration", f"{result.duration_seconds / 60:.1f} min"),
         ("generation time", f"{result.generation_seconds:.1f}s"),
@@ -220,9 +221,13 @@ def brief_generate(
         table.add_row(label, value)
     console.print(table)
     if result.errors:
-        console.print(f"[yellow]{len(result.errors)} non-fatal issue(s)[/yellow]")
+        console.print(f"[yellow]{len(result.errors)} issue(s)[/yellow]")
         for err in result.errors[:5]:
             console.print(f"  [dim]{err}[/dim]")
+    if result.status != "ready":
+        # Scripts and the scheduled task rely on the exit code to tell a good brief from
+        # one that needs a look.
+        raise typer.Exit(2 if result.status == "degraded" else 1)
 
 
 if __name__ == "__main__":

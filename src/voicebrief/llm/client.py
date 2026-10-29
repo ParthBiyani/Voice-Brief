@@ -22,12 +22,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from tenacity import (
     retry,
-    retry_if_exception_type,
+    retry_if_exception,
     stop_after_attempt,
     wait_exponential,
 )
 
 from voicebrief.config import get_settings
+from voicebrief.db import session_scope
 from voicebrief.db.models import CostEntry
 from voicebrief.llm.base import (
     BudgetExceeded,
@@ -46,9 +47,9 @@ log = get_logger(__name__)
 def build_provider(name: str | None = None) -> LLMProvider:
     """Construct the configured provider.
 
-    Falls back to `echo` rather than raising when a hosted provider is selected but
-    unusable, so that a missing key degrades the *quality* of a run instead of
-    preventing the system from starting at all.
+    A hosted provider that cannot be built is an error, not a reason to substitute the
+    `echo` stub: that used to ship `[echo:script:...]` text through text-to-speech and
+    mark the episode ready. `echo` is available only when asked for by name.
     """
     settings = get_settings()
     name = name or settings.llm_provider
@@ -56,13 +57,7 @@ def build_provider(name: str | None = None) -> LLMProvider:
     if name == "anthropic":
         from voicebrief.llm.anthropic_provider import AnthropicProvider
 
-        try:
-            return AnthropicProvider()
-        except LLMError as exc:
-            log.warning("llm.anthropic_unavailable", error=str(exc), fallback="echo")
-            from voicebrief.llm.echo_provider import EchoProvider
-
-            return EchoProvider()
+        return AnthropicProvider()
 
     if name == "ollama":
         from voicebrief.llm.ollama_provider import OllamaProvider
@@ -84,6 +79,7 @@ class LLMClient:
         *,
         episode_id: uuid.UUID | None = None,
         daily_budget_inr: float | None = None,
+        durable_ledger: bool = True,
     ) -> None:
         settings = get_settings()
         self.session = session
@@ -93,6 +89,11 @@ class LLMClient:
             daily_budget_inr if daily_budget_inr is not None else settings.daily_budget_inr
         )
         self._run_cost_inr = 0.0
+        # Ledger rows are committed on their own connection the moment a call
+        # finishes. Written through the caller's session instead, they vanished with
+        # it whenever generation failed and rolled back, so the money for a crashed
+        # run was spent but never counted against the daily budget.
+        self.durable_ledger = durable_ledger
 
     # ── budget ────────────────────────────────────────────────────────────────
     def spend_today(self) -> float:
@@ -163,15 +164,31 @@ class LLMClient:
         return completion
 
     @retry(
-        retry=retry_if_exception_type(LLMError),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=1, max=20),
+        # One more attempt, and only where a repeat can plausibly succeed. The SDK has
+        # already retried transport failures; refusals, truncation and 4xx responses
+        # are deterministic and would just be paid for again.
+        retry=retry_if_exception(lambda exc: getattr(exc, "retryable", False)),
+        stop=stop_after_attempt(2),
+        wait=wait_exponential(multiplier=1, min=1, max=4),
         reraise=True,
     )
     def _complete_with_retry(self, **kwargs) -> Completion:
         return self.provider.complete(**kwargs)
 
     # ── ledger ────────────────────────────────────────────────────────────────
+    def _write_ledger(self, entry: CostEntry) -> None:
+        if self.durable_ledger:
+            try:
+                with session_scope() as ledger_session:
+                    ledger_session.add(entry)
+                return
+            except Exception as exc:  # the paid result must survive a ledger hiccup
+                log.error("llm.ledger_write_failed", error=str(exc), fallback="caller session")
+                entry = CostEntry(
+                    **{c.name: getattr(entry, c.name) for c in CostEntry.__table__.columns}
+                )
+        self.session.add(entry)
+
     def _record(self, completion: Completion) -> None:
         usage = completion.usage
         cost = cost_inr(
@@ -183,20 +200,19 @@ class LLMClient:
         )
         self._run_cost_inr += cost
 
-        self.session.add(
-            CostEntry(
-                episode_id=self.episode_id,
-                stage=completion.stage.value,
-                provider=completion.provider,
-                model=completion.model,
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
-                cached_tokens=usage.cache_read_tokens,
-                cost_inr=cost,
-                latency_ms=completion.latency_ms,
-                trace_id=completion.request_id,
-            )
+        entry = CostEntry(
+            episode_id=self.episode_id,
+            stage=completion.stage.value,
+            provider=completion.provider,
+            model=completion.model,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            cached_tokens=usage.cache_read_tokens,
+            cost_inr=cost,
+            latency_ms=completion.latency_ms,
+            trace_id=completion.request_id,
         )
+        self._write_ledger(entry)
         log.info(
             "llm.call",
             stage=completion.stage.value,

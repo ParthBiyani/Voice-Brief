@@ -89,7 +89,17 @@ class Completion:
 
 
 class LLMError(RuntimeError):
-    """Provider failure that the caller may retry or degrade around."""
+    """Provider failure that the caller may retry or degrade around.
+
+    `retryable` is true only where a second identical attempt can plausibly succeed
+    (malformed JSON, an empty reply). Transport failures were already retried by the
+    SDK, and refusals, truncation and 4xx responses are deterministic, so repeating
+    them just pays for the same failure again.
+    """
+
+    def __init__(self, message: str = "", *, retryable: bool = False) -> None:
+        super().__init__(message)
+        self.retryable = retryable
 
 
 class BudgetExceeded(LLMError):

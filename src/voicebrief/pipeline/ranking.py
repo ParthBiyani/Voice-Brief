@@ -29,7 +29,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 
-from voicebrief.llm.base import Stage, Tier
+from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 from voicebrief.personalization.github_profile import StackProfileData
@@ -336,6 +336,8 @@ def rerank(
             # The system prompt and profile are identical across runs in a session.
             cache_system=True,
         )
+    except BudgetExceeded:
+        raise
     except Exception as exc:
         log.warning("rank.rerank_failed", error=str(exc), fallback="heuristic order")
         return stories

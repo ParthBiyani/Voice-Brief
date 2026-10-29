@@ -49,6 +49,10 @@ class EpisodeStatus(str, enum.Enum):
     pending = "pending"
     running = "running"
     ready = "ready"
+    # A usable transcript exists but something expected is missing (audio, or half the
+    # stories). Distinct from `ready` so a silent or half-empty episode never passes
+    # for a complete one, and from `failed` because the text is still worth reading.
+    degraded = "degraded"
     failed = "failed"
 
 
@@ -269,6 +273,10 @@ class Episode(Base, TimestampMixin):
     generation_seconds: Mapped[float | None] = mapped_column(Float)
     cost_inr: Mapped[float | None] = mapped_column(Numeric(10, 4))
     error: Mapped[str | None] = mapped_column(Text)
+    # Grounding report persisted at generation time (attribution rate, unsupported
+    # sentences per segment, hallucinated links, warnings) so quality can be audited
+    # and compared across days instead of vanishing with the process.
+    grounding: Mapped[dict | None] = mapped_column(JSONB)
 
     segments: Mapped[list[Segment]] = relationship(
         back_populates="episode", cascade="all, delete-orphan", order_by="Segment.position"

@@ -46,13 +46,12 @@ class Settings(BaseSettings):
     # LLM
     llm_provider: LLMProvider = Field(default="anthropic", alias="VB_LLM_PROVIDER")
     anthropic_api_key: SecretStr | None = Field(default=None, alias="ANTHROPIC_API_KEY")
-    # Sonnet, not Opus, and the reason is arithmetic rather than taste. Measured
-    # against live pricing, a 2,400-word script costs INR 7.51 on Opus 5 and INR 3.01
-    # on Sonnet 5. Opus puts a full episode at INR 9.45, over the PRD's INR 8 ceiling;
-    # Sonnet lands the same episode at INR 4.94. Set VB_LLM_SCRIPT_MODEL=claude-opus-5
-    # and raise VB_DAILY_BUDGET_INR to trade the money back for register quality.
-    llm_script_model: str = Field(default="claude-sonnet-5", alias="VB_LLM_SCRIPT_MODEL")
-    llm_utility_model: str = Field(default="claude-haiku-4-5", alias="VB_LLM_UTILITY_MODEL")
+    # Sonnet for the script, Haiku for bulk work, and the reason is arithmetic rather
+    # than taste: script output tokens are the largest line item in the system, so the
+    # script model sets the cost of an episode. Set VB_LLM_SCRIPT_MODEL=claude-opus-5-5
+    # (and raise VB_DAILY_BUDGET_INR) to trade money back for register quality.
+    llm_script_model: str = Field(default="claude-sonnet-5-5", alias="VB_LLM_SCRIPT_MODEL")
+    llm_utility_model: str = Field(default="claude-haiku-5-5", alias="VB_LLM_UTILITY_MODEL")
     ollama_url: str = Field(default="http://localhost:11434", alias="VB_OLLAMA_URL")
     ollama_script_model: str = Field(
         default="qwen2.5:7b-instruct-q4_K_M", alias="VB_OLLAMA_SCRIPT_MODEL"

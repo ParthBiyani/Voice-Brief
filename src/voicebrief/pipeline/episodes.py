@@ -4,10 +4,16 @@ Ties the pieces together: candidates -> brief graph -> TTS -> object store -> Po
 This is what the CLI, the cron endpoint and the API all call, so there is exactly one
 definition of "generate an episode".
 
-Ordering matters here. The episode row is written as `running` *before* generation
-starts, so a crash leaves a visible failed episode rather than silence. Audio goes to
-the object store before the row is marked `ready`, so a `ready` episode always has
-audio behind it.
+Ordering matters here. The episode row is written as `running` and *committed* before
+generation starts, so a crash leaves a visible failed episode rather than silence, and
+so the cost ledger (which writes on its own connection) has a row to point at. Audio
+goes to the object store before the row is marked `ready`, so a `ready` episode always
+has audio behind it.
+
+What "ready" means is deliberately strict. A transcript with no story, a silent track
+from a missing speech engine, or an upload that never happened used to be marked ready
+and surface as a normal episode. They are now `degraded` (a usable transcript exists,
+something expected is missing) or `failed` (nothing usable), with the reason stored.
 """
 
 from __future__ import annotations
@@ -37,6 +43,43 @@ log = get_logger(__name__)
 AUDIO_PREFIX = "episodes"
 
 
+# An episode needs at least this share of the requested stories to count as complete.
+MIN_STORY_SHARE = 0.5
+# Speech engines that produce silence rather than speech.
+SILENT_ENGINES = {"null"}
+
+
+def judge_episode(
+    *,
+    story_count: int,
+    requested_stories: int,
+    render_audio: bool,
+    audio_key: str | None,
+    duration_seconds: float,
+    engine_name: str,
+    configured_engine: str,
+) -> tuple[EpisodeStatus, list[str]]:
+    """Decide how complete an episode really is, and say why when it is not."""
+    if story_count == 0:
+        return EpisodeStatus.failed, ["no stories were produced"]
+
+    reasons: list[str] = []
+    if story_count < max(1, round(requested_stories * MIN_STORY_SHARE)):
+        reasons.append(f"only {story_count} of {requested_stories} requested stories were written")
+
+    if render_audio:
+        if audio_key is None:
+            reasons.append("audio was not stored")
+        elif duration_seconds <= 0:
+            reasons.append("audio rendering produced no sound")
+        elif engine_name in SILENT_ENGINES and configured_engine not in SILENT_ENGINES:
+            reasons.append(
+                f"speech engine {configured_engine!r} was unavailable; the track is silent"
+            )
+
+    return (EpisodeStatus.degraded if reasons else EpisodeStatus.ready), reasons
+
+
 @dataclass(slots=True)
 class GenerationResult:
     episode_id: uuid.UUID
@@ -50,6 +93,7 @@ class GenerationResult:
     audio_key: str | None
     engine: str
     errors: list[str]
+    status: str = "ready"
 
 
 def _s3_client():
@@ -130,7 +174,9 @@ def generate_episode(
         style=style,
     )
     session.add(episode)
-    session.flush()
+    # Committed, not just flushed: the ledger writes cost rows on its own connection and
+    # they reference this row, and a crash must leave this row behind as evidence.
+    session.commit()
 
     client = LLMClient(session, episode_id=episode.id)
 
@@ -144,9 +190,16 @@ def generate_episode(
             style=style,
         )
     except Exception as exc:
+        # Rolled back first so the failed row is written from a clean transaction, then
+        # committed: the caller's scope rolls back on the re-raise, and without this the
+        # failed episode and its error vanished with it.
+        session.rollback()
+        episode = session.get(Episode, episode.id) or episode
         episode.status = EpisodeStatus.failed
         episode.error = f"{type(exc).__name__}: {exc}"[:2000]
-        session.flush()
+        episode.generation_seconds = round(time.perf_counter() - started, 2)
+        episode.cost_inr = episode_cost_inr(session, episode.id)
+        session.commit()
         log.error("episode.failed", episode=str(episode.id), error=episode.error)
         raise
 
@@ -196,9 +249,23 @@ def generate_episode(
     episode.audio_key = audio_key
     episode.duration_seconds = duration
     episode.generation_seconds = round(time.perf_counter() - started, 2)
-    episode.status = EpisodeStatus.ready if segments else EpisodeStatus.failed
-    if not segments:
-        episode.error = "no segments were produced"
+    story_count = sum(1 for s in segments if s.kind == "story")
+    status, reasons = judge_episode(
+        story_count=story_count,
+        requested_stories=max_stories,
+        render_audio=render_audio,
+        audio_key=audio_key,
+        duration_seconds=duration,
+        engine_name=engine_name,
+        configured_engine=settings.tts_engine,
+    )
+    episode.status = status
+    episode.error = "; ".join(reasons) or None
+    episode.grounding = {
+        **grounding,
+        "warnings": errors,
+        "tts_engine": engine_name,
+    }
     session.flush()
 
     episode.cost_inr = episode_cost_inr(session, episode.id)
@@ -215,10 +282,12 @@ def generate_episode(
         generation_seconds=episode.generation_seconds or 0.0,
         audio_key=audio_key,
         engine=engine_name,
-        errors=errors,
+        errors=errors + reasons,
+        status=status.value,
     )
     log.info(
-        "episode.ready",
+        "episode.finished",
+        status=status.value,
         episode=str(episode.id),
         seconds=result.generation_seconds,
         cost_inr=result.cost_inr,
