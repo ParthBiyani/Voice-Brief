@@ -219,6 +219,9 @@ class StackProfile(Base, TimestampMixin):
     )
 
     built_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Context borrowed from ProjectMind (statements, interests, things moved away from),
+    # cached for a day so a slow or unavailable ProjectMind never blocks a brief.
+    personal: Mapped[dict | None] = mapped_column(JSONB)
     user: Mapped[User] = relationship(back_populates="profile")
 
 

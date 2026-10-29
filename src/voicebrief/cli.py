@@ -293,6 +293,56 @@ def daily_command(
     raise typer.Exit(result.exit_code)
 
 
+personal_app = typer.Typer(no_args_is_help=True, help="Personal context from ProjectMind")
+app.add_typer(personal_app, name="personal")
+
+
+@personal_app.command("show")
+def personal_show(
+    email: str = _EMAIL_OPT,
+    refresh: bool = typer.Option(False, "--refresh", help="Ask ProjectMind again now"),
+) -> None:
+    """What ProjectMind has told VoiceBrief about how you work (cached for a day)."""
+    from sqlalchemy import select
+
+    from voicebrief.db import session_scope
+    from voicebrief.db.models import User
+    from voicebrief.personalization.projectmind import configured_command
+    from voicebrief.pipeline.daily import resolve_personal
+
+    command = configured_command()
+    console.print(
+        "ProjectMind command: "
+        + (
+            " ".join(command)
+            if command
+            else "[yellow]not configured[/yellow] "
+            "(set VB_PROJECTMIND_CMD, or put `projectmind` on PATH)"
+        )
+    )
+    with session_scope() as session:
+        user = session.execute(select(User).where(User.email == email)).scalar_one_or_none()
+        if user is None:
+            console.print("[red]No such user yet. Run `voicebrief daily` first.[/red]")
+            raise typer.Exit(1)
+        context = resolve_personal(session, user, refresh=refresh)
+
+    if context is None or context.is_empty:
+        console.print("[yellow]No personal context available.[/yellow]")
+        raise typer.Exit(0)
+
+    console.print(
+        f"[bold]fetched[/bold] {context.fetched_at:%Y-%m-%d %H:%M} UTC, "
+        f"{context.queries_answered} answers"
+    )
+    console.print("[bold]how you work[/bold]")
+    for statement in context.statements[:15]:
+        console.print(f"  - {statement}")
+    console.print(f"[bold]interests[/bold]  {', '.join(context.interests) or '-'}")
+    console.print(f"[bold]moved away from[/bold]  {', '.join(context.avoid) or '-'}")
+    console.print(f"[bold]recent projects[/bold]  {', '.join(context.projects) or '-'}")
+
+
 history_app = typer.Typer(no_args_is_help=True, help="Review what the system did and was asked")
 app.add_typer(history_app, name="history")
 

@@ -57,6 +57,32 @@ def load_profile(
     return profile, row.built_at
 
 
+def save_personal(session: Session, user_id: uuid.UUID, context) -> None:
+    """Cache ProjectMind-derived context alongside the stack profile."""
+    row = session.execute(
+        select(StackProfile).where(StackProfile.user_id == user_id)
+    ).scalar_one_or_none()
+    if row is None:
+        row = StackProfile(user_id=user_id)
+        session.add(row)
+    row.personal = context.to_json()
+    session.flush()
+
+
+def load_personal(session: Session, user_id: uuid.UUID):
+    from voicebrief.personalization.projectmind import PersonalContext
+
+    row = session.execute(
+        select(StackProfile).where(StackProfile.user_id == user_id)
+    ).scalar_one_or_none()
+    if row is None or not row.personal:
+        return None
+    try:
+        return PersonalContext.from_json(row.personal)
+    except Exception:
+        return None
+
+
 def is_fresh(built_at: datetime, *, now: datetime | None = None) -> bool:
     now = now or datetime.now(UTC)
     if built_at.tzinfo is None:

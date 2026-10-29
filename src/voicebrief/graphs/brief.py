@@ -30,7 +30,7 @@ from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 from voicebrief.personalization.github_profile import StackProfileData
-from voicebrief.pipeline.grounding import verify_segment
+from voicebrief.pipeline.grounding import content_words, verify_segment
 from voicebrief.pipeline.ranking import (
     RankedStory,
     prerank,
@@ -280,6 +280,9 @@ class BriefGraph:
         if profile is not None:
             own_vocabulary |= {r.split("/")[-1].lower() for r in getattr(profile, "repos", [])}
             own_vocabulary |= {d.lower() for d in getattr(profile, "dependencies", {})}
+            # What they have said about themselves is grounded, like their repos.
+            own_vocabulary |= content_words(" ".join(getattr(profile, "notes", []) or []))
+            own_vocabulary |= {p.lower() for p in getattr(profile, "projects", []) or []}
             own_vocabulary |= {"you", "your", "listener"}
 
         total_sentences = 0
@@ -351,6 +354,20 @@ class BriefGraph:
                     f"overlap is only a shared generic word (a file format, a common noun), "
                     f"say nothing about their stack at all. Never write that the sources "
                     f"say nothing about their repository: leave the connection out instead."
+                )
+
+        if story.matched_interests and profile is not None and profile.notes:
+            said = [
+                note
+                for note in profile.notes
+                if any(term in note.lower() for term in story.matched_interests)
+            ][:2]
+            if said:
+                personal += (
+                    "\n\nWHAT THE LISTENER HAS SAID ABOUT HOW THEY WORK: "
+                    + " ".join(said)
+                    + " You may refer to this in one plain sentence if it genuinely "
+                    "bears on the story. Add nothing to it."
                 )
 
         prompt = (

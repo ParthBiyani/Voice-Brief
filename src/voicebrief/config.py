@@ -74,6 +74,13 @@ class Settings(BaseSettings):
 
     # Source credentials (all optional; absence degrades, never breaks)
     github_token: SecretStr | None = Field(default=None, alias="GITHUB_TOKEN")
+
+    # ProjectMind: the owner's cross-project memory, borrowed for personalisation. Off
+    # unless a command is configured or `projectmind` is on PATH; VB_PROJECTMIND_ENABLED
+    # =false switches it off even then.
+    projectmind_enabled: bool | None = Field(default=None, alias="VB_PROJECTMIND_ENABLED")
+    projectmind_cmd: str | None = Field(default=None, alias="VB_PROJECTMIND_CMD")
+    projectmind_project_path: str | None = Field(default=None, alias="VB_PROJECTMIND_PROJECT_PATH")
     reddit_client_id: SecretStr | None = Field(default=None, alias="REDDIT_CLIENT_ID")
     reddit_client_secret: SecretStr | None = Field(default=None, alias="REDDIT_CLIENT_SECRET")
     youtube_api_key: SecretStr | None = Field(default=None, alias="YOUTUBE_API_KEY")
