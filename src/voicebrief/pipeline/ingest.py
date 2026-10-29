@@ -34,6 +34,25 @@ INGEST_LOCK = "voicebrief:ingest"
 PER_SOURCE_TIMEOUT = 90.0
 MAX_CONCURRENT_SOURCES = 6
 
+# After an outage, reach back to the last successful poll rather than a fixed window, so
+# a skipped run or a backed-off source does not lose its items for good. Bounded so a
+# source that was dark for a month does not flood the pass.
+MAX_BACKFILL_HOURS = 24 * 7
+POLL_OVERLAP = timedelta(hours=1)
+
+# arXiv's API terms ask for one request at a time with a pause between them; two arXiv
+# sources fetched in parallel broke the politeness the adapter promises.
+SERIAL_ADAPTERS = {"arxiv": 3.0}
+
+
+def source_since(source: Source, *, started: datetime, lookback_hours: int) -> datetime:
+    """Earliest item time to accept for one source on this pass."""
+    default = started - timedelta(hours=lookback_hours)
+    if source.last_polled_at is None:
+        return default
+    since = min(default, source.last_polled_at - POLL_OVERLAP)
+    return max(since, started - timedelta(hours=MAX_BACKFILL_HOURS))
+
 
 @dataclass(slots=True)
 class SourceStats:
@@ -50,16 +69,27 @@ async def _fetch_one(
     source: Source,
     since: datetime,
     semaphore: asyncio.Semaphore,
+    serial_locks: dict[str, asyncio.Lock] | None = None,
 ) -> tuple[SourceStats, list]:
     """Fetch a single source inside its own error boundary."""
     stats = SourceStats(slug=source.slug)
     bound = log.bind(source=source.slug, kind=source.kind.value)
+    adapter_kind = (source.config or {}).get("adapter", source.kind.value)
+    serial = (serial_locks or {}).get(adapter_kind)
 
     async with semaphore:
         try:
-            adapter_kind = (source.config or {}).get("adapter", source.kind.value)
             adapter = registry.build(adapter_kind, to_source_config(source))
-            items = await asyncio.wait_for(adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT)
+            if serial is not None:
+                async with serial:
+                    items = await asyncio.wait_for(
+                        adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                    )
+                    await asyncio.sleep(SERIAL_ADAPTERS[adapter_kind])
+            else:
+                items = await asyncio.wait_for(
+                    adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                )
             stats.fetched = len(items)
             bound.info("source.fetched", count=len(items))
             return stats, list(items)
@@ -98,7 +128,11 @@ async def run_ingest(
             log.warning("ingest.skipped", reason="another run holds the lock")
             return []
 
-        sources = list(session.query(Source).all()) if force else list(due_sources(session))
+        sources = (
+            list(session.query(Source).filter(Source.enabled.is_(True)).all())
+            if force
+            else list(due_sources(session))
+        )
         if only_slug:
             sources = [s for s in sources if s.slug == only_slug]
         if not sources:
@@ -108,9 +142,19 @@ async def run_ingest(
         log.info("ingest.start", sources=len(sources), since=since.isoformat())
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
+        serial_locks = {kind: asyncio.Lock() for kind in SERIAL_ADAPTERS}
         async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), follow_redirects=True) as client:
             results = await asyncio.gather(
-                *(_fetch_one(client, s, since, semaphore) for s in sources)
+                *(
+                    _fetch_one(
+                        client,
+                        s,
+                        source_since(s, started=started, lookback_hours=lookback_hours),
+                        semaphore,
+                        serial_locks,
+                    )
+                    for s in sources
+                )
             )
 
         # Persist under the global cap. Higher-trust sources are drained first so
