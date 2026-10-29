@@ -29,7 +29,10 @@ class TestVoiceSelection:
         # language must not be silently dropped.
         assert engine.name in ("kokoro", "null")
         if engine.name == "kokoro":
-            assert engine.lang_code == "h"
+            # Either backend: the reference package takes a code, ONNX a language tag.
+            assert (
+                getattr(engine, "lang_code", None) == "h" or getattr(engine, "lang", None) == "hi"
+            )
 
     def test_hindi_voices_are_registered(self):
         voices = KokoroEngine().voices()

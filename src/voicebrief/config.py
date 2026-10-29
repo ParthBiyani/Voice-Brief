@@ -66,6 +66,8 @@ class Settings(BaseSettings):
     tts_engine: TTSEngine = Field(default="kokoro", alias="VB_TTS_ENGINE")
     tts_voice_en: str = Field(default="af_heart", alias="VB_TTS_VOICE_EN")
     tts_voice_hi: str = Field(default="hf_alpha", alias="VB_TTS_VOICE_HI")
+    # Where the Kokoro ONNX weights live. Unset means a per-user folder, not the repo.
+    tts_model_dir: str | None = Field(default=None, alias="VB_TTS_MODEL_DIR")
 
     # Source credentials (all optional; absence degrades, never breaks)
     github_token: SecretStr | None = Field(default=None, alias="GITHUB_TOKEN")

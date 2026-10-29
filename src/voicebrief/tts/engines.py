@@ -15,11 +15,13 @@ someone plays a real episode.
 
 from __future__ import annotations
 
+import os
 import struct
 import wave
 from pathlib import Path
 from typing import ClassVar
 
+from voicebrief.config import get_settings
 from voicebrief.logging import get_logger
 from voicebrief.tts.base import SpeechClip, TTSEngine, TTSError
 
@@ -96,6 +98,91 @@ class KokoroEngine(TTSEngine):
             path=out_path,
             duration_seconds=duration,
             sample_rate=self.sample_rate,
+            voice=voice,
+            engine=self.name,
+        )
+
+
+ONNX_MODEL_FILE = "kokoro-v1.0.onnx"
+ONNX_VOICES_FILE = "voices-v1.0.bin"
+ONNX_RELEASE = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0"
+
+
+def model_dir() -> Path:
+    """Per-user model folder: models are hundreds of MB and do not belong in the repo."""
+    configured = get_settings().tts_model_dir
+    if configured:
+        return Path(configured)
+    base = (
+        os.environ.get("LOCALAPPDATA")
+        or os.environ.get("XDG_DATA_HOME")
+        or str(Path.home() / ".local" / "share")
+    )
+    return Path(base) / "VoiceBrief" / "models"
+
+
+class KokoroOnnxEngine(TTSEngine):
+    """The Kokoro voice model run through onnxruntime.
+
+    The reference `kokoro` package pins Python below 3.13, which ruled it out on current
+    interpreters. This is the same 82M-parameter model and the same voices, loaded from
+    two files (see `voicebrief tts setup`), with no torch or spaCy dependency.
+    """
+
+    name = "kokoro"
+    sample_rate = 24_000
+    VOICES: ClassVar[dict[str, str]] = KokoroEngine.VOICES
+
+    def __init__(self, lang: str = "en-us") -> None:
+        self.lang = lang
+        self._kokoro = None
+
+    def paths(self) -> tuple[Path, Path]:
+        folder = model_dir()
+        return folder / ONNX_MODEL_FILE, folder / ONNX_VOICES_FILE
+
+    def available(self) -> bool:
+        try:
+            import kokoro_onnx  # noqa: F401
+        except ImportError:
+            return False
+        return all(path.is_file() for path in self.paths())
+
+    def voices(self) -> dict[str, str]:
+        return dict(self.VOICES)
+
+    def _load(self):
+        if self._kokoro is None:
+            from kokoro_onnx import Kokoro
+
+            model, voices = self.paths()
+            log.info("tts.loading", engine="kokoro-onnx", lang=self.lang)
+            self._kokoro = Kokoro(str(model), str(voices))
+        return self._kokoro
+
+    def synthesize(
+        self, text: str, *, voice: str, out_path: Path, speed: float = 1.0
+    ) -> SpeechClip:
+        if not text.strip():
+            raise TTSError("refusing to synthesize empty text")
+        try:
+            import soundfile as sf
+
+            samples, rate = self._load().create(text, voice=voice, speed=speed, lang=self.lang)
+            if samples is None or len(samples) == 0:
+                raise TTSError("Kokoro (onnx) produced no audio")
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            sf.write(out_path, samples, rate)
+            duration = len(samples) / float(rate)
+        except TTSError:
+            raise
+        except Exception as exc:
+            raise TTSError(f"Kokoro (onnx) synthesis failed: {exc}") from exc
+
+        return SpeechClip(
+            path=out_path,
+            duration_seconds=duration,
+            sample_rate=int(rate),
             voice=voice,
             engine=self.name,
         )
@@ -201,11 +288,14 @@ def build_engine(name: str, *, language: str = "en") -> TTSEngine:
         engine = KokoroEngine(lang_code="h" if language == "hi" else "a")
         if engine.available():
             return engine
+        onnx = KokoroOnnxEngine(lang="hi" if language == "hi" else "en-us")
+        if onnx.available():
+            return onnx
         log.warning(
             "tts.unavailable",
             engine="kokoro",
             fallback="null",
-            hint="pip install 'voicebrief[tts]' to enable",
+            hint="run `voicebrief tts setup` to download the voice model",
         )
     elif name == "piper":
         engine = PiperEngine()
