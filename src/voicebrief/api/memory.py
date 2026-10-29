@@ -16,7 +16,6 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from voicebrief.api.schemas import (
@@ -110,7 +109,7 @@ def search(
 
     try:
         neighbours = get_vector_store().search_memory(vector, limit=limit)
-    except Exception as exc:  # noqa: BLE001 — search degrades, it does not 500
+    except Exception as exc:
         log.warning("memory.search_failed", error=str(exc))
         return SearchResponse(query=q, hits=[])
 
@@ -151,9 +150,10 @@ def segment_chat(
         raise HTTPException(status_code=422, detail="question or preset is required")
 
     citations = segment.citations or []
-    sources = "\n".join(
-        f"- {c.get('title', 'source')} ({c.get('url', '')})" for c in citations
-    ) or "(no sources recorded for this segment)"
+    sources = (
+        "\n".join(f"- {c.get('title', 'source')} ({c.get('url', '')})" for c in citations)
+        or "(no sources recorded for this segment)"
+    )
 
     prompt = (
         f"SEGMENT THE LISTENER HEARD:\n{segment.script}\n\n"

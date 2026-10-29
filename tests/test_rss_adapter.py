@@ -7,7 +7,7 @@ and feeds that 403 non-browser clients (PyTorch).
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -32,9 +32,7 @@ def entry(
     date: str | None = None,
     description: str | None = "A plain summary.",
 ) -> str:
-    date = date if date is not None else datetime.now(timezone.utc).strftime(
-        "%a, %d %b %Y %H:%M:%S +0000"
-    )
+    date = date if date is not None else datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S +0000")
     parts = [f"<title>{title}</title>", f"<link>{link}</link>"]
     if guid:
         parts.append(f"<guid>{guid}</guid>")
@@ -57,7 +55,7 @@ def adapter(**over) -> RSSAdapter:
 
 
 async def run(body: str, since: datetime | None = None, status: int = 200):
-    since = since or datetime.now(timezone.utc) - timedelta(days=7)
+    since = since or datetime.now(UTC) - timedelta(days=7)
     respx.get(FEED_URL).mock(return_value=httpx.Response(status, text=body))
     async with httpx.AsyncClient() as client:
         return await adapter().fetch(client, since)
@@ -89,7 +87,9 @@ class TestParsing:
 
     @respx.mock
     async def test_html_in_summary_is_flattened(self):
-        items = await run(feed(entry(description="<p>Ships <strong>durable</strong> execution.</p>")))
+        items = await run(
+            feed(entry(description="<p>Ships <strong>durable</strong> execution.</p>"))
+        )
         assert items[0].summary == "Ships durable execution."
 
     @respx.mock
@@ -126,7 +126,7 @@ class TestParsing:
 
     @respx.mock
     async def test_iso_dates_are_accepted(self):
-        iso = datetime.now(timezone.utc).isoformat()
+        iso = datetime.now(UTC).isoformat()
         items = await run(feed(entry(date=iso)))
         assert len(items) == 1
 
@@ -167,7 +167,7 @@ class TestFailureModes:
         async with httpx.AsyncClient() as client:
             respx.get(FEED_URL).mock(return_value=httpx.Response(200, text=feed("")))
             with pytest.raises(ValueError, match="no entries parsed"):
-                await adapter().fetch(client, datetime.now(timezone.utc) - timedelta(days=7))
+                await adapter().fetch(client, datetime.now(UTC) - timedelta(days=7))
 
     @respx.mock
     async def test_forbidden_propagates_to_the_orchestrator(self):
@@ -176,7 +176,7 @@ class TestFailureModes:
         respx.get(FEED_URL).mock(return_value=httpx.Response(403))
         async with httpx.AsyncClient() as client:
             with pytest.raises(httpx.HTTPStatusError):
-                await adapter().fetch(client, datetime.now(timezone.utc) - timedelta(days=7))
+                await adapter().fetch(client, datetime.now(UTC) - timedelta(days=7))
 
     @respx.mock
     async def test_entry_cap_is_enforced(self):

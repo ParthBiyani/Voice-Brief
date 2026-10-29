@@ -8,13 +8,12 @@ ON CONFLICT semantics and advisory locks are not worth faking.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import text
 
 from voicebrief.db import session_scope
-from voicebrief.db.models import Source
 from voicebrief.db.repository import (
     bulk_insert_items,
     due_sources,
@@ -70,7 +69,7 @@ class TestUpsertSource:
         try:
             source = upsert_source(session, spec)
             source.consecutive_failures = 3
-            source.last_polled_at = datetime.now(timezone.utc)
+            source.last_polled_at = datetime.now(UTC)
             session.flush()
 
             again = upsert_source(session, spec)
@@ -93,7 +92,7 @@ class TestDueSources:
     def test_recently_polled_source_is_not_due(self, session, spec):
         try:
             source = upsert_source(session, spec)
-            source.last_polled_at = datetime.now(timezone.utc)
+            source.last_polled_at = datetime.now(UTC)
             session.flush()
             assert spec["slug"] not in {s.slug for s in due_sources(session)}
         finally:
@@ -105,11 +104,11 @@ class TestDueSources:
             source = upsert_source(session, spec)
             source.poll_interval_minutes = 60
             source.consecutive_failures = 2
-            source.last_polled_at = datetime.now(timezone.utc) - timedelta(minutes=180)
+            source.last_polled_at = datetime.now(UTC) - timedelta(minutes=180)
             session.flush()
             assert spec["slug"] not in {s.slug for s in due_sources(session)}
 
-            source.last_polled_at = datetime.now(timezone.utc) - timedelta(minutes=300)
+            source.last_polled_at = datetime.now(UTC) - timedelta(minutes=300)
             session.flush()
             assert spec["slug"] in {s.slug for s in due_sources(session)}
         finally:
@@ -126,7 +125,7 @@ class TestBulkInsertItems:
                     external_id="e1",
                     url="https://example.com/1",
                     title="One",
-                    published_at=datetime.now(timezone.utc),
+                    published_at=datetime.now(UTC),
                 )
             ]
             inserted, skipped = bulk_insert_items(session, source.id, items)

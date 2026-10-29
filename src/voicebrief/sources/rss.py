@@ -20,7 +20,7 @@ from __future__ import annotations
 import hashlib
 import re
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import feedparser
 import httpx
@@ -90,7 +90,7 @@ class RSSAdapter(SourceAdapter):
         for entry in feed.entries[:_MAX_ENTRIES]:
             try:
                 item = self._to_item(entry, feed_title, since)
-            except Exception as exc:  # noqa: BLE001 — one bad entry, not one bad feed
+            except Exception as exc:
                 skipped += 1
                 self.log.debug("rss.entry_skipped", error=str(exc))
                 continue
@@ -139,7 +139,7 @@ class RSSAdapter(SourceAdapter):
         for key in ("published_parsed", "updated_parsed", "created_parsed"):
             parsed = entry.get(key)
             if parsed:
-                return datetime(*parsed[:6], tzinfo=timezone.utc)
+                return datetime(*parsed[:6], tzinfo=UTC)
 
         for key in ("published", "updated", "created", "date"):
             value = entry.get(key)
@@ -149,7 +149,7 @@ class RSSAdapter(SourceAdapter):
                 dt = date_parser.parse(value)
             except (ValueError, OverflowError, TypeError):
                 continue
-            return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+            return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
         # A dateless entry cannot be placed in the recency window, and guessing "now"
         # would let stale posts masquerade as breaking news every single run.

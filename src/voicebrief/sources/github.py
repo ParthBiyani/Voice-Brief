@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Sequence
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -71,7 +71,7 @@ class GitHubSearchAdapter(_GitHubBase):
         cfg = self.config.config
         window_days = int(cfg.get("created_within_days", 30))
         min_stars = int(cfg.get("min_stars", 50))
-        created_after = (datetime.now(timezone.utc) - timedelta(days=window_days)).date()
+        created_after = (datetime.now(UTC) - timedelta(days=window_days)).date()
 
         topics: list[str] = cfg.get("topics") or ["llm"]
         qualifier = f"created:>{created_after} stars:>={min_stars}"
@@ -115,9 +115,7 @@ class GitHubSearchAdapter(_GitHubBase):
                 headers=self.headers(),
             )
             if self._rate_limited(response):
-                raise httpx.HTTPError(
-                    "GitHub rate limit exhausted; set GITHUB_TOKEN to raise it"
-                )
+                raise httpx.HTTPError("GitHub rate limit exhausted; set GITHUB_TOKEN to raise it")
             response.raise_for_status()
 
             items: list[RawItem] = []
@@ -138,9 +136,7 @@ class GitHubSearchAdapter(_GitHubBase):
                         author=repo.get("owner", {}).get("login"),
                         published_at=created or pushed,
                         topics=self._topics(repo),
-                        engagement=min(
-                            repo.get("stargazers_count", 0) / _STAR_SATURATION, 1.0
-                        ),
+                        engagement=min(repo.get("stargazers_count", 0) / _STAR_SATURATION, 1.0),
                         raw={
                             "stars": repo.get("stargazers_count", 0),
                             "forks": repo.get("forks_count", 0),

@@ -81,8 +81,7 @@ def _synthesize(schema: dict, prompt: str) -> dict | list:
         if kind == "object":
             required = node.get("required") or list(node.get("properties", {}))
             return {
-                key: build(node.get("properties", {}).get(key, {}), depth + 1)
-                for key in required
+                key: build(node.get("properties", {}).get(key, {}), depth + 1) for key in required
             }
         if kind == "array":
             item = node.get("items", {"type": "string"})

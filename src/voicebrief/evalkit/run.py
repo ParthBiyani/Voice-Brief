@@ -21,13 +21,14 @@ import json
 import pathlib
 import platform
 import subprocess
-import uuid
 import time
+import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import numpy as np
 
+from voicebrief.evalkit.ablation import persona_profile
 from voicebrief.evalkit.annotation import PERSONAS_BY_KEY
 from voicebrief.evalkit.metrics import (
     MetricResult,
@@ -40,7 +41,6 @@ from voicebrief.evalkit.metrics import (
 )
 from voicebrief.pipeline.clustering import cluster_items, labels_from_clusters
 from voicebrief.pipeline.dedup import DedupCandidate, find_duplicates, pairs_from_groups
-from voicebrief.evalkit.ablation import persona_profile
 from voicebrief.pipeline.embedding import get_embedding_service, item_text
 from voicebrief.pipeline.ranking import RankCandidate, prerank
 
@@ -52,9 +52,7 @@ BASELINE = ROOT / "eval" / "baseline.json"
 
 def _read_jsonl(path: pathlib.Path) -> list[dict]:
     return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
 
 
@@ -114,11 +112,17 @@ def eval_dedup(corpus: Corpus, *, threshold: float = 0.92) -> list[MetricResult]
 
     return [
         MetricResult(
-            "Deduplication", "pairwise precision", result.precision, target=0.90,
+            "Deduplication",
+            "pairwise precision",
+            result.precision,
+            target=0.90,
             detail=result.as_dict(),
         ),
         MetricResult(
-            "Deduplication", "pairwise recall", result.recall, target=0.80,
+            "Deduplication",
+            "pairwise recall",
+            result.recall,
+            target=0.80,
             detail={"judged_pairs": len(judged), "true_pairs": len(truth)},
         ),
     ]
@@ -155,15 +159,23 @@ def eval_clustering(corpus: Corpus) -> list[MetricResult]:
     # when every cluster is topically correct.
     return [
         MetricResult(
-            "Clustering", "homogeneity", homogeneity(predicted, truth), target=0.75,
+            "Clustering",
+            "homogeneity",
+            homogeneity(predicted, truth),
+            target=0.75,
             detail=detail,
         ),
         MetricResult(
-            "Clustering", "clustered fraction", clustered_fraction(predicted), target=None,
+            "Clustering",
+            "clustered fraction",
+            clustered_fraction(predicted),
+            target=None,
             detail={"note": "guards against purity gamed by refusing to cluster"},
         ),
         MetricResult(
-            "Clustering", "adjusted rand index", adjusted_rand_index(predicted, truth),
+            "Clustering",
+            "adjusted rand index",
+            adjusted_rand_index(predicted, truth),
             target=None,
             detail={"note": "granularity mismatch: stories vs subject areas, see metrics.py"},
         ),
@@ -230,11 +242,16 @@ def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
 
     return [
         MetricResult(
-            "Ranking", f"precision@{k}", float(np.mean(precisions)) if precisions else 0.0,
-            target=0.70, detail=per_persona,
+            "Ranking",
+            f"precision@{k}",
+            float(np.mean(precisions)) if precisions else 0.0,
+            target=0.70,
+            detail=per_persona,
         ),
         MetricResult(
-            "Ranking", f"nDCG@{k}", float(np.mean(ndcgs)) if ndcgs else 0.0,
+            "Ranking",
+            f"nDCG@{k}",
+            float(np.mean(ndcgs)) if ndcgs else 0.0,
             target=None,
             detail={"note": "pre-LLM heuristic path; LLM re-rank measured separately"},
         ),
@@ -246,7 +263,7 @@ def _git_sha() -> str:
         return subprocess.check_output(
             ["git", "rev-parse", "--short", "HEAD"], cwd=ROOT, text=True
         ).strip()
-    except Exception:  # noqa: BLE001 — a missing git is not a harness failure
+    except Exception:
         return "unknown"
 
 
@@ -260,7 +277,7 @@ def run_all(*, threshold: float = 0.92) -> dict:
     results += eval_ranking(corpus)
 
     return {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "git_sha": _git_sha(),
         "python": platform.python_version(),
         "corpus_size": len(corpus.rows),
@@ -332,7 +349,7 @@ def main() -> int:
         print(_format_table(report, baseline))
 
     RUNS.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     (RUNS / f"{stamp}.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     if args.record:

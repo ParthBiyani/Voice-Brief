@@ -53,9 +53,7 @@ def pairwise_prf(predicted: set[frozenset], truth: set[frozenset]) -> PRF:
     return PRF(precision, recall, f1, tp, fp, fn)
 
 
-def adjusted_rand_index(
-    predicted: dict[Hashable, int], truth: dict[Hashable, int]
-) -> float:
+def adjusted_rand_index(predicted: dict[Hashable, int], truth: dict[Hashable, int]) -> float:
     """ARI over the items present in both labelings.
 
     Chance-corrected: 0.0 is what random assignment scores, 1.0 is a perfect match.
@@ -116,9 +114,7 @@ def ndcg_at_k(ranked: Sequence[Hashable], relevant: set[Hashable], k: int) -> fl
         return 0.0
 
     dcg = sum(
-        1.0 / math.log2(rank + 2)
-        for rank, item in enumerate(list(ranked)[:k])
-        if item in relevant
+        1.0 / math.log2(rank + 2) for rank, item in enumerate(list(ranked)[:k]) if item in relevant
     )
     ideal = sum(1.0 / math.log2(rank + 2) for rank in range(min(len(relevant), k)))
     return dcg / ideal if ideal else 0.0

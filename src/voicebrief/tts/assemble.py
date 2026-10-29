@@ -66,9 +66,7 @@ class AssembledEpisode:
             lines.append(f"[{segment.timestamp()}] {segment.heading}")
             lines.append(segment.script)
             if segment.citations:
-                lines.append(
-                    "Sources: " + ", ".join(c.get("url", "") for c in segment.citations)
-                )
+                lines.append("Sources: " + ", ".join(c.get("url", "") for c in segment.citations))
             lines.append("")
         return "\n".join(lines).strip()
 

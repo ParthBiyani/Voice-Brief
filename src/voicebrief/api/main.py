@@ -12,12 +12,13 @@ the whole scheduler, deliberately — Celery and Temporal are v2 (PRD §8).
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import uuid
 from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,8 +28,6 @@ from sqlalchemy.orm import Session
 
 from voicebrief import __version__
 from voicebrief.api.schemas import (
-    ChatRequest,
-    ChatResponse,
     Citation,
     EpisodeDetail,
     EpisodeSummary,
@@ -94,7 +93,7 @@ def health(session: Session = Depends(get_session)) -> HealthResponse:
     postgres_ok = True
     try:
         session.execute(text("SELECT 1"))
-    except Exception:  # noqa: BLE001 — health must report, never raise
+    except Exception:
         postgres_ok = False
 
     qdrant_ok = True
@@ -102,7 +101,7 @@ def health(session: Session = Depends(get_session)) -> HealthResponse:
         from voicebrief.pipeline.vectorstore import get_vector_store
 
         get_vector_store().client.get_collections()
-    except Exception:  # noqa: BLE001
+    except Exception:
         qdrant_ok = False
 
     return HealthResponse(
@@ -130,8 +129,12 @@ async def ingest_run(force: bool = False) -> list[IngestStats]:
     stats = await run_ingest(force=force)
     return [
         IngestStats(
-            slug=s.slug, fetched=s.fetched, inserted=s.inserted,
-            skipped=s.skipped, ok=s.ok, error=s.error,
+            slug=s.slug,
+            fetched=s.fetched,
+            inserted=s.inserted,
+            skipped=s.skipped,
+            ok=s.ok,
+            error=s.error,
         )
         for s in stats
     ]
@@ -165,9 +168,7 @@ def list_episodes(
 
 
 @app.get("/episodes/{episode_id}", response_model=EpisodeDetail, tags=["episodes"])
-def get_episode(
-    episode_id: uuid.UUID, session: Session = Depends(get_session)
-) -> EpisodeDetail:
+def get_episode(episode_id: uuid.UUID, session: Session = Depends(get_session)) -> EpisodeDetail:
     episode = session.get(Episode, episode_id)
     if episode is None:
         raise HTTPException(status_code=404, detail="episode not found")
@@ -227,9 +228,7 @@ def generate(
     Generation takes minutes; holding the request open for that long dies to a proxy
     timeout. Progress is streamed from the returned `stream_url`.
     """
-    user = session.execute(
-        select(User).where(User.email == request.email)
-    ).scalar_one_or_none()
+    user = session.execute(select(User).where(User.email == request.email)).scalar_one_or_none()
     if user is None:
         user = User(
             email=request.email,
@@ -279,12 +278,10 @@ async def stream_progress(episode_id: uuid.UUID) -> StreamingResponse:
 
 
 def _emit(episode_id: uuid.UUID, stage: str, **fields) -> None:
-    event = {"stage": stage, "at": datetime.now(timezone.utc).isoformat(), **fields}
+    event = {"stage": stage, "at": datetime.now(UTC).isoformat(), **fields}
     queue = _progress[episode_id]
-    try:
+    with contextlib.suppress(asyncio.QueueFull):  # unbounded by default
         queue.put_nowait(event)
-    except asyncio.QueueFull:  # pragma: no cover - unbounded by default
-        pass
 
 
 def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: GenerateRequest) -> None:
@@ -327,7 +324,7 @@ def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: Generate
                 from voicebrief.api.memory import index_episode_segments
 
                 index_episode_segments(session, result.episode_id)
-        except Exception as exc:  # noqa: BLE001 — a searchable episode is a bonus,
+        except Exception as exc:
             # not a precondition for having generated one.
             log.warning("api.memory_index_failed", error=str(exc))
 
@@ -340,7 +337,7 @@ def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: Generate
             cost_inr=result.cost_inr,
             attribution_rate=result.attribution_rate,
         )
-    except Exception as exc:  # noqa: BLE001 — a background task must not die silently
+    except Exception as exc:
         log.error("api.generation_failed", error=str(exc))
         _emit(episode_id, "failed", error=f"{type(exc).__name__}: {exc}"[:300])
 

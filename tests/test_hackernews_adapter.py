@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -33,7 +33,7 @@ def story(sid: int, **over) -> dict:
         "by": "someone",
         "score": 100,
         "descendants": 42,
-        "time": int(datetime.now(timezone.utc).timestamp()),
+        "time": int(datetime.now(UTC).timestamp()),
         "url": f"https://example.com/{sid}",
     }
     return {**base, **over}
@@ -48,7 +48,7 @@ def mock_hn(stories: list[dict]) -> None:
 
 
 async def run(adapter, since=None):
-    since = since or datetime.now(timezone.utc) - timedelta(days=2)
+    since = since or datetime.now(UTC) - timedelta(days=2)
     async with httpx.AsyncClient() as client:
         return await adapter.fetch(client, since)
 
@@ -99,7 +99,7 @@ async def test_dead_deleted_and_non_stories_are_skipped(adapter, bad):
 
 @respx.mock
 async def test_old_story_outside_window_is_dropped(adapter):
-    old = int((datetime.now(timezone.utc) - timedelta(days=30)).timestamp())
+    old = int((datetime.now(UTC) - timedelta(days=30)).timestamp())
     mock_hn([story(1, time=old), story(2)])
     items = await run(adapter)
     assert [i.external_id for i in items] == ["2"]

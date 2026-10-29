@@ -4,7 +4,7 @@ never take down a run. These tests exercise that boundary directly."""
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import pytest
@@ -40,7 +40,7 @@ def _adapters():
                     external_id="1",
                     url="https://example.com/1",
                     title="Fine",
-                    published_at=datetime.now(timezone.utc),
+                    published_at=datetime.now(UTC),
                 )
             ]
 
@@ -69,9 +69,7 @@ def _adapters():
 
 async def _run(source):
     async with httpx.AsyncClient() as client:
-        return await _fetch_one(
-            client, source, datetime.now(timezone.utc), asyncio.Semaphore(1)
-        )
+        return await _fetch_one(client, source, datetime.now(UTC), asyncio.Semaphore(1))
 
 
 class TestFetchBoundary:
@@ -107,7 +105,7 @@ class TestFetchBoundary:
         async with httpx.AsyncClient() as client:
             sem = asyncio.Semaphore(3)
             results = await asyncio.gather(
-                *(_fetch_one(client, s, datetime.now(timezone.utc), sem) for s in sources)
+                *(_fetch_one(client, s, datetime.now(UTC), sem) for s in sources)
             )
         assert [r[0].ok for r in results] == [True, False, True]
 
@@ -118,7 +116,7 @@ class TestTopicFallback:
             external_id="1",
             url="https://e.com",
             title="t",
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.now(UTC),
         )
         _apply_topics([item], _FakeSource("s", "test_good", ["agentic-ai"]))
         assert item.topics == ["agentic-ai"]
@@ -128,7 +126,7 @@ class TestTopicFallback:
             external_id="1",
             url="https://e.com",
             title="t",
-            published_at=datetime.now(timezone.utc),
+            published_at=datetime.now(UTC),
             topics=["specific"],
         )
         _apply_topics([item], _FakeSource("s", "test_good", ["generic"]))

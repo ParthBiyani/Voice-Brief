@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
@@ -12,7 +12,7 @@ from voicebrief.pipeline.filtering import (
     score_item,
 )
 
-NOW = datetime(2026, 6, 4, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 6, 4, 12, 0, tzinfo=UTC)
 SRC_A = uuid.uuid4()
 SRC_B = uuid.uuid4()
 
@@ -87,8 +87,9 @@ class TestRecency:
 
     def test_recency_decays_monotonically(self):
         scores = [
-            score_item(FakeItem(hours_ago=h), trust_weight=0.5, user_topics=set(), now=NOW)
-            .reasons["recency"]
+            score_item(FakeItem(hours_ago=h), trust_weight=0.5, user_topics=set(), now=NOW).reasons[
+                "recency"
+            ]
             for h in (1, 12, 48, 168)
         ]
         assert scores == sorted(scores, reverse=True)

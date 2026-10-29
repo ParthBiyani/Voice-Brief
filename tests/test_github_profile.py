@@ -163,9 +163,7 @@ class TestProfileBuilding:
     @respx.mock
     async def test_one_unreachable_repo_does_not_fail_the_profile(self):
         mock_account([repo("good"), repo("broken")], {"user/good": {"requirements.txt": "dio"}})
-        respx.get(f"{API}/repos/user/broken/git/trees/HEAD").mock(
-            return_value=httpx.Response(500)
-        )
+        respx.get(f"{API}/repos/user/broken/git/trees/HEAD").mock(return_value=httpx.Response(500))
         respx.get(f"{API}/repos/user/broken/contents/requirements.txt").mock(
             return_value=httpx.Response(500)
         )
@@ -200,9 +198,7 @@ class TestRequestBudget:
 
         await GitHubProfileBuilder().build("user")
 
-        content_calls = [
-            c for c in respx.calls if "/contents/" in str(c.request.url)
-        ]
+        content_calls = [c for c in respx.calls if "/contents/" in str(c.request.url)]
         tree_calls = [c for c in respx.calls if "/git/trees/" in str(c.request.url)]
 
         assert len(tree_calls) == 10, "one tree listing per repo"

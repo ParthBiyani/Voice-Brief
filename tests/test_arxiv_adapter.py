@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import httpx
@@ -28,7 +28,7 @@ def adapter() -> ArxivAdapter:
 
 @pytest.fixture
 def since() -> datetime:
-    return datetime(2026, 6, 1, tzinfo=timezone.utc)
+    return datetime(2026, 6, 1, tzinfo=UTC)
 
 
 @respx.mock
@@ -92,9 +92,7 @@ async def test_unparseable_response_raises(adapter, since):
 @respx.mock
 async def test_max_results_is_capped(since):
     adapter = ArxivAdapter(
-        SourceConfig(
-            slug="a", name="a", endpoint=ENDPOINT, config={"max_results": 100_000}
-        )
+        SourceConfig(slug="a", name="a", endpoint=ENDPOINT, config={"max_results": 100_000})
     )
     route = respx.get(ENDPOINT).mock(return_value=httpx.Response(200, text=SAMPLE))
     async with httpx.AsyncClient() as client:

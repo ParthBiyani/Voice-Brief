@@ -15,7 +15,7 @@ import json
 import pathlib
 import uuid
 
-from voicebrief.evalkit.annotation import PERSONAS, topic_for
+from voicebrief.evalkit.annotation import PERSONAS
 from voicebrief.evalkit.metrics import ndcg_at_k, precision_at_k
 from voicebrief.personalization.github_profile import StackProfileData
 from voicebrief.pipeline.ranking import RankCandidate, prerank
@@ -26,9 +26,7 @@ DATASETS = ROOT / "eval" / "datasets"
 
 def _read_jsonl(path: pathlib.Path) -> list[dict]:
     return [
-        json.loads(line)
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if line.strip()
+        json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
     ]
 
 
@@ -104,9 +102,7 @@ def run_ablation(k: int = 10) -> dict:
     arms = ["with_profile", "topics_only", "no_personalization"]
     summary = {
         arm: {
-            metric: round(
-                sum(r[arm][metric] for r in results.values()) / max(len(results), 1), 4
-            )
+            metric: round(sum(r[arm][metric] for r in results.values()) / max(len(results), 1), 4)
             for metric in ("p_at_k", "ndcg")
         }
         for arm in arms
@@ -129,7 +125,7 @@ def format_table(report: dict) -> str:
         change = "  baseline" if arm == "no_personalization" else f"{delta:+.4f}"
         lines.append(f"{arm:<22} {row['p_at_k']:>8.4f} {row['ndcg']:>10.4f} {change:>10}")
 
-    lines += ["", "Per persona (P@%d):" % k]
+    lines += ["", f"Per persona (P@{k}):"]
     for key, row in report["per_persona"].items():
         lines.append(
             f"  {key:<16} profile={row['with_profile']['p_at_k']:.3f}  "

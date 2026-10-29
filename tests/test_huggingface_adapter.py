@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -16,9 +16,7 @@ def record(repo_id: str, **over) -> dict:
     base = {
         "id": repo_id,
         "author": repo_id.split("/")[0],
-        "lastModified": (datetime.now(timezone.utc) - timedelta(days=1))
-        .isoformat()
-        .replace("+00:00", "Z"),
+        "lastModified": (datetime.now(UTC) - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
         "downloads": 10_000,
         "likes": 50,
         "pipeline_tag": "text-generation",
@@ -42,11 +40,11 @@ def adapter(entity: str = "models") -> HuggingFaceAdapter:
 
 @pytest.fixture
 def since() -> datetime:
-    return datetime.now(timezone.utc) - timedelta(days=14)
+    return datetime.now(UTC) - timedelta(days=14)
 
 
 async def run(payload, entity="models", since=None):
-    since = since or datetime.now(timezone.utc) - timedelta(days=14)
+    since = since or datetime.now(UTC) - timedelta(days=14)
     respx.get(MODELS_URL).mock(return_value=httpx.Response(200, json=payload))
     async with httpx.AsyncClient() as client:
         return await adapter(entity).fetch(client, since)
@@ -105,7 +103,7 @@ async def test_non_list_payload_raises():
     respx.get(MODELS_URL).mock(return_value=httpx.Response(200, json={"error": "nope"}))
     async with httpx.AsyncClient() as client:
         with pytest.raises(ValueError, match="expected a list"):
-            await adapter().fetch(client, datetime.now(timezone.utc) - timedelta(days=1))
+            await adapter().fetch(client, datetime.now(UTC) - timedelta(days=1))
 
 
 class TestEngagement:
@@ -146,5 +144,5 @@ async def test_limit_is_capped():
         SourceConfig(slug="hf", name="HF", endpoint=MODELS_URL, config={"limit": 99_999})
     )
     async with httpx.AsyncClient() as client:
-        await a.fetch(client, datetime.now(timezone.utc) - timedelta(days=1))
+        await a.fetch(client, datetime.now(UTC) - timedelta(days=1))
     assert route.calls[0].request.url.params["limit"] == "200"

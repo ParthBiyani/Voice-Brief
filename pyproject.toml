@@ -77,7 +77,14 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
-ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+ignore = [
+    "B008",    # FastAPI Depends() in defaults is idiomatic
+    "E501",    # line length is owned by `ruff format`
+    "UP042",   # (str, Enum) is kept: values are stored in Postgres enums
+    "N818",    # BudgetExceeded is a public name
+    "C408",    # dict(...) reads better for keyword-style test fixtures
+    "RUF002",  # the minus sign in the clustering docstring is deliberate
+]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]

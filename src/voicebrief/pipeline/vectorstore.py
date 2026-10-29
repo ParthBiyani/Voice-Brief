@@ -16,7 +16,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
 import numpy as np
@@ -85,7 +85,7 @@ class VectorStore:
             self.client.create_payload_index(
                 collection_name=collection, field_name=field, field_schema=schema, wait=True
             )
-        except Exception as exc:  # noqa: BLE001 — index already exists is not an error
+        except Exception as exc:
             log.debug("qdrant.index_exists", collection=collection, field=field, error=str(exc))
 
     # ── writes ────────────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ class VectorStore:
         that answers "what did you mention last week", so deleting from it would be
         deleting the product.
         """
-        cutoff = (datetime.now(timezone.utc) - timedelta(days=older_than_days)).timestamp()
+        cutoff = (datetime.now(UTC) - timedelta(days=older_than_days)).timestamp()
         self.client.delete(
             collection_name=ITEMS,
             points_selector=qm.FilterSelector(

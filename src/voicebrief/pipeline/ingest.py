@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import httpx
 
@@ -59,9 +59,7 @@ async def _fetch_one(
         try:
             adapter_kind = (source.config or {}).get("adapter", source.kind.value)
             adapter = registry.build(adapter_kind, to_source_config(source))
-            items = await asyncio.wait_for(
-                adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
-            )
+            items = await asyncio.wait_for(adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT)
             stats.fetched = len(items)
             bound.info("source.fetched", count=len(items))
             return stats, list(items)
@@ -72,7 +70,7 @@ async def _fetch_one(
             stats.ok, stats.error = False, f"{type(exc).__name__}: {exc}"
         except LookupError as exc:
             stats.ok, stats.error = False, str(exc)
-        except Exception as exc:  # noqa: BLE001 — the boundary is the point
+        except Exception as exc:
             stats.ok, stats.error = False, f"{type(exc).__name__}: {exc}"
 
         bound.warning("source.failed", error=stats.error)
@@ -92,73 +90,70 @@ async def run_ingest(
 ) -> list[SourceStats]:
     """Run one ingestion pass across every due source."""
     settings = get_settings()
-    started = datetime.now(timezone.utc)
+    started = datetime.now(UTC)
     since = started - timedelta(hours=lookback_hours)
 
-    with session_scope() as session:
-        with advisory_lock(session, INGEST_LOCK) as acquired:
-            if not acquired:
-                log.warning("ingest.skipped", reason="another run holds the lock")
-                return []
+    with session_scope() as session, advisory_lock(session, INGEST_LOCK) as acquired:
+        if not acquired:
+            log.warning("ingest.skipped", reason="another run holds the lock")
+            return []
 
-            sources = list(session.query(Source).all()) if force else list(due_sources(session))
-            if only_slug:
-                sources = [s for s in sources if s.slug == only_slug]
-            if not sources:
-                log.info("ingest.nothing_due")
-                return []
+        sources = list(session.query(Source).all()) if force else list(due_sources(session))
+        if only_slug:
+            sources = [s for s in sources if s.slug == only_slug]
+        if not sources:
+            log.info("ingest.nothing_due")
+            return []
 
-            log.info("ingest.start", sources=len(sources), since=since.isoformat())
+        log.info("ingest.start", sources=len(sources), since=since.isoformat())
 
-            semaphore = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
-            async with httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0), follow_redirects=True
-            ) as client:
-                results = await asyncio.gather(
-                    *(_fetch_one(client, s, since, semaphore) for s in sources)
-                )
-
-            # Persist under the global cap. Higher-trust sources are drained first so
-            # that when the cap bites it truncates the least valuable tail.
-            budget = settings.max_items_per_run
-            ordered = sorted(
-                zip(sources, results, strict=True),
-                key=lambda pair: pair[0].trust_weight,
-                reverse=True,
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_SOURCES)
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0), follow_redirects=True) as client:
+            results = await asyncio.gather(
+                *(_fetch_one(client, s, since, semaphore) for s in sources)
             )
 
-            all_stats: list[SourceStats] = []
-            for source, (stats, items) in ordered:
-                if items and budget > 0:
-                    items = _apply_topics(items[:budget], source)
-                    stats.inserted, stats.skipped = bulk_insert_items(session, source.id, items)
-                    budget -= stats.inserted
-                elif items:
-                    stats.skipped += len(items)
-                    log.warning("ingest.cap_reached", source=source.slug, dropped=len(items))
+        # Persist under the global cap. Higher-trust sources are drained first so
+        # that when the cap bites it truncates the least valuable tail.
+        budget = settings.max_items_per_run
+        ordered = sorted(
+            zip(sources, results, strict=True),
+            key=lambda pair: pair[0].trust_weight,
+            reverse=True,
+        )
 
-                source.last_polled_at = started
-                source.last_status = "ok" if stats.ok else "error"
-                source.consecutive_failures = 0 if stats.ok else source.consecutive_failures + 1
+        all_stats: list[SourceStats] = []
+        for source, (stats, items) in ordered:
+            if items and budget > 0:
+                items = _apply_topics(items[:budget], source)
+                stats.inserted, stats.skipped = bulk_insert_items(session, source.id, items)
+                budget -= stats.inserted
+            elif items:
+                stats.skipped += len(items)
+                log.warning("ingest.cap_reached", source=source.slug, dropped=len(items))
 
-                session.add(
-                    IngestRun(
-                        source_id=source.id,
-                        started_at=started,
-                        finished_at=datetime.now(timezone.utc),
-                        fetched=stats.fetched,
-                        inserted=stats.inserted,
-                        skipped=stats.skipped,
-                        ok=stats.ok,
-                        error=stats.error,
-                    )
+            source.last_polled_at = started
+            source.last_status = "ok" if stats.ok else "error"
+            source.consecutive_failures = 0 if stats.ok else source.consecutive_failures + 1
+
+            session.add(
+                IngestRun(
+                    source_id=source.id,
+                    started_at=started,
+                    finished_at=datetime.now(UTC),
+                    fetched=stats.fetched,
+                    inserted=stats.inserted,
+                    skipped=stats.skipped,
+                    ok=stats.ok,
+                    error=stats.error,
                 )
-                all_stats.append(stats)
-
-            log.info(
-                "ingest.done",
-                inserted=sum(s.inserted for s in all_stats),
-                failed=sum(1 for s in all_stats if not s.ok),
-                budget_left=budget,
             )
-            return all_stats
+            all_stats.append(stats)
+
+        log.info(
+            "ingest.done",
+            inserted=sum(s.inserted for s in all_stats),
+            failed=sum(1 for s in all_stats if not s.ok),
+            budget_left=budget,
+        )
+        return all_stats

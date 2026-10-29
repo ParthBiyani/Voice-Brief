@@ -21,7 +21,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from voicebrief.db.models import Item
 from voicebrief.logging import get_logger
@@ -109,10 +109,10 @@ def score_item(
     user_topics: set[str],
     now: datetime | None = None,
 ) -> ScoredItem:
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     published = item.published_at
     if published.tzinfo is None:
-        published = published.replace(tzinfo=timezone.utc)
+        published = published.replace(tzinfo=UTC)
 
     reasons = {
         "recency": _recency_score(published, now=now),
@@ -143,7 +143,7 @@ def prefilter(
     `max_per_source_ratio` caps any single source's share of the survivors. See
     `_enforce_diversity` for why that cap is not optional.
     """
-    now = now or datetime.now(timezone.utc)
+    now = now or datetime.now(UTC)
     topics = {t.lower() for t in (user_topics or set())}
 
     scored: list[ScoredItem] = []

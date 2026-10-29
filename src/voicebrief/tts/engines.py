@@ -18,6 +18,7 @@ from __future__ import annotations
 import struct
 import wave
 from pathlib import Path
+from typing import ClassVar
 
 from voicebrief.logging import get_logger
 from voicebrief.tts.base import SpeechClip, TTSEngine, TTSError
@@ -35,7 +36,7 @@ class KokoroEngine(TTSEngine):
 
     # Kokoro voice ids. The Hindi voices are what make the PRD's multilingual claim
     # more than a translation layer.
-    VOICES = {
+    VOICES: ClassVar[dict[str, str]] = {
         "af_heart": "en-US female, warm",
         "af_bella": "en-US female, brisk",
         "am_adam": "en-US male, news register",
@@ -88,7 +89,7 @@ class KokoroEngine(TTSEngine):
             duration = len(samples) / self.sample_rate
         except TTSError:
             raise
-        except Exception as exc:  # noqa: BLE001 — engine internals vary by version
+        except Exception as exc:
             raise TTSError(f"Kokoro synthesis failed: {exc}") from exc
 
         return SpeechClip(
@@ -200,8 +201,12 @@ def build_engine(name: str, *, language: str = "en") -> TTSEngine:
         engine = KokoroEngine(lang_code="h" if language == "hi" else "a")
         if engine.available():
             return engine
-        log.warning("tts.unavailable", engine="kokoro", fallback="null",
-                    hint="pip install 'voicebrief[tts]' to enable")
+        log.warning(
+            "tts.unavailable",
+            engine="kokoro",
+            fallback="null",
+            hint="pip install 'voicebrief[tts]' to enable",
+        )
     elif name == "piper":
         engine = PiperEngine()
         if engine.available():

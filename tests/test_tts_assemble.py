@@ -49,15 +49,11 @@ def workspace(tmp_path: Path) -> tuple[Path, Path]:
 
 class TestVoiceKey:
     def test_same_inputs_give_the_same_key(self):
-        assert voice_key("hello", "af_heart", "kokoro") == voice_key(
-            "hello", "af_heart", "kokoro"
-        )
+        assert voice_key("hello", "af_heart", "kokoro") == voice_key("hello", "af_heart", "kokoro")
 
     def test_different_voice_gives_a_different_key(self):
         """A cache keyed on text alone would serve the wrong voice after a change."""
-        assert voice_key("hello", "af_heart", "kokoro") != voice_key(
-            "hello", "am_adam", "kokoro"
-        )
+        assert voice_key("hello", "af_heart", "kokoro") != voice_key("hello", "am_adam", "kokoro")
 
     def test_different_engine_gives_a_different_key(self):
         assert voice_key("hello", "v", "kokoro") != voice_key("hello", "v", "piper")
@@ -77,8 +73,9 @@ class TestSynthesis:
 
     def test_empty_segment_yields_no_clip(self, engine, workspace):
         _, cache = workspace
-        results, _ = synthesize_segments(segments("", "real text here"), engine,
-                                         voice="v", cache_dir=cache)
+        results, _ = synthesize_segments(
+            segments("", "real text here"), engine, voice="v", cache_dir=cache
+        )
         assert results[0][1] is None
         assert results[1][1] is not None
 
@@ -93,8 +90,9 @@ class TestSynthesis:
     def test_changed_text_misses_the_cache(self, engine, workspace):
         _, cache = workspace
         synthesize_segments(segments("original wording"), engine, voice="v", cache_dir=cache)
-        _, hits = synthesize_segments(segments("revised wording"), engine,
-                                      voice="v", cache_dir=cache)
+        _, hits = synthesize_segments(
+            segments("revised wording"), engine, voice="v", cache_dir=cache
+        )
         assert hits == 0
 
     def test_longer_text_takes_longer(self, engine, workspace):
@@ -110,7 +108,10 @@ class TestAssembly:
         out, cache = workspace
         episode = assemble(
             segments("first segment words", "second segment words", "third segment words"),
-            engine, voice="v", out_path=out, cache_dir=cache,
+            engine,
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
         )
         starts = [s.start_seconds for s in episode.segments]
         assert starts == sorted(starts)
@@ -121,7 +122,10 @@ class TestAssembly:
         out, cache = workspace
         episode = assemble(
             segments("first segment words", "second segment words"),
-            engine, voice="v", out_path=out, cache_dir=cache,
+            engine,
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
         )
         first, second = episode.segments
         assert second.start_seconds == pytest.approx(first.end_seconds + SEGMENT_GAP, abs=0.01)
@@ -131,7 +135,10 @@ class TestAssembly:
         out, cache = workspace
         episode = assemble(
             segments("one two three four", "five six seven eight", "nine ten"),
-            engine, voice="v", out_path=out, cache_dir=cache,
+            engine,
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
         )
         with wave.open(str(out), "rb") as handle:
             actual = handle.getnframes() / handle.getframerate()
@@ -141,16 +148,18 @@ class TestAssembly:
         out, cache = workspace
         episode = assemble(
             segments("alpha beta gamma", "delta epsilon zeta"),
-            engine, voice="v", out_path=out, cache_dir=cache,
+            engine,
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
         )
-        assert episode.segments[-1].end_seconds == pytest.approx(
-            episode.duration_seconds, abs=0.05
-        )
+        assert episode.segments[-1].end_seconds == pytest.approx(episode.duration_seconds, abs=0.05)
 
     def test_single_segment_episode(self, engine, workspace):
         out, cache = workspace
-        episode = assemble(segments("only one here"), engine, voice="v",
-                           out_path=out, cache_dir=cache)
+        episode = assemble(
+            segments("only one here"), engine, voice="v", out_path=out, cache_dir=cache
+        )
         assert episode.duration_seconds > 0
         assert out.exists()
 
@@ -171,7 +180,10 @@ class TestAssembly:
 
         episode = assemble(
             segments("good segment here", "poison segment here", "another good one"),
-            BrokenEngine(), voice="v", out_path=out, cache_dir=cache,
+            BrokenEngine(),
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
         )
         assert len(episode.failures) == 1
         assert episode.duration_seconds > 0, "the episode survives one bad segment"
@@ -182,8 +194,9 @@ class TestAssembly:
         cache.mkdir(parents=True, exist_ok=True)
 
         engine = SilentEngine()
-        clips, _ = synthesize_segments(segments("first one here", "second one here"),
-                                       engine, voice="v", cache_dir=cache)
+        clips, _ = synthesize_segments(
+            segments("first one here", "second one here"), engine, voice="v", cache_dir=cache
+        )
         # Rewrite one clip at a different rate.
         odd = clips[1][1].path
         with wave.open(str(odd), "rb") as src:
@@ -195,15 +208,25 @@ class TestAssembly:
             dst.writeframes(frames)
 
         with pytest.raises(TTSError, match="timestamps would drift"):
-            assemble(segments("first one here", "second one here"), engine,
-                     voice="v", out_path=out, cache_dir=cache)
+            assemble(
+                segments("first one here", "second one here"),
+                engine,
+                voice="v",
+                out_path=out,
+                cache_dir=cache,
+            )
 
 
 class TestTranscript:
     def test_includes_timestamps_and_headings(self, engine, workspace):
         out, cache = workspace
-        episode = assemble(segments("alpha beta gamma", "delta epsilon"), engine,
-                           voice="v", out_path=out, cache_dir=cache)
+        episode = assemble(
+            segments("alpha beta gamma", "delta epsilon"),
+            engine,
+            voice="v",
+            out_path=out,
+            cache_dir=cache,
+        )
         transcript = episode.transcript()
         assert "[00:00]" in transcript
         assert "Story 0" in transcript
