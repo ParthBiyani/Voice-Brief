@@ -285,6 +285,18 @@ def build_repo_document(files: dict[str, str], title: str) -> ParsedDocument:
     )
 
 
+def _imported_stem(target: str) -> str:
+    """Reduce an import target to the file stem it most likely refers to.
+
+    Done with string operations rather than ``Path``: on Windows ``Path("//utils")``
+    is a UNC root with an empty name, which silently dropped every relative JS import.
+    """
+    if "/" in target:  # './utils', '../lib/db.js'
+        base = target.rstrip("/").rsplit("/", 1)[-1]
+        return base.rsplit(".", 1)[0] if "." in base else base
+    return target.rsplit(".", 1)[-1]  # 'pkg.module' -> 'module'
+
+
 def import_centrality(files: dict[str, str]) -> dict[str, int]:
     """Count how many other files import each module.
 
@@ -299,8 +311,7 @@ def import_centrality(files: dict[str, str]) -> dict[str, int]:
             continue
         for match in _IMPORT_RE.finditer(content):
             target = next((g for g in match.groups() if g), "")
-            name = Path(target.replace(".", "/")).name or target
-            imported = stems.get(name)
+            imported = stems.get(_imported_stem(target))
             # A file importing itself is not evidence of centrality.
             if imported and imported != path:
                 counts[imported] += 1
