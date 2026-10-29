@@ -33,6 +33,26 @@ _WS_RE = re.compile(r"\s+")
 _MAX_SUMMARY_CHARS = 1200
 _MAX_ENTRIES = 60
 
+# github.com/<owner>/<repo>/releases.atom
+_GH_RELEASES_RE = re.compile(r"github\.com/([\w.-]+)/([\w.-]+)/releases\.atom")
+
+
+def release_feed_repo(endpoint: str) -> str | None:
+    """`owner/repo` when the endpoint is a GitHub releases feed."""
+    match = _GH_RELEASES_RE.search(endpoint)
+    return f"{match.group(1)}/{match.group(2)}" if match else None
+
+
+def qualify_release_title(title: str, repo: str | None) -> str:
+    """GitHub release entries are titled with a bare tag (`v0.40.13`, `2026-07-28`).
+
+    On their own they read as noise and say nothing about which project shipped, so the
+    repo name is put in front unless the title already carries it.
+    """
+    if not repo or repo.split("/")[-1].lower() in title.lower():
+        return title
+    return f"{repo} {title}"
+
 
 def strip_html(raw: str | None) -> str | None:
     """Flatten feed HTML to plain text.
@@ -73,6 +93,9 @@ class RSSAdapter(SourceAdapter):
                 "Accept": "application/rss+xml, application/atom+xml, application/xml;q=0.9, */*;q=0.8",
             },
         )
+        if response.status_code == 429:
+            retry = response.headers.get("Retry-After", "?")
+            raise httpx.HTTPError(f"rate limited by {self.config.endpoint} (retry after {retry}s)")
         response.raise_for_status()
 
         feed = feedparser.parse(response.content)
@@ -110,7 +133,9 @@ class RSSAdapter(SourceAdapter):
         if published is None or published < since:
             return None
 
-        title = strip_html(entry.get("title")) or "(untitled)"
+        title = qualify_release_title(
+            strip_html(entry.get("title")) or "(untitled)", release_feed_repo(self.config.endpoint)
+        )
         summary = self._summary(entry)
 
         return RawItem(

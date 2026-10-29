@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -55,7 +56,8 @@ async def test_maps_model_fields():
     items = await run([record("org/model-a")])
     assert len(items) == 1
     item = items[0]
-    assert item.external_id == "models:org/model-a"
+    assert item.external_id.startswith("models:org/model-a:")
+    assert re.fullmatch(r"models:org/model-a:\d{4}-W\d{2}", item.external_id)
     assert item.url == "https://huggingface.co/org/model-a"
     assert item.title == "org/model-a (model)"
     assert "10,000 downloads" in item.summary
@@ -66,7 +68,7 @@ async def test_maps_model_fields():
 async def test_datasets_get_the_dataset_url_path():
     items = await run([record("org/ds")], entity="datasets")
     assert items[0].url == "https://huggingface.co/datasets/org/ds"
-    assert items[0].external_id == "datasets:org/ds"
+    assert re.fullmatch(r"datasets:org/ds:\d{4}-W\d{2}", items[0].external_id)
     assert "(dataset)" in items[0].title
 
 
@@ -87,9 +89,11 @@ async def test_private_repos_are_skipped():
 
 
 @respx.mock
-async def test_stale_repos_are_dropped():
+async def test_trending_repos_are_kept_even_when_last_modified_long_ago():
+    # The Hub already ranks by trending score; a model can top it weeks after its last
+    # commit, and filtering on lastModified dropped exactly those entries.
     items = await run([record("org/old", lastModified="2019-01-01T00:00:00Z"), record("org/new")])
-    assert [i.raw["repo_id"] for i in items] == ["org/new"]
+    assert [i.raw["repo_id"] for i in items] == ["org/old", "org/new"]
 
 
 @respx.mock

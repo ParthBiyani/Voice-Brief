@@ -40,7 +40,7 @@ MAX_FRESH_HOURS = 24 * 7
 # Margin so a story first seen just before the previous episode still gets a hearing if
 # that episode skipped it.
 GAP_MARGIN_HOURS = 6
-AIRED_LOOKBACK_DAYS = 14
+AIRED_LOOKBACK_DAYS = 30
 # A cluster is "aired" once at least this share of its items were already cited. One
 # aired item inside a bigger, newer cluster is a developing story, not a repeat.
 AIRED_SHARE = 0.5

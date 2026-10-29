@@ -82,6 +82,7 @@ sources:
         - qdrant/qdrant
         - flutter/flutter
         - modelcontextprotocol/servers
+        - modelcontextprotocol/specification
 
   - slug: huggingface-models
     name: Hugging Face — trending models
@@ -197,7 +198,6 @@ sources:
     config:
       adapter: rss
 
-
   # Engineering blogs
   - slug: cloudflare-blog
     name: Cloudflare Blog
@@ -259,7 +259,6 @@ sources:
     config:
       adapter: rss
 
-
   # Newsletters & practitioners
   - slug: simonwillison
     name: Simon Willison
@@ -301,16 +300,6 @@ sources:
     config:
       adapter: rss
 
-  - slug: gradient-pub
-    name: The Gradient
-    kind: rss
-    endpoint: https://thegradient.pub/rss/
-    poll_interval_minutes: 1440
-    trust_weight: 0.70
-    default_topics: [research]
-    config:
-      adapter: rss
-
   - slug: eugene-yan
     name: Eugene Yan
     kind: rss
@@ -331,129 +320,7 @@ sources:
     config:
       adapter: rss
 
-
   # Framework & tooling releases
-  - slug: langgraph-releases
-    name: LangGraph Releases
-    kind: rss
-    endpoint: https://github.com/langchain-ai/langgraph/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.85
-    default_topics: [agentic-ai, releases]
-    config:
-      adapter: rss
-
-  - slug: langchain-releases
-    name: LangChain Releases
-    kind: rss
-    endpoint: https://github.com/langchain-ai/langchain/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.78
-    default_topics: [agentic-ai, releases]
-    config:
-      adapter: rss
-
-  - slug: llamaindex-releases
-    name: LlamaIndex Releases
-    kind: rss
-    endpoint: https://github.com/run-llama/llama_index/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.72
-    default_topics: [retrieval, releases]
-    config:
-      adapter: rss
-
-  - slug: vllm-releases
-    name: vLLM Releases
-    kind: rss
-    endpoint: https://github.com/vllm-project/vllm/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.75
-    default_topics: [systems, releases]
-    config:
-      adapter: rss
-
-  - slug: transformers-releases
-    name: Transformers Releases
-    kind: rss
-    endpoint: https://github.com/huggingface/transformers/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.78
-    default_topics: [machine-learning, releases]
-    config:
-      adapter: rss
-
-  - slug: pytorch-releases
-    name: PyTorch Releases
-    kind: rss
-    endpoint: https://github.com/pytorch/pytorch/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.75
-    default_topics: [machine-learning, releases]
-    config:
-      adapter: rss
-
-  - slug: ollama-releases
-    name: Ollama Releases
-    kind: rss
-    endpoint: https://github.com/ollama/ollama/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.75
-    default_topics: [edge-ai, releases]
-    config:
-      adapter: rss
-
-  - slug: fastapi-releases
-    name: FastAPI Releases
-    kind: rss
-    endpoint: https://github.com/fastapi/fastapi/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.70
-    default_topics: [tooling, releases]
-    config:
-      adapter: rss
-
-  - slug: flutter-releases
-    name: Flutter Releases
-    kind: rss
-    endpoint: https://github.com/flutter/flutter/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.70
-    default_topics: [flutter, releases]
-    config:
-      adapter: rss
-
-  - slug: qdrant-releases
-    name: Qdrant Releases
-    kind: rss
-    endpoint: https://github.com/qdrant/qdrant/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.68
-    default_topics: [retrieval, releases]
-    config:
-      adapter: rss
-
-  - slug: mistral-releases
-    name: Mistral Inference Releases
-    kind: rss
-    endpoint: https://github.com/mistralai/mistral-inference/releases.atom
-    poll_interval_minutes: 720
-    trust_weight: 0.65
-    default_topics: [agentic-ai, releases]
-    config:
-      adapter: rss
-
-  - slug: mcp-spec
-    name: MCP Specification
-    kind: rss
-    endpoint: https://github.com/modelcontextprotocol/specification/releases.atom
-    poll_interval_minutes: 1440
-    trust_weight: 0.80
-    default_topics: [agentic-ai, standards]
-    config:
-      adapter: rss
-
-
   # Docs & product blogs
   - slug: supabase-blog
     name: Supabase Blog
@@ -485,17 +352,6 @@ sources:
     config:
       adapter: rss
 
-  - slug: qdrant-blog
-    name: Qdrant Blog
-    kind: rss
-    endpoint: https://qdrant.tech/blog/index.xml
-    poll_interval_minutes: 720
-    trust_weight: 0.65
-    default_topics: [retrieval, tooling]
-    config:
-      adapter: rss
-
-
   # Aggregators
   - slug: lobsters
     name: Lobste.rs
@@ -507,16 +363,6 @@ sources:
     config:
       adapter: rss
 
-  - slug: reddit-ml
-    name: r/MachineLearning
-    kind: rss
-    endpoint: https://www.reddit.com/r/MachineLearning/.rss
-    poll_interval_minutes: 720
-    trust_weight: 0.55
-    default_topics: [machine-learning]
-    config:
-      adapter: rss
-
   - slug: reddit-localllama
     name: r/LocalLLaMA
     kind: rss
@@ -524,16 +370,6 @@ sources:
     poll_interval_minutes: 720
     trust_weight: 0.58
     default_topics: [edge-ai, open-source]
-    config:
-      adapter: rss
-
-  - slug: hn-frontpage-rss
-    name: HN Front Page (RSS)
-    kind: rss
-    endpoint: https://hnrss.org/frontpage
-    poll_interval_minutes: 720
-    trust_weight: 0.55
-    default_topics: [engineering]
     config:
       adapter: rss
 

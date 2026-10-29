@@ -24,6 +24,11 @@ _DOWNLOAD_SATURATION = 1_000_000.0
 _MAX_LIMIT = 200
 
 
+def _iso_week(moment: datetime) -> str:
+    year, week, _ = moment.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
 @registry.register
 class HuggingFaceAdapter(SourceAdapter):
     kind = "huggingface"
@@ -62,10 +67,11 @@ class HuggingFaceAdapter(SourceAdapter):
             return None
 
         # `lastModified` is the only reliably present timestamp; `createdAt` is often
-        # missing on older repos. Recency here means "changed recently", which is the
-        # right semantics for a trending feed anyway.
+        # missing on older repos. It is *not* used to filter: the Hub already ranks by
+        # trending score, and the #1 model is routinely weeks past its last commit.
+        # Dropping on it discarded exactly the entries the feed exists to surface.
         published = self._parse_ts(record.get("lastModified") or record.get("createdAt"))
-        if published is None or published < since:
+        if published is None:
             return None
 
         downloads = int(record.get("downloads") or 0)
@@ -73,7 +79,9 @@ class HuggingFaceAdapter(SourceAdapter):
         path = "datasets/" if entity == "datasets" else ""
 
         return RawItem(
-            external_id=f"{entity}:{repo_id}",
+            # Weekly identity: a model that stays on the trending list is worth
+            # mentioning again, but not every single run.
+            external_id=f"{entity}:{repo_id}:{_iso_week(datetime.now(UTC))}",
             url=f"https://huggingface.co/{path}{repo_id}",
             title=f"{repo_id} ({'dataset' if entity == 'datasets' else 'model'})",
             summary=self._describe(record, downloads, likes),
