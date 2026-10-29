@@ -214,3 +214,70 @@ class TestDurableLedger:
                 cleanup.query(CostEntry).filter(CostEntry.provider == "echo").delete()
                 cleanup.commit()
         assert episode_id  # keeps the tag meaningful for readers
+
+
+class TestSchemaSanitising:
+    """The rerank schema bounded its score to 0-10; the API answered 400 to every call,
+    so the stage silently fell back to heuristic order and never ran."""
+
+    def test_numeric_bounds_are_stripped_but_told_to_the_model(self):
+        from voicebrief.llm.anthropic_provider import sanitize_schema
+
+        cleaned = sanitize_schema({"type": "integer", "minimum": 0, "maximum": 10})
+        assert "minimum" not in cleaned and "maximum" not in cleaned
+        assert "0 to 10" in cleaned["description"]
+
+    def test_nested_schemas_are_cleaned_and_the_original_is_untouched(self):
+        from voicebrief.llm.anthropic_provider import sanitize_schema
+
+        schema = {
+            "type": "object",
+            "properties": {"items": {"type": "array", "items": {"type": "integer", "maximum": 3}}},
+        }
+        cleaned = sanitize_schema(schema)
+        assert "maximum" not in cleaned["properties"]["items"]["items"]
+        assert schema["properties"]["items"]["items"]["maximum"] == 3
+
+    def test_every_schema_the_pipeline_sends_is_acceptable_to_the_api(self):
+        import json
+
+        from voicebrief.documents import claims
+        from voicebrief.llm.anthropic_provider import _UNSUPPORTED_KEYWORDS, sanitize_schema
+        from voicebrief.pipeline.ranking import RERANK_SCHEMA
+        from voicebrief.pipeline.summarize import SUMMARY_SCHEMA
+
+        schemas = [RERANK_SCHEMA, SUMMARY_SCHEMA]
+        schemas += [v for k, v in vars(claims).items() if k.endswith("_SCHEMA")]
+        assert len(schemas) >= 3
+        for schema in schemas:
+            text = json.dumps(sanitize_schema(schema))
+            for keyword in _UNSUPPORTED_KEYWORDS:
+                assert f'"{keyword}"' not in text, keyword
+
+    def test_the_provider_sends_the_sanitised_schema(self):
+        provider, fake = provider_with([reply('{"rankings": []}')])
+        provider.complete(
+            prompt="p",
+            stage=Stage.ranking,
+            schema={"type": "object", "properties": {"s": {"type": "integer", "maximum": 10}}},
+        )
+        sent = fake.calls[0]["output_config"]["format"]["schema"]
+        assert "maximum" not in sent["properties"]["s"]
+
+    def test_rerank_scores_are_clamped_because_the_api_cannot_enforce_the_range(self):
+        from voicebrief.pipeline.ranking import RankCandidate, RankedStory, rerank
+
+        story = RankedStory(
+            candidate=RankCandidate(cluster_id=uuid.uuid4(), title="t", summary="s", url="u"),
+            score=1.0,
+            heuristic_score=1.0,
+        )
+
+        class Client:
+            def complete(self, **_):
+                return SimpleNamespace(
+                    text="", parsed={"rankings": [{"index": 0, "score": 42, "reason": "r"}]}
+                )
+
+        ranked = rerank([story], Client(), limit=1)
+        assert ranked[0].llm_score == 10.0

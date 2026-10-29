@@ -206,7 +206,7 @@ def extract_claims(
                 document_title=document_title,
                 text=text,
                 section=str(entry.get("section", ""))[:200],
-                confidence=float(entry.get("confidence", 0.5)),
+                confidence=max(0.0, min(1.0, float(entry.get("confidence", 0.5)))),
             )
         )
     log.info("claims.extracted", document=document_title, count=len(claims))

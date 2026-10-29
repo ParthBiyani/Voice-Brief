@@ -5,6 +5,7 @@ name: voicebrief
 services:
   postgres:
     image: postgres:16-alpine
+    restart: unless-stopped
     environment:
       POSTGRES_USER: voicebrief
       POSTGRES_PASSWORD: voicebrief
@@ -23,6 +24,7 @@ services:
     # ("unknown variant `on_disk`"), so bumping this image is a migration, not a
     # version bump. Change both together or neither.
     image: qdrant/qdrant:v1.12.4
+    restart: unless-stopped
     ports: ["56333:6333", "56334:6334"]
     volumes: ["qdrantdata:/qdrant/storage"]
     healthcheck:
@@ -33,6 +35,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports: ["56379:6379"]
     volumes: ["redisdata:/data"]
@@ -46,6 +49,7 @@ services:
     # The upstream minio/minio images are no longer published to Docker Hub or Quay.
     # This community-maintained mirror serves the same S3 API and keeps local dev working.
     image: bitnamilegacy/minio:2024.11.7
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: voicebrief
       MINIO_ROOT_PASSWORD: voicebrief

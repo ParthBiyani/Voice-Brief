@@ -127,13 +127,31 @@ def upload_audio(path: Path, key: str) -> str | None:
     settings = get_settings()
     try:
         ensure_bucket()
+        content_type = "audio/mpeg" if key.endswith(".mp3") else "audio/wav"
         _s3_client().upload_file(
-            str(path), settings.s3_bucket, key, ExtraArgs={"ContentType": "audio/wav"}
+            str(path), settings.s3_bucket, key, ExtraArgs={"ContentType": content_type}
         )
         return key
     except (BotoCoreError, ClientError, OSError) as exc:
         log.warning("storage.upload_failed", key=key, error=str(exc))
         return None
+
+
+def encode_mp3(wav_path: Path, mp3_path: Path) -> bool:
+    """Compress the finished episode. A ten-minute WAV is ~29 MB, an MP3 about a fifth.
+
+    Done with libsndfile (bundled with `soundfile`), so no ffmpeg is needed. Returns
+    False and leaves the WAV to be uploaded instead if encoding is unavailable.
+    """
+    try:
+        import soundfile as sf
+
+        data, rate = sf.read(str(wav_path), dtype="float32")
+        sf.write(str(mp3_path), data, rate, format="MP3")
+        return mp3_path.is_file() and mp3_path.stat().st_size > 0
+    except Exception as exc:
+        log.warning("storage.mp3_failed", error=f"{type(exc).__name__}: {exc}")
+        return False
 
 
 def presigned_url(key: str, *, expires: int = 3600) -> str | None:
@@ -147,6 +165,20 @@ def presigned_url(key: str, *, expires: int = 3600) -> str | None:
     except (BotoCoreError, ClientError) as exc:
         log.warning("storage.presign_failed", key=key, error=str(exc))
         return None
+
+
+def _index_for_search(session: Session, episode_id: uuid.UUID) -> None:
+    """Make the episode searchable. Never a reason to lose an episode.
+
+    Indexing used to happen only on the API path, so everything the CLI or a scheduled
+    run produced was invisible to search.
+    """
+    try:
+        from voicebrief.api.memory import index_episode_segments
+
+        index_episode_segments(session, episode_id)
+    except Exception as exc:
+        log.warning("episode.index_failed", episode=str(episode_id), error=str(exc))
 
 
 def generate_episode(
@@ -227,7 +259,11 @@ def generate_episode(
             timed = assembled.segments
             errors.extend(assembled.failures)
             # Upload before marking ready, so a `ready` episode always has audio.
-            audio_key = upload_audio(out_path, f"{AUDIO_PREFIX}/{episode.id}.wav")
+            mp3_path = out_path.with_suffix(".mp3")
+            if duration > 0 and encode_mp3(out_path, mp3_path):
+                audio_key = upload_audio(mp3_path, f"{AUDIO_PREFIX}/{episode.id}.mp3")
+            else:
+                audio_key = upload_audio(out_path, f"{AUDIO_PREFIX}/{episode.id}.wav")
 
     for index, segment in enumerate(segments):
         timing = timed[index] if index < len(timed) else None
@@ -270,6 +306,8 @@ def generate_episode(
 
     episode.cost_inr = episode_cost_inr(session, episode.id)
     session.flush()
+
+    _index_for_search(session, episode.id)
 
     result = GenerationResult(
         episode_id=episode.id,

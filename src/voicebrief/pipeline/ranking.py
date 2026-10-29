@@ -62,7 +62,10 @@ AMBIGUOUS_DEPENDENCIES = frozenset(
     {
         "next", "rich", "click", "black", "requests", "express", "build", "test", "tests",
         "time", "start", "base", "core", "common", "utils", "types", "main", "app",
-        "server", "client",
+        "server", "client", "markdown", "json", "yaml", "toml", "html", "css", "logging",
+        "typing", "http", "socket", "random", "string", "docs", "data", "model", "agent",
+        "agents", "tools", "config", "cache", "queue", "events", "image", "audio",
+        "video", "search", "graph", "chart", "table", "form", "router", "layout",
     }
 )  # fmt: skip
 
@@ -364,7 +367,9 @@ def rerank(
         if not isinstance(index, int) or not 0 <= index < len(head):
             continue
         story = head[index]
-        story.llm_score = float(entry.get("score", 0))
+        # The schema bounds the score to 0-10, but the API cannot enforce that, so it is
+        # enforced here.
+        story.llm_score = max(0.0, min(10.0, float(entry.get("score", 0))))
         story.rationale = str(entry.get("reason", ""))[:400]
         # Blend rather than replace. The heuristic carries the dependency evidence,
         # which is factual; the model contributes judgement about significance.

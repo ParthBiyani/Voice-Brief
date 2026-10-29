@@ -319,15 +319,6 @@ def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: Generate
                 render_audio=request.render_audio,
             )
 
-        try:
-            with session_scope() as session:
-                from voicebrief.api.memory import index_episode_segments
-
-                index_episode_segments(session, result.episode_id)
-        except Exception as exc:
-            # not a precondition for having generated one.
-            log.warning("api.memory_index_failed", error=str(exc))
-
         _emit(
             episode_id,
             "ready",
