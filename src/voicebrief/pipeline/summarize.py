@@ -35,7 +35,11 @@ Rules:
 - Prefer concrete specifics: version numbers, benchmark deltas, API changes, what
   breaks. Avoid "revolutionary", "game-changing", and every other adjective that
   survives being deleted.
-- If the sources disagree, say so rather than picking one.
+- The sources are meant to cover ONE story. If they turn out not to (different
+  products, different events, only a shared theme), do not survey them and do not
+  say that they are unrelated: write the brief about source 0 alone and ignore the
+  rest. A listener wants one clear story, never a tour of loosely related items.
+- If the sources disagree about the same facts, say so rather than picking one.
 - `what_changed` is the single sentence a busy engineer needs.
 - `why_it_matters` is the practical consequence, or an empty string if there is no
   honest one. An empty string is a valid and often correct answer.
