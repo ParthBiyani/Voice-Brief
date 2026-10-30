@@ -319,3 +319,54 @@ class TestPhrasingThatIsFaithfulButNotLiteral:
             "Latency was forty milliseconds.", facts, source_text="latency was 12 ms"
         )
         assert report.unsupported
+
+
+class TestFlagsFromARealEpisode:
+    """Both sentences were correct and were flagged: a verifier bug, not a script bug."""
+
+    SPAWN = (
+        "About 60% of our work starts from a production error, a Savi bug report, "
+        "something odd in our logs, or a feature request."
+    )
+
+    def test_counts_beside_a_percentage_are_still_ordinary_counts(self):
+        facts = summary([self.SPAWN])
+        report = verify_segment(
+            "About sixty percent of the work starts from one of four places: a production error, "
+            "a Savi bug report, something odd in the logs, or a feature request.",
+            facts,
+            source_text=self.SPAWN,
+        )
+        assert report.unsupported == [] and report.supported_sentences == 1
+
+    def test_the_percentage_itself_must_still_be_sourced(self):
+        facts = summary([self.SPAWN])
+        report = verify_segment(
+            "About ninety percent of the work starts from a production error or a bug report.",
+            facts,
+            source_text=self.SPAWN,
+        )
+        assert report.unsupported, "90 does not appear in the source"
+
+    def test_a_small_percentage_is_not_waved_through_as_a_count(self):
+        facts = summary([self.SPAWN])
+        report = verify_segment(
+            "About ten percent of the work starts from a production error.",
+            facts,
+            source_text=self.SPAWN,
+        )
+        assert report.unsupported, "ten percent is a figure, not a count"
+
+    def test_a_compound_in_the_source_supports_its_parts_in_the_script(self):
+        text = "Against open-source baselines, our 1.8M-parameter model attains the highest F1."
+        report = verify_segment(
+            "The model has 1.8 million parameters.", summary([text]), source_text=text
+        )
+        assert report.unsupported == [] and report.supported_sentences == 1
+
+    def test_a_wrong_figure_next_to_a_matching_compound_is_still_caught(self):
+        text = "our 1.8M-parameter model attains the highest F1 on every test set"
+        report = verify_segment(
+            "The model has 3.2 million parameters.", summary([text]), source_text=text
+        )
+        assert report.unsupported
