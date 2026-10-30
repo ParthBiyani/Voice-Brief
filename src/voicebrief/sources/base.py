@@ -86,6 +86,9 @@ class SourceAdapter(ABC):
     def __init__(self, config: SourceConfig) -> None:
         self.config = config
         self.settings = get_settings()
+        # Partial trouble that did not fail the source (3 of 10 repositories unreachable).
+        # Surfaced in the run summary so a degraded source is not reported as healthy.
+        self.notes: list[str] = []
 
     @abstractmethod
     async def fetch(self, client: httpx.AsyncClient, since: datetime) -> Sequence[RawItem]:

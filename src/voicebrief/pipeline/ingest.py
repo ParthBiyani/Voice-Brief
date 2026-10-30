@@ -15,7 +15,7 @@ rather than a duplicate crawl. That is the whole scheduler for v1.
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -62,6 +62,7 @@ class SourceStats:
     skipped: int = 0
     ok: bool = True
     error: str | None = None
+    warnings: list[str] = field(default_factory=list)
 
 
 async def _fetch_one(
@@ -91,7 +92,8 @@ async def _fetch_one(
                     adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
                 )
             stats.fetched = len(items)
-            bound.info("source.fetched", count=len(items))
+            stats.warnings = list(adapter.notes)
+            bound.info("source.fetched", count=len(items), warnings=stats.warnings or None)
             return stats, list(items)
 
         except TimeoutError:
@@ -198,6 +200,7 @@ async def run_ingest(
             "ingest.done",
             inserted=sum(s.inserted for s in all_stats),
             failed=sum(1 for s in all_stats if not s.ok),
+            degraded=[s.slug for s in all_stats if s.ok and s.warnings],
             budget_left=budget,
         )
         return all_stats

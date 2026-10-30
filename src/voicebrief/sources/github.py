@@ -44,6 +44,15 @@ class _GitHubBase(SourceAdapter):
             "x-ratelimit-remaining"
         ) in ("0", None)
 
+    def _quota_message(self, response: httpx.Response) -> str:
+        """Why a request was refused, including when the quota comes back."""
+        reset = response.headers.get("x-ratelimit-reset")
+        when = ""
+        if reset and reset.isdigit():
+            when = f", resets {datetime.fromtimestamp(int(reset), UTC):%H:%M} UTC"
+        hint = "" if self.settings.github_token else "; set GITHUB_TOKEN to raise the limit"
+        return f"GitHub rate limit exhausted{when}{hint}"
+
     @staticmethod
     def _parse_ts(value: str | None) -> datetime | None:
         if not value:
@@ -99,6 +108,8 @@ class GitHubSearchAdapter(_GitHubBase):
 
         if failures == len(topics):
             raise httpx.HTTPError(f"all {failures} GitHub search queries failed")
+        if failures:
+            self.notes.append(f"{failures} of {len(topics)} topic searches failed")
         return list(merged.values())
 
     async def _search(
@@ -115,7 +126,7 @@ class GitHubSearchAdapter(_GitHubBase):
                 headers=self.headers(),
             )
             if self._rate_limited(response):
-                raise httpx.HTTPError("GitHub rate limit exhausted; set GITHUB_TOKEN to raise it")
+                raise httpx.HTTPError(self._quota_message(response))
             response.raise_for_status()
 
             items: list[RawItem] = []
@@ -166,6 +177,7 @@ class GitHubReleasesAdapter(_GitHubBase):
     """
 
     kind = "github_releases"
+    _quota_exhausted: str | None = None
 
     async def fetch(self, client: httpx.AsyncClient, since: datetime) -> Sequence[RawItem]:
         repos: list[str] = self.config.config.get("repos", [])
@@ -177,12 +189,23 @@ class GitHubReleasesAdapter(_GitHubBase):
         )
 
         items: list[RawItem] = []
+        failed: dict[str, str] = {}
         for repo, result in zip(repos, results, strict=True):
             if isinstance(result, BaseException):
-                # A renamed or archived repo is expected drift, not a run failure.
+                # A renamed or archived repo is expected drift, not a run failure...
                 self.log.warning("releases.repo_failed", repo=repo, error=str(result))
+                failed[repo] = str(result)
                 continue
             items.extend(result)
+        # ...but every repo failing is, and a partial failure must be visible. This used to
+        # report success with zero items when the quota ran out, hiding the missing news.
+        if repos and len(failed) == len(repos):
+            raise httpx.HTTPError(
+                f"all {len(repos)} repositories failed: {next(iter(failed.values()))}"
+            )
+        if failed:
+            reason = next(iter(failed.values()))
+            self.notes.append(f"{len(failed)} of {len(repos)} repositories failed ({reason})")
         return items
 
     async def _fetch_repo(
@@ -193,13 +216,17 @@ class GitHubReleasesAdapter(_GitHubBase):
         semaphore: asyncio.Semaphore,
     ) -> list[RawItem]:
         async with semaphore:
+            if self._quota_exhausted:
+                # Once refused, further requests only burn time and the profile's share.
+                raise httpx.HTTPError(self._quota_exhausted)
             response = await client.get(
                 f"{self.config.endpoint}/{repo}/releases",
                 params={"per_page": "5"},
                 headers=self.headers(),
             )
             if self._rate_limited(response):
-                raise httpx.HTTPError("GitHub rate limit exhausted")
+                self._quota_exhausted = self._quota_message(response)
+                raise httpx.HTTPError(self._quota_exhausted)
             response.raise_for_status()
 
             out: list[RawItem] = []
