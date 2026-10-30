@@ -23,7 +23,8 @@ import zlib
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
+from typing import TYPE_CHECKING
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, text
@@ -42,6 +43,9 @@ from voicebrief.history import (
     start_run,
 )
 from voicebrief.logging import get_logger
+
+if TYPE_CHECKING:
+    from voicebrief.pipeline.episodes import GenerationResult
 
 log = get_logger(__name__)
 
@@ -74,7 +78,7 @@ class BriefRequest:
 class BriefOutcome:
     """A generated episode plus what the selection step saw."""
 
-    result: object  # GenerationResult
+    result: GenerationResult
     candidates_considered: int
     excluded_aired: int
     window_hours: float
@@ -126,6 +130,7 @@ def local_day_start(now: datetime, timezone: str) -> datetime:
     yesterday, which used to make a morning brief look like it belonged to the day
     before.
     """
+    tz: tzinfo
     try:
         tz = ZoneInfo(timezone)
     except Exception:

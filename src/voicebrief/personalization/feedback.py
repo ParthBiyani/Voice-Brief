@@ -111,7 +111,7 @@ def load_affinity(session: Session, user_id: uuid.UUID) -> Affinity:
             .order_by(Feedback.created_at.desc())
             .limit(MAX_VOTES * 8)
         ).all()
-        affinity = affinity_from_votes([tuple(r) for r in rows])
+        affinity = affinity_from_votes([(r[0], r[1], r[2], r[3], r[4]) for r in rows])
     except Exception as exc:
         log.warning("feedback.load_failed", error=f"{type(exc).__name__}: {exc}"[:200])
         return Affinity()

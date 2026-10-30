@@ -195,7 +195,8 @@ def extract_claims(
         return []
 
     claims = []
-    for entry in (completion.parsed or {}).get("claims", [])[:max_claims]:
+    parsed = completion.parsed if isinstance(completion.parsed, dict) else {}
+    for entry in parsed.get("claims", [])[:max_claims]:
         text = str(entry.get("text", "")).strip()
         if len(text) < 20:
             continue
@@ -266,7 +267,8 @@ def relate_claims(client: LLMClient, pairs: list[tuple[Claim, Claim, float]]) ->
         return []
 
     relations = []
-    for entry in (completion.parsed or {}).get("relations", []):
+    parsed = completion.parsed if isinstance(completion.parsed, dict) else {}
+    for entry in parsed.get("relations", []):
         index = entry.get("pair_index")
         if not isinstance(index, int) or not 0 <= index < len(pairs):
             continue

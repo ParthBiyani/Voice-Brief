@@ -65,7 +65,8 @@ class VectorStore:
     def _ensure(self, name: str) -> None:
         if self.client.collection_exists(name):
             existing = self.client.get_collection(name)
-            size = existing.config.params.vectors.size
+            vectors = existing.config.params.vectors
+            size = getattr(vectors, "size", None)
             if size != self.dim:
                 raise ValueError(
                     f"Qdrant collection {name!r} has {size}-d vectors but the configured "
@@ -174,11 +175,11 @@ class VectorStore:
         return [Neighbour(id=str(h.id), score=h.score, payload=h.payload or {}) for h in hits]
 
     def fetch_vectors(self, ids: Iterable[uuid.UUID]) -> dict[str, np.ndarray]:
-        ids = [str(i) for i in ids]
-        if not ids:
+        wanted = [str(i) for i in ids]
+        if not wanted:
             return {}
         records = self.client.retrieve(
-            collection_name=ITEMS, ids=ids, with_vectors=True, with_payload=False
+            collection_name=ITEMS, ids=wanted, with_vectors=True, with_payload=False
         )
         return {str(r.id): np.array(r.vector, dtype=np.float32) for r in records}
 

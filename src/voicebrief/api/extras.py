@@ -116,7 +116,7 @@ def stream_audio(
         )
 
     byte_range = parse_range(request.headers.get("range"), size)
-    if byte_range == "invalid":
+    if isinstance(byte_range, str):
         raise HTTPException(
             status_code=416,
             detail="range not satisfiable",
@@ -127,7 +127,7 @@ def stream_audio(
         start, end, status = 0, size - 1, 200
         kwargs: dict = {}
     else:
-        start, end = byte_range  # type: ignore[misc]
+        start, end = byte_range
         status = 206
         headers["Content-Range"] = f"bytes {start}-{end}/{size}"
         kwargs = {"Range": f"bytes={start}-{end}"}
@@ -226,7 +226,7 @@ def _settings_out(session: Session, user: User) -> SettingsOut:
     github = IntegrationStatus(
         configured=bool(user.github_login),
         detail=(
-            f"{dependencies} dependencies across {len(profile.repos or [])} repositories"
+            f"{dependencies} dependencies across {len(profile.repos or []) if profile else 0} repositories"
             if dependencies
             else (
                 "no profile built yet; it is built on the next run"

@@ -488,7 +488,7 @@ def rerank(
             log.warning("rank.rerank_unparseable", fallback="heuristic order")
             return stories
 
-    for entry in (payload or {}).get("rankings", []):
+    for entry in (payload if isinstance(payload, dict) else {}).get("rankings", []):
         index = entry.get("index")
         if not isinstance(index, int) or not 0 <= index < len(head):
             continue

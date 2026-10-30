@@ -24,6 +24,7 @@ import uuid
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from voicebrief.db.models import Claim as ClaimRow
 from voicebrief.db.models import ClaimRelation as ClaimRelationRow
@@ -37,7 +38,7 @@ from voicebrief.documents.parse import (
     parse_repo_zip,
     parse_upload,
 )
-from voicebrief.graphs.brief import BriefGraph, Segment
+from voicebrief.graphs.brief import BriefGraph, BriefState, Segment
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
@@ -222,7 +223,7 @@ def contrast_segment(
         return None
 
     blocks = []
-    citations = []
+    citations: list[dict[str, str]] = []
     for number, relation in enumerate(contradictions, start=1):
         blocks.append(
             f"[{number}] {relation.source.document_title} says: {relation.source.text}\n"
@@ -346,7 +347,7 @@ def run_knowledge(
     )
 
     stories = build_stories(documents, max_stories)
-    state: dict = {
+    state: BriefState = {
         "selected": [s.story for s in stories],
         "profile": None,
         "declared_topics": set(),
@@ -368,8 +369,8 @@ def run_knowledge(
             log.warning("knowledge.claims_failed", error=f"{type(exc).__name__}: {exc}"[:200])
             state["errors"].append("could not compare the documents' claims")
 
-    state.update(graph.summarize_node(state))
-    state.update(graph.write_node(state))
+    state.update(cast(BriefState, graph.summarize_node(state)))
+    state.update(cast(BriefState, graph.write_node(state)))
 
     contrast = contrast_segment(client, claim_graph, language=language) if claim_graph else None
     if contrast is not None:
@@ -377,8 +378,8 @@ def run_knowledge(
         # Before the sign-off, after the document stories.
         state["segments"] = [*segments[:-1], contrast, *segments[-1:]] if segments else [contrast]
 
-    state.update(graph.assemble_node(state))
-    state.update(graph.verify_node(state))
+    state.update(cast(BriefState, graph.assemble_node(state)))
+    state.update(cast(BriefState, graph.verify_node(state)))
 
     episode = state.get("episode", {})
     # The synthetic ids tying a segment to its summary were only needed for verification.
