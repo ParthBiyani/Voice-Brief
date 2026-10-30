@@ -594,6 +594,65 @@ def history_export(
         console.print(f"  {kind}: {n}")
 
 
+backup_app = typer.Typer(no_args_is_help=True, help="Back up and restore the database and audio")
+app.add_typer(backup_app, name="backup")
+
+
+@backup_app.command("create")
+def backup_create(
+    no_media: bool = typer.Option(False, "--no-media", help="Database only"),
+) -> None:
+    """Dump the database (and copy new audio) to the backup folder."""
+    from voicebrief.backup import BackupError, create_backup
+
+    try:
+        result = create_backup(with_media=not no_media)
+    except (BackupError, OSError) as exc:
+        console.print(f"[red]Backup failed:[/red] {exc}")
+        raise typer.Exit(1) from exc
+    console.print(
+        f"[green]Backed up[/green] {result.path} ({result.size_bytes / 1_048_576:.2f} MB, "
+        f"{result.media_copied} new audio files, {result.pruned} old dumps removed)"
+    )
+
+
+@backup_app.command("list")
+def backup_list() -> None:
+    """The dumps on disk, newest first."""
+    from voicebrief.backup import backup_dir, list_backups
+
+    dumps = list_backups()
+    console.print(f"[bold]{backup_dir()}[/bold]")
+    if not dumps:
+        console.print("[yellow]No backups yet. Run `voicebrief backup create`.[/yellow]")
+    for dump in dumps:
+        console.print(f"  {dump.name}  {dump.stat().st_size / 1_048_576:.2f} MB")
+
+
+@backup_app.command("restore")
+def backup_restore(
+    path: str = typer.Argument(None, help="A dump file; the newest one when omitted"),
+    yes: bool = typer.Option(False, "--yes", help="Do not ask for confirmation"),
+) -> None:
+    """Replace the database with a dump. Stop `serve` and `daily` first."""
+    from pathlib import Path
+
+    from voicebrief.backup import BackupError, list_backups, restore_backup
+
+    chosen = Path(path) if path else next(iter(list_backups()), None)
+    if chosen is None:
+        console.print("[red]No backups to restore.[/red]")
+        raise typer.Exit(1)
+    if not yes:
+        typer.confirm(f"Replace the current database with {chosen.name}?", abort=True)
+    try:
+        audio = restore_backup(chosen)
+    except (BackupError, OSError) as exc:
+        console.print(f"[red]Restore failed:[/red] {exc}")
+        raise typer.Exit(1) from exc
+    console.print(f"[green]Restored[/green] {chosen.name} ({audio} audio files put back)")
+
+
 tts_app = typer.Typer(no_args_is_help=True, help="Speech engine setup")
 app.add_typer(tts_app, name="tts")
 

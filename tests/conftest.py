@@ -22,3 +22,13 @@ def now() -> datetime:
 @pytest.fixture
 def yesterday(now: datetime) -> datetime:
     return now - timedelta(days=1)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_backups(monkeypatch, request):
+    """`daily` backs up after a brief; a test run must not dump a developer's database."""
+    if "test_backup" in request.node.nodeid:  # these test the hook itself
+        return
+    monkeypatch.setattr(
+        "voicebrief.backup.backup_after_generation", lambda: {"ok": True, "skipped": "test"}
+    )

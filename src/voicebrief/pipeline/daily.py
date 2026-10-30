@@ -453,6 +453,11 @@ def run_daily(
                 )
             else:
                 summary["delivery"] = deliver_episode(generated.episode_id)
+            # After the brief exists, so the dump contains it; before the run is closed, so
+            # the result is on record.
+            from voicebrief.backup import backup_after_generation
+
+            summary["backup"] = backup_after_generation()
             finish_run(
                 run_id,
                 "ok" if generated.status == "ready" else generated.status,

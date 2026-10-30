@@ -208,6 +208,21 @@ asked and the answer you got. Prompt and response text is kept 90 days (`VB_HIST
 costs and metadata are kept. `history export` writes flat JSONL, which with your thumbs
 makes labelled examples of what you found relevant.
 
+### Backups
+
+Episodes, history, feedback and the cost ledger cannot be re-crawled, and they live inside
+Docker's disk image, which a hard shutdown can corrupt (it happened). So every `daily` run
+that generates a brief ends with a dump of the database and a copy of any new audio into
+`%LOCALAPPDATA%\VoiceBriefackups` (`VB_BACKUP_DIR`), keeping the newest seven
+(`VB_BACKUP_KEEP`). Each dump is verified before it counts, and a failed backup is recorded
+in the run's history without failing the brief.
+
+```powershell
+.\.venv\Scripts\python.exe -m voicebrief.cli backup create    # now, on demand
+.\.venv\Scripts\python.exe -m voicebrief.cli backup list
+.\.venv\Scripts\python.exe -m voicebrief.cli backup restore   # newest dump; stop serve/daily first
+```
+
 ### ProjectMind
 
 [ProjectMind](https://github.com/ParthBiyani/ProjectMind) is a separate project: a memory of
@@ -232,6 +247,7 @@ context" if it is absent or changes. Set `VB_PROJECTMIND_CMD` to enable it, then
 | `SLACK_*`, `VB_SMTP_*` | | Delivery |
 | `VB_PROJECTMIND_CMD` | | Enable ProjectMind |
 | `VB_HISTORY_RETENTION_DAYS` | `90` | How long prompt text is kept |
+| `VB_BACKUP_DIR`, `VB_BACKUP_KEEP` | per-user folder, `7` | Where backups go, and how many dumps to keep |
 
 `VB_LLM_PROVIDER=echo` runs everything with a deterministic stub, for tests. `ollama` runs a
 local model for ₹0.
