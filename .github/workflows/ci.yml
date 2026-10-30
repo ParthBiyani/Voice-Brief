@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install "ruff>=0.8"
+      - run: ruff check src tests
+      - run: ruff format --check src tests
+
+  backend:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: voicebrief
+          POSTGRES_PASSWORD: voicebrief
+          POSTGRES_DB: voicebrief
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U voicebrief -d voicebrief"
+          --health-interval 5s --health-timeout 3s --health-retries 20
+      qdrant:
+        image: qdrant/qdrant:v1.12.4
+        ports: ["6333:6333"]
+    env:
+      VB_POSTGRES_DSN: postgresql+psycopg://voicebrief:voicebrief@localhost:5432/voicebrief
+      VB_QDRANT_URL: http://localhost:6333
+      # Hermetic: no model calls, no speech, no network sources.
+      VB_LLM_PROVIDER: echo
+      VB_TTS_ENGINE: "null"
+      HF_HOME: ${{ github.workspace }}/.hf-cache
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: .hf-cache
+          key: hf-bge-small-en-v1.5
+      - name: Install
+        run: |
+          pip install --extra-index-url https://download.pytorch.org/whl/cpu \
+            -e ".[ml,llm,docs,dev]"
+      - name: Migrate
+        run: alembic upgrade head
+      - name: Schema matches the models
+        run: alembic check
+      - name: Tests
+        run: pytest -q -m "not network and not slow"
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npm run build
