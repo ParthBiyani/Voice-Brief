@@ -12,10 +12,8 @@ the whole scheduler, deliberately — Celery and Temporal are v2 (PRD §8).
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 import uuid
-from collections import defaultdict
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
@@ -27,6 +25,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from voicebrief import __version__
+from voicebrief.api import progress
 from voicebrief.api.schemas import (
     Citation,
     EpisodeDetail,
@@ -41,17 +40,11 @@ from voicebrief.api.schemas import (
 )
 from voicebrief.config import get_settings
 from voicebrief.db import get_session, session_scope
-from voicebrief.db.models import Episode, Feedback, Language, Segment, User
+from voicebrief.db.models import Episode, Feedback, RankingSnapshot, Segment, User
 from voicebrief.history import record_interaction, timeline
 from voicebrief.logging import configure_logging, get_logger
-from voicebrief.pipeline.episodes import presigned_url
 
 log = get_logger(__name__)
-
-# Per-episode progress channels for SSE. In-process because v1 runs as a single
-# instance; a second replica would need Redis pub/sub, which is a v2 concern and a
-# one-file change to this module.
-_progress: dict[uuid.UUID, asyncio.Queue] = defaultdict(asyncio.Queue)
 
 
 @asynccontextmanager
@@ -73,6 +66,10 @@ app = FastAPI(
 from voicebrief.api.memory import router as memory_router  # noqa: E402
 
 app.include_router(memory_router)
+
+from voicebrief.api.extras import router as extras_router  # noqa: E402
+
+app.include_router(extras_router)
 
 app.add_middleware(
     CORSMiddleware,
@@ -174,12 +171,39 @@ def get_episode(episode_id: uuid.UUID, session: Session = Depends(get_session)) 
     if episode is None:
         raise HTTPException(status_code=404, detail="episode not found")
 
+    picked = {
+        row.cluster_id: row
+        for row in session.execute(
+            select(RankingSnapshot).where(
+                RankingSnapshot.episode_id == episode_id, RankingSnapshot.outcome == "picked"
+            )
+        ).scalars()
+        if row.cluster_id
+    }
+    segments = []
+    for segment in episode.segments:
+        out = _to_segment(segment)
+        row = picked.get(segment.cluster_id) if segment.cluster_id else None
+        if row is not None:
+            out.matched = list(row.matched_dependencies or [])
+            out.personal = bool(out.matched or (row.signals or {}).get("interests"))
+        segments.append(out)
+
+    grounding = episode.grounding or {}
     return EpisodeDetail(
         **_to_summary(episode).model_dump(),
-        segments=[_to_segment(s) for s in episode.segments],
-        audio_url=presigned_url(episode.audio_key) if episode.audio_key else None,
+        segments=segments,
+        # Relative to the API root: streamed through the API, so it plays from any device
+        # that can reach the app and does not expire like a storage link would.
+        audio_url=f"/episodes/{episode.id}/audio" if episode.audio_key else None,
         generation_seconds=episode.generation_seconds,
         error=episode.error,
+        grounding={
+            k: grounding[k]
+            for k in ("attribution_rate", "sentences", "supported", "warnings", "tts_engine")
+            if k in grounding
+        }
+        or None,
     )
 
 
@@ -227,22 +251,33 @@ def generate(
     """Start generation and return immediately.
 
     Generation takes minutes; holding the request open for that long dies to a proxy
-    timeout. Progress is streamed from the returned `stream_url`.
+    timeout. Progress is streamed from the returned `stream_url`. Anything left unset in
+    the request falls back to the settings the user saved.
     """
-    user = session.execute(select(User).where(User.email == request.email)).scalar_one_or_none()
-    if user is None:
-        user = User(
-            email=request.email,
-            language=Language(request.language),
-            github_login=request.github_login,
-            topics=request.topics,
-        )
-        session.add(user)
-        session.flush()
+    from voicebrief.pipeline.daily import BriefRequest, resolve_user
 
+    brief = BriefRequest(
+        email=request.email,
+        github_login=request.github_login or None,
+        topics=request.topics or None,
+        language=request.language,
+        style=request.style,
+        stories=request.max_stories,
+        minutes=request.target_minutes,
+        render_audio=request.render_audio,
+    )
+    user = resolve_user(session, brief)
+    # Committed before the worker starts. The session dependency stays open until after
+    # the background task, so without this the worker's episode pointed at a user row
+    # nobody else could see yet and failed on the foreign key.
+    session.commit()
+
+    # The id handed back is the id the episode is stored under, so a client can open it
+    # as soon as it is ready (it used to be a random id that never existed).
     episode_id = uuid.uuid4()
+    progress.open_channel(episode_id)
     record_interaction("generate", "web", user_id=user.id, request=request.model_dump(mode="json"))
-    background.add_task(_run_generation, episode_id, user.id, request)
+    background.add_task(_run_generation, episode_id, brief)
 
     return GenerateAccepted(
         episode_id=episode_id,
@@ -253,24 +288,47 @@ def generate(
 
 @app.get("/episodes/{episode_id}/stream", tags=["episodes"])
 async def stream_progress(episode_id: uuid.UUID) -> StreamingResponse:
-    """Server-sent events for one generation run."""
+    """Server-sent events for one generation run.
+
+    Every event so far is replayed first, so reloading the page or opening a second
+    device mid-run picks up where things are.
+    """
+    channel = progress.get_channel(episode_id)
+    if channel is None:
+        # The run is over and its channel has been cleared away; answer from the record.
+        with session_scope() as session:
+            episode = session.get(Episode, episode_id)
+            if episode is None:
+                raise HTTPException(status_code=404, detail="no such generation")
+            final = {
+                "stage": "ready" if episode.status.value in ("ready", "degraded") else "failed",
+                "at": datetime.now(UTC).isoformat(),
+                "episode_id": str(episode.id),
+                "title": episode.title,
+                "status": episode.status.value,
+                "error": episode.error,
+            }
+
+        async def replay() -> AsyncIterator[str]:
+            yield f"data: {json.dumps(final)}\n\n"
+
+        return StreamingResponse(replay(), media_type="text/event-stream")
 
     async def event_source() -> AsyncIterator[str]:
-        queue = _progress[episode_id]
-        try:
-            while True:
-                try:
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
-                except TimeoutError:
-                    # Keep-alive: proxies close an idle SSE connection.
-                    yield ": keep-alive\n\n"
-                    continue
-
-                yield f"data: {json.dumps(event)}\n\n"
-                if event.get("stage") in ("ready", "failed"):
+        cursor = 0
+        while True:
+            events, finished = await asyncio.to_thread(channel.wait, cursor, 15.0)
+            if not events:
+                if finished:
                     break
-        finally:
-            _progress.pop(episode_id, None)
+                # Keep-alive: proxies close an idle SSE connection.
+                yield ": keep-alive\n\n"
+                continue
+            for event in events:
+                yield f"data: {json.dumps(event)}\n\n"
+            cursor += len(events)
+            if finished and cursor >= len(channel.events):
+                break
 
     return StreamingResponse(
         event_source(),
@@ -279,60 +337,47 @@ async def stream_progress(episode_id: uuid.UUID) -> StreamingResponse:
     )
 
 
-def _emit(episode_id: uuid.UUID, stage: str, **fields) -> None:
-    event = {"stage": stage, "at": datetime.now(UTC).isoformat(), **fields}
-    queue = _progress[episode_id]
-    with contextlib.suppress(asyncio.QueueFull):  # unbounded by default
-        queue.put_nowait(event)
-
-
-def _run_generation(episode_id: uuid.UUID, user_id: uuid.UUID, request: GenerateRequest) -> None:
+def _run_generation(episode_id: uuid.UUID, request) -> None:
     """Background worker. Reports progress and never lets an exception escape."""
-    from voicebrief.pipeline.candidates import build_candidates
-    from voicebrief.pipeline.episodes import generate_episode
+    from voicebrief.history import finish_run, start_run
+    from voicebrief.pipeline.daily import NoFreshStories, generate_brief
 
+    progress.emit(episode_id, "started")
+    run_id = start_run("generate", "web")
     try:
-        _emit(episode_id, "started")
-        profile = None
-        if request.github_login:
-            from voicebrief.personalization.github_profile import GitHubProfileBuilder
-
-            _emit(episode_id, "profiling", login=request.github_login)
-            profile = asyncio.run(GitHubProfileBuilder().build(request.github_login))
-
+        progress.emit(episode_id, "writing")
         with session_scope() as session:
-            _emit(episode_id, "selecting")
-            candidates = build_candidates(session, user_id=user_id)
-            if not candidates:
-                _emit(episode_id, "failed", error="no clusters available; run ingest first")
-                return
-
-            _emit(episode_id, "writing", candidates=len(candidates))
-            result = generate_episode(
-                session,
-                user_id=user_id,
-                candidates=candidates,
-                profile=profile,
-                declared_topics=set(request.topics),
-                language=request.language,
-                style=request.style,
-                max_stories=request.max_stories,
-                target_minutes=request.target_minutes,
-                render_audio=request.render_audio,
-            )
-
-        _emit(
+            outcome = generate_brief(session, request, run_id=run_id, episode_id=episode_id)
+        result = outcome.result
+        finish_run(
+            run_id,
+            "ok" if result.status == "ready" else result.status,
+            summary={
+                "status": result.status,
+                "cost_inr": result.cost_inr,
+                "attribution_rate": result.attribution_rate,
+                "candidates": outcome.candidates_considered,
+            },
+            episode_id=result.episode_id,
+        )
+        progress.emit(
             episode_id,
             "ready",
             episode_id=str(result.episode_id),
             title=result.title,
+            status=result.status,
             duration_seconds=result.duration_seconds,
             cost_inr=result.cost_inr,
             attribution_rate=result.attribution_rate,
+            issues=result.errors[:5],
         )
+    except NoFreshStories as exc:
+        finish_run(run_id, "skipped", error=str(exc))
+        progress.emit(episode_id, "failed", error=str(exc))
     except Exception as exc:
         log.error("api.generation_failed", error=str(exc))
-        _emit(episode_id, "failed", error=f"{type(exc).__name__}: {exc}"[:300])
+        finish_run(run_id, "failed", error=f"{type(exc).__name__}: {exc}")
+        progress.emit(episode_id, "failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
 
 # ─────────────────────────────────────────────────────────────────────────────

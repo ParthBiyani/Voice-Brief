@@ -97,7 +97,7 @@ class GenerationResult:
     status: str = "ready"
 
 
-def _s3_client():
+def s3_client():
     settings = get_settings()
     return boto3.client(
         "s3",
@@ -111,7 +111,7 @@ def _s3_client():
 
 def ensure_bucket() -> None:
     settings = get_settings()
-    client = _s3_client()
+    client = s3_client()
     try:
         client.head_bucket(Bucket=settings.s3_bucket)
     except ClientError:
@@ -129,7 +129,7 @@ def upload_audio(path: Path, key: str) -> str | None:
     try:
         ensure_bucket()
         content_type = "audio/mpeg" if key.endswith(".mp3") else "audio/wav"
-        _s3_client().upload_file(
+        s3_client().upload_file(
             str(path), settings.s3_bucket, key, ExtraArgs={"ContentType": content_type}
         )
         return key
@@ -158,7 +158,7 @@ def encode_mp3(wav_path: Path, mp3_path: Path) -> bool:
 def presigned_url(key: str, *, expires: int = 3600) -> str | None:
     settings = get_settings()
     try:
-        return _s3_client().generate_presigned_url(
+        return s3_client().generate_presigned_url(
             "get_object",
             Params={"Bucket": settings.s3_bucket, "Key": key},
             ExpiresIn=expires,
@@ -196,12 +196,14 @@ def generate_episode(
     render_audio: bool = True,
     excluded: list[dict] | None = None,
     run_id: uuid.UUID | None = None,
+    episode_id: uuid.UUID | None = None,
 ) -> GenerationResult:
     settings = get_settings()
     started = time.perf_counter()
 
     # Written before generation so a crash leaves a visible failure, not silence.
     episode = Episode(
+        **({"id": episode_id} if episode_id else {}),
         user_id=user_id,
         mode=EpisodeMode.brief,
         status=EpisodeStatus.running,

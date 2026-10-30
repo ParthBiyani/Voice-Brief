@@ -143,3 +143,85 @@ a { color: var(--accent); }
 .chat-sources { color: var(--muted); font-size: 13px; }
 
 code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+
+/* ── navigation ─────────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+.tabs button { border-color: transparent; background: transparent; }
+.tabs button.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+/* ── episode list ───────────────────────────────────────────────────────── */
+.episode-group { margin-bottom: 14px; }
+.episode-group h3 { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.episode-meta { display: flex; gap: 8px; align-items: center; }
+
+.badge-degraded, .badge-interrupted { color: var(--warn); border-color: var(--warn); }
+.badge-running, .badge-pending, .badge-skipped { color: var(--muted); }
+.badge-ok { color: var(--accent); border-color: var(--accent); }
+
+/* ── player ─────────────────────────────────────────────────────────────── */
+.audio-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  padding: 8px 0;
+  margin: 8px 0 2px;
+}
+.audio-bar audio { margin: 0; flex: 1; min-width: 0; }
+.download { font-size: 13px; white-space: nowrap; }
+.why-bar { margin: 6px 0 4px; }
+.why { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 6px 0 10px; }
+.why ul, .plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.why li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }
+.why li.row-not_picked { opacity: 0.7; }
+.why-mark { color: var(--accent); }
+.chip { font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.chip-personal { align-self: center; }
+.notice-text { color: var(--muted); font-size: 13px; margin: 2px 0; }
+.error-text { color: var(--warn); font-size: 13px; }
+
+/* ── settings ───────────────────────────────────────────────────────────── */
+.settings, .history { max-width: 760px; }
+.settings h2, .history h2 { margin: 0 0 14px; }
+.settings h3, .history h3 { margin: 22px 0 8px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.form { display: grid; gap: 14px; }
+.form label { display: grid; gap: 4px; }
+.form label > span { font-weight: 550; }
+.form small { color: var(--muted); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+select {
+  font: inherit; padding: 7px 11px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text); width: 100%;
+}
+.integration { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin-bottom: 8px; }
+.integration-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.token-prompt { max-width: 420px; margin: 12vh auto; display: grid; gap: 12px; }
+
+/* ── history ────────────────────────────────────────────────────────────── */
+.history-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
+.history-head input { width: auto; }
+.history-episode { border-top: 1px solid var(--border); margin-top: 18px; padding-top: 4px; }
+.table-wrap { overflow-x: auto; }
+table.rank { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.rank th { text-align: left; color: var(--muted); font-weight: 500; padding: 4px 8px; }
+table.rank td { padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+table.rank .num { text-align: right; font-variant-numeric: tabular-nums; }
+tr.row-not_picked td, tr.row-aired td { opacity: 0.65; }
+.toggle { font-size: 13px; color: var(--muted); display: block; margin: 8px 0; }
+.toggle input { width: auto; }
+
+/* ── phones ─────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .app { padding: 16px 12px 48px; }
+  .app-head h1 { font-size: 22px; }
+  .tagline { display: none; }
+  .player { padding: 12px; }
+  .segment.is-active { margin: 0 -12px; padding: 13px 12px; }
+  .form-row { grid-template-columns: 1fr; }
+  .audio-bar { flex-wrap: wrap; }
+  button { padding: 9px 14px; } /* easier to hit with a thumb */
+}

@@ -7,6 +7,11 @@
 
 const BASE = "/api";
 
+/** The single user this app serves. Multi-user would replace this with a login. */
+export const USER_EMAIL = "me@example.com";
+
+export type EpisodeStatus = "pending" | "running" | "ready" | "degraded" | "failed";
+
 export interface Citation {
   url: string;
   title: string;
@@ -22,12 +27,16 @@ export interface Segment {
   start_seconds: number | null;
   end_seconds: number | null;
   citations: Citation[];
+  /** Dependencies from the listener's own repositories this story touches. */
+  matched: string[];
+  /** Picked for a personal reason: a stack match or a stated interest. */
+  personal: boolean;
 }
 
 export interface EpisodeSummary {
   id: string;
   title: string | null;
-  status: "pending" | "running" | "ready" | "failed";
+  status: EpisodeStatus;
   mode: string;
   language: string;
   style: string;
@@ -36,11 +45,21 @@ export interface EpisodeSummary {
   created_at: string;
 }
 
+export interface Grounding {
+  attribution_rate?: number;
+  sentences?: number;
+  supported?: number;
+  warnings?: string[];
+  tts_engine?: string;
+}
+
 export interface EpisodeDetail extends EpisodeSummary {
   segments: Segment[];
+  /** Relative to the API root; use `mediaUrl`. */
   audio_url: string | null;
   generation_seconds: number | null;
   error: string | null;
+  grounding: Grounding | null;
 }
 
 export interface SearchHit {
@@ -61,11 +80,121 @@ export interface ProgressEvent {
   [key: string]: unknown;
 }
 
+export interface Integration {
+  configured: boolean;
+  detail: string;
+  fetched_at: string | null;
+  items: number;
+}
+
+export interface Settings {
+  email: string;
+  github_login: string | null;
+  topics: string[];
+  language: string;
+  style: string;
+  github: Integration;
+  projectmind: Integration;
+  llm_provider: string;
+  tts_engine: string;
+  daily_budget_inr: number;
+}
+
+export interface SettingsUpdate {
+  github_login?: string;
+  topics?: string[];
+  language?: string;
+  style?: string;
+}
+
+export interface RankingRow {
+  outcome: "picked" | "not_picked" | "aired";
+  title: string;
+  url?: string | null;
+  source: string | null;
+  position: number | null;
+  score: number | null;
+  llm_score: number | null;
+  signals: Record<string, number>;
+  stack_match: string[];
+  reason: string | null;
+}
+
+export interface HistoryDay {
+  date: string;
+  runs: {
+    id: string;
+    kind: string;
+    trigger: string;
+    status: string;
+    started_at: string;
+    finished_at: string | null;
+    summary: Record<string, unknown>;
+    error: string | null;
+  }[];
+  episodes: {
+    id: string;
+    title: string | null;
+    status: string;
+    error: string | null;
+    cost_inr: number;
+    duration_seconds: number | null;
+    grounding: Grounding;
+    ranking: {
+      outcome: string;
+      title: string;
+      source: string | null;
+      score: number | null;
+      llm: number | null;
+      signals: Record<string, number>;
+      stack_match: string[];
+      why: string | null;
+    }[];
+    llm_calls: { stage: string; model: string; tokens: number; cost_inr: number }[];
+  }[];
+  interactions: {
+    id: string;
+    kind: string;
+    channel: string;
+    at: string;
+    request: Record<string, unknown>;
+    response: Record<string, unknown>;
+  }[];
+}
+
+/** Raised on a 401, so the app can ask for the access token instead of showing an error. */
+export class AuthRequired extends Error {
+  constructor() {
+    super("An access token is required");
+  }
+}
+
+/** Store the access token in a cookie, which is what lets <audio> and EventSource send it. */
+export function saveToken(token: string): void {
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `vb_token=${encodeURIComponent(token)}; path=/; max-age=31536000; SameSite=Strict${secure}`;
+}
+
+/** A `?token=` in the address (a shared link) is stored and removed from the URL. */
+export function adoptTokenFromUrl(): void {
+  const url = new URL(location.href);
+  const token = url.searchParams.get("token");
+  if (!token) return;
+  saveToken(token);
+  url.searchParams.delete("token");
+  history.replaceState(null, "", url.toString());
+}
+
+export function mediaUrl(path: string): string {
+  return path.startsWith("http") ? path : `${BASE}${path}`;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
   });
+  if (response.status === 401) throw new AuthRequired();
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
     throw new Error(`${response.status} ${response.statusText}${detail ? `: ${detail}` : ""}`);
@@ -74,18 +203,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+const user = `email=${encodeURIComponent(USER_EMAIL)}`;
+
 export const api = {
   health: () => request<{ status: string; llm_provider: string; tts_engine: string }>("/health"),
 
-  listEpisodes: (limit = 20) => request<EpisodeSummary[]>(`/episodes?limit=${limit}`),
+  listEpisodes: (limit = 30) => request<EpisodeSummary[]>(`/episodes?limit=${limit}`),
 
   getEpisode: (id: string) => request<EpisodeDetail>(`/episodes/${id}`),
+
+  ranking: (id: string) => request<RankingRow[]>(`/episodes/${id}/ranking`),
+
+  activeGenerations: () => request<string[]>("/episodes/active/now"),
 
   search: (query: string) =>
     request<{ query: string; hits: SearchHit[] }>(`/search?q=${encodeURIComponent(query)}`),
 
   vote: (segmentId: string, vote: 1 | -1) =>
-    request<void>("/feedback", {
+    request<void>(`/feedback?${user}`, {
       method: "POST",
       body: JSON.stringify({ segment_id: segmentId, vote }),
     }),
@@ -96,35 +231,72 @@ export const api = {
       { method: "POST", body: JSON.stringify({ question, preset: preset ?? null }) },
     ),
 
-  generate: (body: Record<string, unknown>) =>
+  /** Anything left out falls back to the settings saved on the server. */
+  generate: (body: Record<string, unknown> = {}) =>
     request<{ episode_id: string; stream_url: string }>("/episodes/generate", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({ email: USER_EMAIL, ...body }),
     }),
+
+  settings: () => request<Settings>(`/settings?${user}`),
+
+  saveSettings: (update: SettingsUpdate) =>
+    request<Settings>(`/settings?${user}`, { method: "PUT", body: JSON.stringify(update) }),
+
+  history: (date?: string) => request<HistoryDay>(`/history${date ? `?date=${date}` : ""}`),
 };
 
 /**
- * Subscribe to generation progress.
+ * Follow generation progress.
  *
- * Returns an unsubscribe function. The caller must call it — an EventSource left
- * open keeps reconnecting after the component unmounts.
+ * The server replays every event so far, so a dropped connection is simply
+ * re-established: nothing is lost. Returns an unsubscribe function, which the caller
+ * must call; an EventSource left open keeps reconnecting after the component unmounts.
  */
 export function watchProgress(
   streamUrl: string,
   onEvent: (event: ProgressEvent) => void,
 ): () => void {
-  const source = new EventSource(`${BASE}${streamUrl}`);
-  source.onmessage = (message) => {
-    try {
-      const event = JSON.parse(message.data) as ProgressEvent;
-      onEvent(event);
-      if (event.stage === "ready" || event.stage === "failed") source.close();
-    } catch {
-      // A malformed frame is not worth tearing the stream down for.
-    }
+  let source: EventSource | null = null;
+  let stopped = false;
+  let attempts = 0;
+
+  const connect = () => {
+    source = new EventSource(`${BASE}${streamUrl}`);
+    source.onmessage = (message) => {
+      attempts = 0;
+      try {
+        const event = JSON.parse(message.data) as ProgressEvent;
+        onEvent(event);
+        if (event.stage === "ready" || event.stage === "failed") {
+          stopped = true;
+          source?.close();
+        }
+      } catch {
+        // A malformed frame is not worth tearing the stream down for.
+      }
+    };
+    source.onerror = () => {
+      source?.close();
+      if (stopped) return;
+      if (attempts >= 5) {
+        onEvent({
+          stage: "failed",
+          at: new Date().toISOString(),
+          error: "Lost the connection to the server",
+        });
+        return;
+      }
+      attempts += 1;
+      setTimeout(() => !stopped && connect(), 1500 * attempts);
+    };
   };
-  source.onerror = () => source.close();
-  return () => source.close();
+
+  connect();
+  return () => {
+    stopped = true;
+    source?.close();
+  };
 }
 
 export function formatTimestamp(seconds: number): string {
@@ -135,4 +307,18 @@ export function formatTimestamp(seconds: number): string {
 export function formatDuration(seconds: number | null): string {
   if (!seconds) return "—";
   return `${Math.round(seconds / 60)} min`;
+}
+
+/** "Today", "Yesterday", or a short date, in the viewer's own timezone. */
+export function dayLabel(iso: string, now = new Date()): string {
+  const day = new Date(iso);
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diff = Math.round((startOf(now) - startOf(day)) / 86_400_000);
+  if (diff === 0) return "Today";
+  if (diff === 1) return "Yesterday";
+  return day.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+}
+
+export function percent(value: number | undefined | null): string {
+  return value === undefined || value === null ? "—" : `${Math.round(value * 100)}%`;
 }

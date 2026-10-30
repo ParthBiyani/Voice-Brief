@@ -8,8 +8,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { EpisodeDetail, Segment } from "../lib/api";
-import { api, formatTimestamp } from "../lib/api";
+import type { EpisodeDetail, RankingRow, Segment } from "../lib/api";
+import { api, formatTimestamp, mediaUrl, percent } from "../lib/api";
 import { SegmentChat } from "./SegmentChat";
 
 interface Props {
@@ -22,6 +22,25 @@ export function Player({ episode }: Props) {
   const [playing, setPlaying] = useState(false);
   const [openChat, setOpenChat] = useState<string | null>(null);
   const [votes, setVotes] = useState<Record<string, 1 | -1>>({});
+  const [why, setWhy] = useState<RankingRow[] | null>(null);
+  const [showWhy, setShowWhy] = useState(false);
+
+  // A different episode starts fresh: no stale explanation from the previous one.
+  useEffect(() => {
+    setWhy(null);
+    setShowWhy(false);
+  }, [episode.id]);
+
+  async function toggleWhy() {
+    if (!showWhy && why === null) {
+      try {
+        setWhy(await api.ranking(episode.id));
+      } catch {
+        setWhy([]);
+      }
+    }
+    setShowWhy((open) => !open);
+  }
 
   const activeId = useMemo(() => {
     const current = episode.segments.find(
@@ -70,25 +89,49 @@ export function Player({ episode }: Props) {
         <div className="meta">
           <span>{formatTimestamp(episode.duration_seconds ?? 0)}</span>
           {episode.cost_inr !== null && <span>₹{episode.cost_inr.toFixed(2)}</span>}
+          {episode.grounding?.attribution_rate !== undefined && (
+            <span title="Share of factual claims traced to a source passage">
+              {percent(episode.grounding.attribution_rate)} sourced
+            </span>
+          )}
           <span className={`badge badge-${episode.status}`}>{episode.status}</span>
         </div>
       </header>
 
+      {episode.status === "degraded" && episode.error && (
+        <p className="banner error">This brief is incomplete: {episode.error}</p>
+      )}
+      {episode.status === "failed" && (
+        <p className="banner error">This brief failed: {episode.error ?? "unknown error"}</p>
+      )}
+
       {episode.audio_url ? (
-        <audio
-          ref={audioRef}
-          src={episode.audio_url}
-          controls
-          preload="metadata"
-          onTimeUpdate={(e) => setPosition(e.currentTarget.currentTime)}
-          onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
-        />
+        <div className="audio-bar">
+          <audio
+            ref={audioRef}
+            src={mediaUrl(episode.audio_url)}
+            controls
+            preload="metadata"
+            onTimeUpdate={(e) => setPosition(e.currentTarget.currentTime)}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+          />
+          <a className="download" href={`${mediaUrl(episode.audio_url)}?download=1`} download>
+            Download
+          </a>
+        </div>
       ) : (
         <p className="notice">
           No audio for this episode. The transcript below is still complete.
         </p>
       )}
+
+      <div className="why-bar">
+        <button onClick={() => void toggleWhy()} aria-expanded={showWhy}>
+          {showWhy ? "Hide" : "Why these stories?"}
+        </button>
+      </div>
+      {showWhy && <Why rows={why} />}
 
       <ol className="transcript">
         {episode.segments.map((segment) => (
@@ -142,6 +185,11 @@ function TranscriptLine({
           {formatTimestamp(start)}
         </button>
         {segment.heading && <h3>{segment.heading}</h3>}
+        {segment.personal && (
+          <span className="chip chip-personal">
+            {segment.matched.length > 0 ? `your stack: ${segment.matched.join(", ")}` : "for you"}
+          </span>
+        )}
       </div>
 
       <p className="script">{segment.script}</p>
@@ -180,5 +228,43 @@ function TranscriptLine({
 
       {chatOpen && <SegmentChat segmentId={segment.id} />}
     </li>
+  );
+}
+
+function signalText(signals: Record<string, number>): string {
+  return Object.entries(signals)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 3)
+    .map(([name, value]) => `${name.replace("_", " ")} ${value > 0 ? "+" : ""}${value.toFixed(1)}`)
+    .join(" · ");
+}
+
+function Why({ rows }: { rows: RankingRow[] | null }) {
+  if (rows === null) return <p className="notice">Loading…</p>;
+  if (rows.length === 0) {
+    return <p className="notice">No ranking record for this episode (it predates history).</p>;
+  }
+  const shown = rows.filter((r) => r.outcome !== "aired").slice(0, 14);
+  return (
+    <div className="why">
+      <p className="notice-text">
+        The top candidates VoiceBrief considered, with what each signal contributed.
+      </p>
+      <ul className="plain">
+        {shown.map((row, index) => (
+          <li key={`${row.title}-${index}`} className={`row-${row.outcome}`}>
+            <span className="why-mark">{row.outcome === "picked" ? "●" : "○"}</span>
+            <div>
+              <div>{row.title}</div>
+              <div className="notice-text">
+                {signalText(row.signals)}
+                {row.stack_match.length > 0 && ` · stack: ${row.stack_match.join(", ")}`}
+              </div>
+              {row.reason && <div className="notice-text">{row.reason}</div>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

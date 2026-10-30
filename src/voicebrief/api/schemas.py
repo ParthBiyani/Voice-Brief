@@ -28,6 +28,10 @@ class SegmentOut(BaseModel):
     start_seconds: float | None = None
     end_seconds: float | None = None
     citations: list[Citation] = Field(default_factory=list)
+    # Dependencies from the listener's own repositories this story touches, and whether
+    # it was picked for a personal reason (stack match or a stated interest).
+    matched: list[str] = Field(default_factory=list)
+    personal: bool = False
 
     @property
     def timestamp(self) -> str:
@@ -52,6 +56,8 @@ class EpisodeDetail(EpisodeSummary):
     audio_url: str | None = None
     generation_seconds: float | None = None
     error: str | None = None
+    # attribution_rate, sentences, supported, warnings, tts_engine
+    grounding: dict | None = None
 
 
 class TranscriptLine(BaseModel):
@@ -67,10 +73,11 @@ class GenerateRequest(BaseModel):
     email: str = "me@example.com"
     github_login: str | None = None
     topics: list[str] = Field(default_factory=list)
-    language: str = "en"
-    style: str = "solo_anchor"
-    max_stories: int = Field(default=8, ge=1, le=15)
-    target_minutes: int = Field(default=12, ge=3, le=30)
+    # Left unset, these fall back to what the user saved in settings.
+    language: str | None = None
+    style: str | None = None
+    max_stories: int | None = Field(default=None, ge=1, le=15)
+    target_minutes: int | None = Field(default=None, ge=3, le=30)
     render_audio: bool = True
 
 

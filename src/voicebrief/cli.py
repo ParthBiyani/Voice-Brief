@@ -343,6 +343,38 @@ def personal_show(
     console.print(f"[bold]recent projects[/bold]  {', '.join(context.projects) or '-'}")
 
 
+@app.command("serve")
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="0.0.0.0 to reach it from a phone"),
+    port: int = typer.Option(8000, "--port"),
+    no_auth: bool = typer.Option(False, "--no-auth", help="Allow network access without a token"),
+) -> None:
+    """Serve the web app and API together on one port."""
+    import uvicorn
+
+    from voicebrief.api.site import build_site, default_dist, is_loopback
+
+    settings = get_settings()
+    if not is_loopback(host) and not settings.api_token and not no_auth:
+        console.print(
+            "[red]Refusing to expose the app to the network without a token.[/red]\n"
+            "Anyone who can reach it could generate briefs (which spend money) and play your "
+            "audio. Set VB_API_TOKEN in .env, or pass --no-auth if you really mean it."
+        )
+        raise typer.Exit(1)
+
+    if not (default_dist() / "index.html").is_file():
+        console.print(
+            "[yellow]The web app is not built.[/yellow] Run: cd web && npm ci && npm run build"
+            "\nThe API still works at /api/docs."
+        )
+    where = "localhost" if is_loopback(host) else host
+    console.print(f"[green]VoiceBrief at http://{where}:{port}[/green]")
+    if settings.api_token:
+        console.print("[dim]Protected by VB_API_TOKEN: open the page and enter it once.[/dim]")
+    uvicorn.run(build_site(), host=host, port=port, log_level="info")
+
+
 history_app = typer.Typer(no_args_is_help=True, help="Review what the system did and was asked")
 app.add_typer(history_app, name="history")
 
