@@ -231,7 +231,7 @@ class TestCountingAndShortClaims:
         report = verify_segment(
             "langchain-core has two new releases.", facts, source_text="langchain-core 1.7.1 1.7.2"
         )
-        assert report.supported_sentences == 1
+        assert report.unsupported == []
 
     def test_a_percentage_is_still_a_figure_that_must_be_sourced(self):
         facts = summary(["Throughput improved"])
@@ -262,3 +262,60 @@ class TestCountingAndShortClaims:
             source_text="49 billion parameters are active per token",
         )
         assert report.supported_sentences == 1
+
+
+class TestPhrasingThatIsFaithfulButNotLiteral:
+    """From a real episode that scored 0.36 though its content was right: the verifier
+    penalised rewordings that a spoken script legitimately makes."""
+
+    def test_counting_the_sources_structure_is_narration_not_a_claim(self):
+        for sentence in (
+            "The material gives three reasons.",
+            "There is one practical detail about versions.",
+            "So the case comes down to four points.",
+        ):
+            assert not is_claim(sentence), sentence
+
+    def test_a_percentage_is_still_a_claim_even_when_small(self):
+        assert is_claim("Throughput improved by ten percent.")
+
+    def test_a_spoken_ordinal_percentile_reads_as_the_figure_a_source_writes(self):
+        assert "95" in spoken_numbers("the ninety-fifth percentile")
+        assert "90" not in spoken_numbers("the ninety-fifth percentile")
+
+    def test_plain_ordinals_in_prose_are_not_numbers(self):
+        assert spoken_numbers("first, second and third") == set()
+
+    def test_ms_and_p95_in_a_source_support_milliseconds_and_percentile_in_a_script(self):
+        facts = summary(["p95 query latency was 12 ms at 100,000 vectors"])
+        report = verify_segment(
+            "That means queries came back in twelve milliseconds at the ninety-fifth percentile.",
+            facts,
+            source_text="p95 query latency was 12 ms at 100,000 vectors",
+        )
+        assert report.unsupported == [] and report.supported_sentences == 1
+
+    def test_plurals_match_their_singular(self):
+        facts = summary(["The index handles each query quickly"])
+        report = verify_segment(
+            "The indexes handle queries quickly.",
+            facts,
+            source_text="The index handles each query quickly",
+        )
+        assert report.unsupported == []
+
+    def test_a_fabricated_percentile_is_still_caught(self):
+        facts = summary(["p95 query latency was 12 ms"])
+        report = verify_segment(
+            "Latency was twelve milliseconds at the ninety-ninth percentile.",
+            facts,
+            source_text="p95 query latency was 12 ms",
+        )
+        assert report.unsupported, "99 does not appear in the source"
+
+    def test_an_invented_figure_is_still_caught_after_all_the_leniency(self):
+        facts = summary(["latency was 12 ms"])
+        report = verify_segment(
+            "Latency was forty milliseconds.", facts, source_text="latency was 12 ms"
+        )
+        assert report.unsupported

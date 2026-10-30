@@ -9,12 +9,23 @@ expires, and supports seeking.
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from datetime import datetime
 
 from botocore.exceptions import BotoCoreError, ClientError
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+)
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -333,6 +344,104 @@ def episode_ranking(episode_id: uuid.UUID, session: Session = Depends(get_sessio
         }
         for r in rows
     ]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mode 2: your own documents
+# ─────────────────────────────────────────────────────────────────────────────
+@router.post("/documents/podcast", status_code=202, tags=["documents"])
+async def documents_podcast(
+    background: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+    email: str = Form("me@example.com"),
+    language: str | None = Form(None),
+    stories: int | None = Form(None),
+    minutes: int | None = Form(None),
+) -> dict:
+    """Upload documents (PDF, DOCX, Markdown, text, or a zipped repository) and get an
+    episode explaining them. Progress is followed on the returned stream, like a brief."""
+    from voicebrief.documents.parse import parse_upload
+    from voicebrief.graphs.knowledge import MAX_DOCUMENTS, MAX_FILE_BYTES, ensure_substance
+    from voicebrief.pipeline.documents_episode import DocumentsRequest
+
+    if not files:
+        raise HTTPException(status_code=422, detail="attach at least one document")
+    if len(files) > MAX_DOCUMENTS:
+        raise HTTPException(status_code=422, detail=f"at most {MAX_DOCUMENTS} documents")
+    if language is not None and language not in {item.value for item in Language}:
+        raise HTTPException(status_code=422, detail="language must be en or hi")
+
+    parsed = []
+    origins = []
+    for upload in files:
+        data = await upload.read()
+        name = upload.filename or "document"
+        if len(data) > MAX_FILE_BYTES:
+            raise HTTPException(status_code=413, detail=f"{name} is larger than 25 MB")
+        try:
+            # Parsing a large PDF takes a moment and holds the CPU, so it leaves the loop.
+            document = await asyncio.to_thread(parse_upload, name, data)
+            parsed.append(ensure_substance(document))
+        except (ValueError, RuntimeError) as exc:
+            raise HTTPException(status_code=422, detail=f"{name}: {exc}") from exc
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"{name} could not be read: {exc}") from exc
+        origins.append(name)
+
+    episode_id = uuid.uuid4()
+    progress.open_channel(episode_id)
+    request = DocumentsRequest(email=email, language=language, stories=stories, minutes=minutes)
+    record_interaction(
+        "docs",
+        "web",
+        request={"files": origins, "language": language, "stories": stories, "minutes": minutes},
+    )
+    background.add_task(_run_documents, episode_id, request, parsed, origins)
+    return {
+        "episode_id": str(episode_id),
+        "status": "accepted",
+        "stream_url": f"/episodes/{episode_id}/stream",
+        "documents": [
+            {"title": d.title, "kind": d.kind, "sections": len(d.chunks)} for d in parsed
+        ],
+    }
+
+
+def _run_documents(episode_id, request, parsed, origins) -> None:
+    """Background worker for a documents episode. Never lets an exception escape."""
+    from voicebrief.db import session_scope
+    from voicebrief.history import finish_run, start_run
+    from voicebrief.pipeline.documents_episode import generate_documents_episode
+
+    progress.emit(episode_id, "started")
+    run_id = start_run("documents", "web")
+    try:
+        progress.emit(episode_id, "writing")
+        with session_scope() as session:
+            result = generate_documents_episode(
+                session, request, parsed, origins, run_id=run_id, episode_id=episode_id
+            )
+        finish_run(
+            run_id,
+            "ok" if result.status == "ready" else result.status,
+            summary={"documents": origins, "status": result.status, "cost_inr": result.cost_inr},
+            episode_id=result.episode_id,
+        )
+        progress.emit(
+            episode_id,
+            "ready",
+            episode_id=str(result.episode_id),
+            title=result.title,
+            status=result.status,
+            duration_seconds=result.duration_seconds,
+            cost_inr=result.cost_inr,
+            attribution_rate=result.attribution_rate,
+            issues=result.errors[:5],
+        )
+    except Exception as exc:
+        log.error("api.documents_failed", error=str(exc))
+        finish_run(run_id, "failed", error=f"{type(exc).__name__}: {exc}")
+        progress.emit(episode_id, "failed", error=f"{type(exc).__name__}: {exc}"[:300])
 
 
 @router.get("/episodes/active/now", tags=["episodes"])

@@ -21,6 +21,7 @@ from __future__ import annotations
 import tempfile
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -197,7 +198,16 @@ def generate_episode(
     excluded: list[dict] | None = None,
     run_id: uuid.UUID | None = None,
     episode_id: uuid.UUID | None = None,
+    mode: EpisodeMode = EpisodeMode.brief,
+    produce: Callable[[LLMClient], dict] | None = None,
 ) -> GenerationResult:
+    """Make, voice, store and judge one episode.
+
+    By default the daily-brief graph writes it from `candidates`. A caller with a
+    different source of material (Mode 2) passes `produce`, which receives the ledgered
+    LLM client and returns the same shape of result; everything after that (audio,
+    storage, status, grounding, history, search) is shared.
+    """
     settings = get_settings()
     started = time.perf_counter()
 
@@ -205,7 +215,7 @@ def generate_episode(
     episode = Episode(
         **({"id": episode_id} if episode_id else {}),
         user_id=user_id,
-        mode=EpisodeMode.brief,
+        mode=mode,
         status=EpisodeStatus.running,
         language=language,
         style=style,
@@ -218,14 +228,17 @@ def generate_episode(
     client = LLMClient(session, episode_id=episode.id, run_id=run_id)
 
     try:
-        graph = BriefGraph(client, max_stories=max_stories, target_minutes=target_minutes)
-        written = graph.run(
-            candidates,
-            profile=profile,
-            declared_topics=declared_topics,
-            language=language,
-            style=style,
-        )
+        if produce is not None:
+            written = produce(client)
+        else:
+            graph = BriefGraph(client, max_stories=max_stories, target_minutes=target_minutes)
+            written = graph.run(
+                candidates,
+                profile=profile,
+                declared_topics=declared_topics,
+                language=language,
+                style=style,
+            )
     except Exception as exc:
         # Rolled back first so the failed row is written from a clean transaction, then
         # committed: the caller's scope rolls back on the re-raise, and without this the
@@ -293,7 +306,7 @@ def generate_episode(
     story_count = sum(1 for s in segments if s.kind == "story")
     status, reasons = judge_episode(
         story_count=story_count,
-        requested_stories=max_stories,
+        requested_stories=written.get("planned_stories", max_stories),
         render_audio=render_audio,
         audio_key=audio_key,
         duration_seconds=duration,

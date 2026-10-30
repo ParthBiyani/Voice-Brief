@@ -343,6 +343,61 @@ def personal_show(
     console.print(f"[bold]recent projects[/bold]  {', '.join(context.projects) or '-'}")
 
 
+docs_app = typer.Typer(no_args_is_help=True, help="Turn your own documents into an episode")
+app.add_typer(docs_app, name="docs")
+
+
+@docs_app.command("podcast")
+def docs_podcast(
+    paths: list[Path] = typer.Argument(
+        ..., help="PDF, DOCX, Markdown, text or zip files, and/or folders (a repository)"
+    ),
+    email: str = _EMAIL_OPT,
+    language: str | None = _LANG_OPT,
+    style: str | None = _STYLE_OPT,
+    stories: int | None = _STORIES_OPT,
+    minutes: int | None = _MINUTES_OPT,
+    no_audio: bool = _NO_AUDIO_OPT,
+) -> None:
+    """Explain the given documents as an episode.
+
+    One document becomes a walk through it, in order. Several documents also get a
+    segment on where they disagree. A folder is read as a repository: README and
+    manifests first, then modules by how much the rest of the code imports them.
+    """
+    from voicebrief.db import session_scope
+    from voicebrief.graphs.knowledge import load_documents
+    from voicebrief.pipeline.documents_episode import DocumentsRequest, generate_documents_episode
+
+    try:
+        parsed = load_documents(paths)
+    except ValueError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    for document in parsed:
+        console.print(
+            f"[dim]{document.kind}: {document.title} ({len(document.chunks)} sections)[/dim]"
+        )
+
+    request = DocumentsRequest(
+        email=email,
+        language=language,
+        style=style,
+        stories=stories,
+        minutes=minutes,
+        render_audio=not no_audio,
+    )
+    with session_scope() as session:
+        result = generate_documents_episode(
+            session, request, parsed, [str(p.resolve()) for p in paths]
+        )
+
+    _print_episode(result)
+    if result.status != "ready":
+        raise typer.Exit(2 if result.status == "degraded" else 1)
+
+
 deliver_app = typer.Typer(no_args_is_help=True, help="Send a brief to Slack or email")
 app.add_typer(deliver_app, name="deliver")
 

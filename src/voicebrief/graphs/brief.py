@@ -110,6 +110,28 @@ manufacture one where it does not exist.\
 """
 
 
+KNOWLEDGE_SEGMENT_SYSTEM = """\
+You write one segment of an audio episode that explains material the listener supplied:
+their own documents, papers, notes or code.
+
+This is spoken, not read. That changes the rules:
+- Short sentences. No bullet points, no headings, no markdown, no emoji.
+- Never read a URL or a file path aloud. Say "the architecture section" or "the config
+  module", not the address.
+- Expand notation into speech: "version zero point four", "twelve percent".
+- No preamble, no "in this segment". Start with the substance.
+
+Grounding is not negotiable:
+- Every claim must come from the FACTS provided, which come from the listener's own
+  material. If it is not there, it does not go in the script.
+- Do not estimate, extrapolate, or add context you happen to know. An absent detail
+  stays absent.
+- Explain what the material says, in the order and emphasis it gives. No editorial
+  verdicts, no speculation about what it might mean.
+- If the facts are thin, write a shorter segment. Short and true beats long and padded.\
+"""
+
+
 class BriefGraph:
     def __init__(
         self,
@@ -117,7 +139,12 @@ class BriefGraph:
         *,
         max_stories: int = 8,
         target_minutes: int = TARGET_MINUTES,
+        mode: str = "brief",
+        subject: str = "",
     ) -> None:
+        self.mode = mode
+        self.subject = subject
+        self.segment_system = KNOWLEDGE_SEGMENT_SYSTEM if mode == "knowledge" else SEGMENT_SYSTEM
         self.client = client
         self.max_stories = max_stories
         self.target_minutes = target_minutes
@@ -383,7 +410,7 @@ class BriefGraph:
                 prompt=prompt,
                 stage=Stage.script,
                 tier=Tier.flagship,
-                system=SEGMENT_SYSTEM,
+                system=self.segment_system,
                 max_tokens=1500,
                 cache_system=True,
                 fallback_tier=Tier.utility,
@@ -407,11 +434,19 @@ class BriefGraph:
 
     def _write_cold_open(self, summaries, language: str, style: str) -> Segment:
         headlines = "; ".join(s.headline for _, s in summaries[:3] if s.headline)
-        prompt = (
-            f"Write a 25-word cold open for today's brief. Today's top items: "
-            f"{headlines}.\nNo greeting cliches. Land on the single most important thing."
-            f"{' Write in Hindi.' if language == 'hi' else ''}"
-        )
+        if self.mode == "knowledge":
+            prompt = (
+                f"Write a 25-word cold open for an episode explaining the listener's own "
+                f"material: {self.subject}. What it covers: {headlines}.\n"
+                f"No greeting cliches. Land on the single most important point."
+                f"{' Write in Hindi.' if language == 'hi' else ''}"
+            )
+        else:
+            prompt = (
+                f"Write a 25-word cold open for today's brief. Today's top items: "
+                f"{headlines}.\nNo greeting cliches. Land on the single most important thing."
+                f"{' Write in Hindi.' if language == 'hi' else ''}"
+            )
         return self._simple_segment(prompt, "cold_open", "Cold open", 200)
 
     def _write_agenda(self, summaries, language: str, style: str) -> Segment:
@@ -424,8 +459,13 @@ class BriefGraph:
         return self._simple_segment(prompt, "agenda", "Agenda", 250)
 
     def _write_sign_off(self, position: int, language: str, style: str) -> Segment:
+        what = (
+            "an episode explaining the listener's own documents"
+            if self.mode == "knowledge"
+            else ("a daily technical brief")
+        )
         prompt = (
-            "Write a 20-word sign-off for a daily technical brief. Warm, brief, no "
+            f"Write a 20-word sign-off for {what}. Warm, brief, no "
             "call to action, no 'like and subscribe'."
             + (" Write in Hindi." if language == "hi" else "")
         )
@@ -437,7 +477,7 @@ class BriefGraph:
                 prompt=prompt,
                 stage=Stage.script,
                 tier=Tier.flagship,
-                system=SEGMENT_SYSTEM,
+                system=self.segment_system,
                 max_tokens=max_tokens,
                 cache_system=True,
                 fallback_tier=Tier.utility,
@@ -450,10 +490,11 @@ class BriefGraph:
             text = ""
         return Segment(position=0, kind=kind, heading=heading, script=text)
 
-    @staticmethod
-    def _title(state: BriefState, segments: list[Segment]) -> str:
+    def _title(self, state: BriefState, segments: list[Segment]) -> str:
         stories = [s for s in segments if s.kind == "story"]
         date = datetime.now(UTC).strftime("%d %b %Y")
+        if self.mode == "knowledge" and self.subject:
+            return f"{self.subject[:110]} · {date}"
         if not stories:
             return f"VoiceBrief — {date}"
         return f"{stories[0].heading} — and {len(stories) - 1} more · {date}"

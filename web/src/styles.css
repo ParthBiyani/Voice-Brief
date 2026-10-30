@@ -225,3 +225,18 @@ tr.row-not_picked td, tr.row-aired td { opacity: 0.65; }
   .audio-bar { flex-wrap: wrap; }
   button { padding: 9px 14px; } /* easier to hit with a thumb */
 }
+
+/* ── documents ──────────────────────────────────────────────────────────── */
+.documents { max-width: 680px; }
+.documents h2 { margin: 0 0 8px; }
+.dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 28px 16px;
+  text-align: center; cursor: pointer; margin: 14px 0; color: var(--muted);
+}
+.dropzone p { margin: 0 0 4px; color: var(--text); }
+.dropzone:hover, .dropzone.is-dragging { border-color: var(--accent); background: var(--accent-soft); }
+.file-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; }
+.file-list li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; }
+.inline { display: flex; gap: 8px; align-items: center; }
+.inline select { width: auto; }
+.doc-source { color: var(--muted); font-size: 13px; border-bottom: 1px dotted var(--border); }
