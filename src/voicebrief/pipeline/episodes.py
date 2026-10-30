@@ -200,6 +200,7 @@ def generate_episode(
     episode_id: uuid.UUID | None = None,
     mode: EpisodeMode = EpisodeMode.brief,
     produce: Callable[[LLMClient], dict] | None = None,
+    affinity: object | None = None,
 ) -> GenerationResult:
     """Make, voice, store and judge one episode.
 
@@ -237,6 +238,7 @@ def generate_episode(
                 declared_topics=declared_topics,
                 language=language,
                 style=style,
+                affinity=affinity,
             )
         # Voicing, storing and saving are inside the same guard as writing: a crash while
         # saving segments used to leave the episode `running` until a later run noticed.

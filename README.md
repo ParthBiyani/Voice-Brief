@@ -295,8 +295,10 @@ adds integration tests against the Docker services.
   The model re-rank runs on top and visibly improves what gets picked, but it is not in the
   offline harness. The eval labels come from a documented rubric, not independent raters;
   `history export` plus your thumbs is the route to real labels.
-- **Your thumbs do not change ranking yet.** They are stored and exported, but nothing
-  feeds them back into scoring. This is the largest unfinished piece of personalization.
+- **Your thumbs are a gentle nudge, not yet a learned model.** Each vote becomes a smoothed
+  per-source and per-topic affinity worth at most 1.5 points (a matched dependency is 3), and
+  your latest liked and disliked headlines are shown to the re-rank. It needs a few days of
+  real votes to show, and it has not been measured against held-out labels.
 - **Verification is lexical, not entailment.** It reliably catches invented figures,
   versions and names, and tolerates faithful rewording (units, plurals, spoken numbers). It
   cannot catch a sentence that reuses a source's words while inverting its meaning. Small

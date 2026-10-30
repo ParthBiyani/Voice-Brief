@@ -34,6 +34,7 @@ from pathlib import Path
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
+from voicebrief.personalization.feedback import Affinity, examples_block
 from voicebrief.personalization.github_profile import StackProfileData
 
 log = get_logger(__name__)
@@ -58,6 +59,9 @@ W_MOVED_AWAY = 1.5
 # yields a segment that can only say "the sources give no further detail". It is
 # demoted below substantive stories but not removed, so a quiet day still fills.
 W_THIN = 2.0
+# Thumbs: at most this much either way, so taste can reorder similar stories but never
+# bury a release of something the listener depends on (W_DEPENDENCY is 3.0).
+W_FEEDBACK = 1.5
 THIN_STORY_CHARS = 250
 
 # Package names that are also everyday English words. A dependency called `next` or
@@ -242,6 +246,7 @@ def score_parts(
     profile: StackProfileData | None,
     declared_topics: set[str],
     now: datetime | None = None,
+    affinity: Affinity | None = None,
 ) -> tuple[float, dict[str, list[str]], dict[str, float]]:
     """The heuristic score, the dependencies it matched, and each signal's contribution."""
     text = f"{candidate.title} {candidate.summary}"
@@ -273,6 +278,8 @@ def score_parts(
     parts["recency"] = W_RECENCY * recency_score(candidate.freshness, now=now or datetime.now(UTC))
     if candidate.substance_chars is not None and candidate.substance_chars < THIN_STORY_CHARS:
         parts["thin_penalty"] = -W_THIN
+    if affinity is not None and not affinity.is_empty:
+        parts["feedback"] = W_FEEDBACK * affinity.value(candidate.source_slug, candidate.topics)
 
     rounded = {k: round(v, 4) for k, v in parts.items() if v}
     return sum(parts.values()), matched, rounded
@@ -284,9 +291,10 @@ def heuristic_score(
     profile: StackProfileData | None,
     declared_topics: set[str],
     now: datetime | None = None,
+    affinity: Affinity | None = None,
 ) -> tuple[float, dict[str, list[str]]]:
     score, matched, _ = score_parts(
-        candidate, profile=profile, declared_topics=declared_topics, now=now
+        candidate, profile=profile, declared_topics=declared_topics, now=now, affinity=affinity
     )
     return score, matched
 
@@ -297,13 +305,14 @@ def prerank(
     profile: StackProfileData | None = None,
     declared_topics: set[str] | None = None,
     now: datetime | None = None,
+    affinity: Affinity | None = None,
 ) -> list[RankedStory]:
     topics = {t.lower() for t in (declared_topics or set())}
     now = now or datetime.now(UTC)
     ranked = []
     for candidate in candidates:
         score, matched, parts = score_parts(
-            candidate, profile=profile, declared_topics=topics, now=now
+            candidate, profile=profile, declared_topics=topics, now=now, affinity=affinity
         )
         interests, _avoided = match_interests(f"{candidate.title} {candidate.summary}", profile)
         ranked.append(
@@ -416,6 +425,7 @@ def rerank(
     *,
     profile: StackProfileData | None = None,
     limit: int = RERANK_CANDIDATES,
+    affinity: Affinity | None = None,
 ) -> list[RankedStory]:
     """Re-score the top `limit` stories in one batched call.
 
@@ -448,7 +458,7 @@ def rerank(
     )
 
     prompt = (
-        f"Engineer's stack profile:\n{_profile_brief(profile)}\n\n"
+        f"Engineer's stack profile:\n{_profile_brief(profile)}{examples_block(affinity)}\n\n"
         f"Candidate stories:\n{listing}\n\n"
         f"Score all {len(head)} stories. Use the index shown in brackets."
     )

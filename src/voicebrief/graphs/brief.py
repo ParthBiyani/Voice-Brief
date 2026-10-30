@@ -55,6 +55,7 @@ class BriefState(TypedDict, total=False):
 
     candidates: Annotated[list, _keep_last]
     profile: Annotated[object, _keep_last]
+    affinity: Annotated[object, _keep_last]
     declared_topics: Annotated[set, _keep_last]
     language: Annotated[str, _keep_last]
     style: Annotated[str, _keep_last]
@@ -176,10 +177,14 @@ class BriefGraph:
         candidates = state.get("candidates", [])
         profile = state.get("profile")
 
+        affinity = state.get("affinity")
         preranked: list[RankedStory] = prerank(
-            candidates, profile=profile, declared_topics=state.get("declared_topics", set())
+            candidates,
+            profile=profile,
+            declared_topics=state.get("declared_topics", set()),
+            affinity=affinity,
         )
-        stories = rerank(preranked, self.client, profile=profile)
+        stories = rerank(preranked, self.client, profile=profile, affinity=affinity)
         selected = select_for_episode(stories, max_stories=self.max_stories)
 
         # Every candidate and its fate, kept so the choice can be explained later.
@@ -508,11 +513,13 @@ class BriefGraph:
         declared_topics: set[str] | None = None,
         language: str = "en",
         style: str = "solo_anchor",
+        affinity: object | None = None,
     ) -> dict:
         result = self.graph.invoke(
             {
                 "candidates": candidates,
                 "profile": profile,
+                "affinity": affinity,
                 "declared_topics": declared_topics or set(),
                 "language": language,
                 "style": style,
