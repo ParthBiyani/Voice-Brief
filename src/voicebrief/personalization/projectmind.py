@@ -35,18 +35,41 @@ from voicebrief.logging import get_logger
 
 log = get_logger(__name__)
 
-# Purpose-built questions. Each is substantive enough to pass ProjectMind's gate (which
-# skips trivial or mechanical prompts) and phrased to elicit profile statements and the
-# entities they are about.
-PROFILE_QUERIES: tuple[str, ...] = (
-    "What programming languages, frameworks and tools do I use to build AI agents, "
-    "backends and mobile apps, and which do I prefer?",
-    "Which technologies, libraries or approaches have I abandoned or moved away from, "
-    "and why did I switch?",
-    "What have I been building and working on lately across my projects?",
-)
+# ProjectMind only answers a prompt that names something it knows: a generic "what do I
+# use?" gets "nothing injected". So the questions name concrete technologies, taken from
+# the listener's own repositories when a GitHub profile exists.
+DEFAULT_SEEDS: tuple[str, ...] = (
+    "FastAPI", "Postgres", "Qdrant", "Flutter", "Supabase", "LangGraph", "Claude", "Docker",
+)  # fmt: skip
+SEEDS_PER_QUERY = 4
+MAX_QUERIES = 3
 
-QUERY_TIMEOUT_SECONDS = 45
+
+def profile_queries(seeds: list[str] | None = None) -> tuple[str, ...]:
+    """Questions that name technologies, so ProjectMind's relevance gate lets them through."""
+    # The listener's own technologies first, then the defaults ProjectMind is known to
+    # recognise, so a profile full of obscure packages still gets useful questions.
+    seen: set[str] = set()
+    names: list[str] = []
+    for name in [*(seeds or []), *DEFAULT_SEEDS]:
+        if len(name) >= 3 and name.lower() not in seen:
+            seen.add(name.lower())
+            names.append(name)
+    names = names[: SEEDS_PER_QUERY * MAX_QUERIES]
+    groups = [names[i : i + SEEDS_PER_QUERY] for i in range(0, len(names), SEEDS_PER_QUERY)]
+    queries = []
+    for group in groups:
+        listed = ", ".join(group[:-1]) + f" or {group[-1]}" if len(group) > 1 else group[0]
+        queries.append(
+            f"Should I build this with {listed}, or something else? "
+            "Which of these do I usually pick, and which have I moved away from?"
+        )
+    return tuple(queries)
+
+
+PROFILE_QUERIES: tuple[str, ...] = profile_queries()
+
+QUERY_TIMEOUT_SECONDS = 90
 MAX_STATEMENTS = 40
 MAX_HISTORY = 15
 CONTEXT_TTL_HOURS = 24
@@ -54,8 +77,11 @@ CONTEXT_TTL_HOURS = 24
 _SECTION_RE = re.compile(r"^###\s+(.*)$")
 _ENTITIES_RE = re.compile(r"entities matched:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
 _SCOPE_RE = re.compile(r"\s+_\((.*?)\)_\s*$")
+# "- **[decision] Project** (2026-08) — what" in the documented form; current ProjectMind
+# renders "- ** project** (2026-08) — what" with no type tag, so the tag is optional.
 _HISTORY_HEAD_RE = re.compile(
-    r"^-\s+\*\*\[(?P<type>[^\]]+)\]\s+(?P<project>[^*]+?)\*\*\s+\((?P<when>[^)]*)\)\s+[—-]\s+(?P<what>.+)$"
+    r"^-\s+\*\*\s*(?:\[(?P<type>[^\]]+)\]\s+)?(?P<project>[^*]+?)\s*\*\*\s+\((?P<when>[^)]*)\)"
+    r"\s+[—-]\s+(?P<what>.+)$"
 )
 _ABANDON_RE = re.compile(
     r"\b(abandon\w*|moved? (?:away )?from|stopp?ed using|dropp?ed|replaced|migrated (?:off|away)|"
@@ -160,7 +186,7 @@ def parse_bundle(markdown: str) -> ParsedBundle:
             if match := _HISTORY_HEAD_RE.match(line):
                 parsed.history.append(
                     HistoryItem(
-                        kind=match["type"].strip(),
+                        kind=(match["type"] or "history").strip(),
                         project=match["project"].strip(),
                         when=match["when"].strip(),
                         what=match["what"].strip(),
@@ -252,9 +278,16 @@ def configured_command() -> list[str] | None:
 
 
 def fetch_personal_context(
-    client: ProjectMindClient | None = None, *, now: datetime | None = None
+    client: ProjectMindClient | None = None,
+    *,
+    seeds: list[str] | None = None,
+    now: datetime | None = None,
 ) -> PersonalContext | None:
-    """Ask ProjectMind the profile questions and reduce the answers.
+    """Ask ProjectMind about the technologies in `seeds` and reduce the answers.
+
+    Only its profile and history sections are used. The "From your own files and notes"
+    section is raw text from unrelated documents (other projects, other people's work):
+    it is not news-relevant and is never read here, stored, or sent to a model.
 
     Returns None when ProjectMind is absent or yields nothing usable.
     """
@@ -266,7 +299,7 @@ def fetch_personal_context(
         client = ProjectMindClient(command, settings.projectmind_project_path or ".")
 
     bundles: list[ParsedBundle] = []
-    for prompt in PROFILE_QUERIES:
+    for prompt in profile_queries(seeds):
         try:
             bundles.append(parse_bundle(client.query(prompt)))
         except Exception as exc:
