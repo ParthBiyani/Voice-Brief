@@ -78,6 +78,19 @@ class Settings(BaseSettings):
     # ProjectMind: the owner's cross-project memory, borrowed for personalisation. Off
     # unless a command is configured or `projectmind` is on PATH; VB_PROJECTMIND_ENABLED
     # =false switches it off even then.
+    # Delivery. Each channel is off until its settings are present.
+    slack_bot_token: SecretStr | None = Field(default=None, alias="SLACK_BOT_TOKEN")
+    slack_channel_id: str | None = Field(default=None, alias="SLACK_CHANNEL_ID")
+    smtp_host: str | None = Field(default=None, alias="VB_SMTP_HOST")
+    smtp_port: int = Field(default=587, alias="VB_SMTP_PORT")
+    smtp_user: str | None = Field(default=None, alias="VB_SMTP_USER")
+    smtp_password: SecretStr | None = Field(default=None, alias="VB_SMTP_PASSWORD")
+    mail_from: str | None = Field(default=None, alias="VB_MAIL_FROM")
+    email_to: str | None = Field(default=None, alias="VB_EMAIL_TO")
+    # Where the web app is reachable, for the link in a digest (for example a Tailscale
+    # or LAN address). Unset: digests carry no link.
+    public_url: str | None = Field(default=None, alias="VB_PUBLIC_URL")
+
     # Protects the API when it is reachable beyond this computer (see api/site.py).
     api_token: SecretStr | None = Field(default=None, alias="VB_API_TOKEN")
     web_dist: str | None = Field(default=None, alias="VB_WEB_DIST")

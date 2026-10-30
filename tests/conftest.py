@@ -9,6 +9,9 @@ import pytest
 # into a test run.
 os.environ.setdefault("VB_LLM_PROVIDER", "echo")
 os.environ.setdefault("VB_TTS_ENGINE", "null")
+# A developer's real delivery settings must never make a test message a real inbox.
+for _name in ("SLACK_BOT_TOKEN", "SLACK_CHANNEL_ID", "VB_SMTP_HOST", "VB_EMAIL_TO", "VB_MAIL_FROM"):
+    os.environ[_name] = ""
 
 
 @pytest.fixture

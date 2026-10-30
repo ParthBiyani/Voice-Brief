@@ -33,6 +33,7 @@ from voicebrief.config import get_settings
 from voicebrief.db import session_scope
 from voicebrief.db.models import Episode, EpisodeStatus, EpisodeStyle, Language, User
 from voicebrief.db.session import get_engine
+from voicebrief.delivery.deliver import deliver_episode, notify_failure
 from voicebrief.history import (
     finish_run,
     prune_llm_bodies,
@@ -423,6 +424,12 @@ def run_daily(
                     "issues": result.issues[:10],
                 }
             )
+            if generated.status == "failed":
+                summary["delivery"] = notify_failure(
+                    "; ".join(result.issues[:3]) or "the episode could not be produced"
+                )
+            else:
+                summary["delivery"] = deliver_episode(generated.episode_id)
             finish_run(
                 run_id,
                 "ok" if generated.status == "ready" else generated.status,
@@ -435,6 +442,7 @@ def run_daily(
         except Exception as exc:
             error = f"{type(exc).__name__}: {exc}"
             log.error("daily.failed", error=error)
+            notify_failure(error)
             finish_run(run_id, "failed", error=error)
             return DailyResult(outcome="failed", status="failed", error=error[:500])
 
