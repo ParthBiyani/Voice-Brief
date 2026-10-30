@@ -170,3 +170,72 @@ class TestFailedRunsLeaveEvidence:
                 ).delete(synchronize_session=False)
                 cleanup.query(User).filter(User.email == email).delete()
                 cleanup.commit()
+
+
+@pytest.mark.integration
+class TestFailureAfterGeneration:
+    """A crash while voicing, storing or saving used to leave the episode `running`,
+    because only the model step was guarded."""
+
+    def run_with(self, monkeypatch, *, breaks):
+        from voicebrief.graphs.brief import Segment
+
+        email = f"late-{uuid.uuid4().hex[:8]}@example.com"
+        engine = get_engine()
+        written = {
+            "title": "t",
+            "segments": [Segment(position=0, kind="story", heading="h", script="Some words here.")],
+            "grounding": {},
+            "errors": [],
+        }
+        monkeypatch.setattr(*breaks)
+        try:
+            with Session(engine) as work:
+                user = User(email=email)
+                work.add(user)
+                work.commit()
+                with pytest.raises(RuntimeError):
+                    generate_episode(
+                        work,
+                        user_id=user.id,
+                        candidates=[],
+                        produce=lambda client: written,
+                        render_audio=True,
+                    )
+                work.rollback()  # what the caller's scope does on the re-raise
+            with Session(engine) as check:
+                return check.execute(
+                    select(Episode).join(User).where(User.email == email)
+                ).scalar_one()
+        finally:
+            with Session(engine) as cleanup:
+                ids = [u.id for u in cleanup.query(User).filter(User.email == email)]
+                cleanup.query(CostEntry).filter(
+                    CostEntry.episode_id.in_(select(Episode.id).where(Episode.user_id.in_(ids)))
+                ).delete(synchronize_session=False)
+                cleanup.query(Episode).filter(Episode.user_id.in_(ids)).delete(
+                    synchronize_session=False
+                )
+                cleanup.query(User).filter(User.email == email).delete()
+                cleanup.commit()
+
+    def test_a_crash_while_voicing_leaves_a_failed_episode_not_a_running_one(self, monkeypatch):
+        def exploding_engine(*a, **k):
+            raise RuntimeError("speech engine exploded")
+
+        episode = self.run_with(
+            monkeypatch, breaks=("voicebrief.pipeline.episodes.build_engine", exploding_engine)
+        )
+        assert episode.status is EpisodeStatus.failed
+        assert "speech engine exploded" in episode.error
+
+    def test_a_crash_while_saving_leaves_a_failed_episode_too(self, monkeypatch):
+        def exploding_index(*a, **k):
+            raise RuntimeError("could not record")
+
+        # record_ranking is the last step before the result is built.
+        episode = self.run_with(
+            monkeypatch, breaks=("voicebrief.pipeline.episodes.record_ranking", exploding_index)
+        )
+        assert episode.status is EpisodeStatus.failed
+        assert "could not record" in episode.error
