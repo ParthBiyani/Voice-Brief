@@ -85,8 +85,19 @@ class TestFailuresNeverCostABrief:
             backup.restore_backup(folder / "absent.dump")
 
 
+def _compose_postgres_running() -> bool:
+    """The dump runs inside VoiceBrief's own compose Postgres. A machine with Docker but
+    another Postgres (CI uses a service container) cannot take one."""
+    if shutil.which("docker") is None:
+        return False
+    done = subprocess.run(
+        backup._docker("ps", "-q", "postgres"), capture_output=True, text=True, check=False
+    )
+    return done.returncode == 0 and bool(done.stdout.strip())
+
+
 @pytest.mark.integration
-@pytest.mark.skipif(shutil.which("docker") is None, reason="needs Docker")
+@pytest.mark.skipif(not _compose_postgres_running(), reason="needs the voicebrief compose stack")
 class TestRealDump:
     def test_a_dump_of_the_running_database_verifies(self, folder):
         result = backup.create_backup(
