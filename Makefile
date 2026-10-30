@@ -47,9 +47,11 @@ test:  ## Run the unit test suite
 test-all:  ## Run every test including integration
 	pytest -q
 
-lint:  ## Lint and type-check
+lint:  ## Lint and check formatting (what CI enforces)
 	ruff check src tests
 	ruff format --check src tests
+
+typecheck:  ## Static types (informational: not yet clean, not enforced in CI)
 	mypy src
 
 fmt:  ## Auto-format
@@ -59,7 +61,7 @@ fmt:  ## Auto-format
 eval:  ## Run the evaluation harness and diff against the last recorded run
 	$(PY) -m voicebrief.evalkit.run --compare
 
-.PHONY: help install up down migrate seed ingest enrich daily tts-setup brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
+.PHONY: help install up down migrate seed ingest enrich daily tts-setup typecheck brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
 
 eval-record:  ## Record the current run as the baseline for future comparisons
 	$(PY) -m voicebrief.evalkit.run --record

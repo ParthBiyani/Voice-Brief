@@ -18,6 +18,17 @@ from voicebrief.tts.engines import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _pretend_kokoro_onnx_is_installed(monkeypatch):
+    """Availability is "package importable and model files present". These tests are about
+    the files and the engine choice, so they must not depend on the package being installed
+    on the machine running them (CI does not install the speech extra)."""
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, "kokoro_onnx", types.ModuleType("kokoro_onnx"))
+
+
 @pytest.fixture
 def empty_models(tmp_path, monkeypatch):
     settings = get_settings().model_copy(update={"tts_model_dir": str(tmp_path)})
