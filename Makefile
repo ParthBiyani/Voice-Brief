@@ -35,6 +35,12 @@ tts-setup:  ## Download the Kokoro voice model (about 350 MB, once)
 brief:  ## Generate an episode from what is already ingested
 	$(PY) -m voicebrief.cli brief generate
 
+serve:  ## Serve the built web app and the API together on one port
+	$(PY) -m voicebrief.cli serve
+
+web-build:  ## Build the web app
+	cd web && npm ci && npm run build
+
 api:  ## Serve the API with reload
 	uvicorn voicebrief.api.main:app --reload --port 8000
 
@@ -61,7 +67,7 @@ fmt:  ## Auto-format
 eval:  ## Run the evaluation harness and diff against the last recorded run
 	$(PY) -m voicebrief.evalkit.run --compare
 
-.PHONY: help install up down migrate seed ingest enrich daily tts-setup typecheck brief api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
+.PHONY: help install up down migrate seed ingest enrich daily tts-setup typecheck brief serve web-build api web test test-all lint fmt eval eval-record eval-sets build deploy-up ablation
 
 eval-record:  ## Record the current run as the baseline for future comparisons
 	$(PY) -m voicebrief.evalkit.run --record
