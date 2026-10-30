@@ -36,6 +36,7 @@ from voicebrief.db.session import get_engine
 from voicebrief.history import (
     finish_run,
     prune_llm_bodies,
+    reap_interrupted,
     record_interaction,
     start_run,
 )
@@ -347,6 +348,9 @@ def run_daily(
             log.warning("daily.skipped", reason="another daily run holds the lock")
             return DailyResult(outcome="locked")
 
+        # Holding the lock means no other daily run is alive, so anything a previous
+        # one left `running` was cut short and is closed out before this one starts.
+        reap_interrupted()
         run_id = start_run("daily", trigger)
         try:
             with session_scope() as session:

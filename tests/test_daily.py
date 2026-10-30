@@ -23,7 +23,7 @@ from voicebrief.pipeline.daily import (
 def _keep_history_clean(monkeypatch):
     """These tests drive the real run_daily; they must not leave runs or settings
     changes behind in the history a person reads."""
-    for name in ("start_run", "finish_run", "record_interaction"):
+    for name in ("start_run", "finish_run", "record_interaction", "reap_interrupted"):
         monkeypatch.setattr(f"voicebrief.pipeline.daily.{name}", lambda *a, **k: None)
 
 

@@ -31,6 +31,7 @@ from voicebrief.db import session_scope
 from voicebrief.db.models import (
     CostEntry,
     Episode,
+    EpisodeStatus,
     Feedback,
     Interaction,
     RankingSnapshot,
@@ -101,6 +102,57 @@ def finish_run(
             run.error = _clip(error, 2000) if error else None
     except Exception as exc:
         log.warning("history.finish_run_failed", error=str(exc))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Crash recovery
+# ─────────────────────────────────────────────────────────────────────────────
+INTERRUPTED_AFTER = timedelta(hours=1)
+INTERRUPTED_MESSAGE = (
+    "interrupted: the process ended before this finished (crash, power loss or restart)"
+)
+
+
+def reap_interrupted(*, older_than: timedelta = INTERRUPTED_AFTER) -> tuple[int, int]:
+    """Close out runs and episodes a crash left in `running` forever.
+
+    A laptop that freezes mid-brief leaves its run and its episode marked running, which
+    reads as "still going" indefinitely and hides that the morning's brief never
+    happened. A generation takes minutes, so anything older than the cutoff is dead.
+    Returns (runs, episodes) closed. Never raises.
+    """
+    cutoff = datetime.now(UTC) - older_than
+    try:
+        with session_scope() as session:
+            runs = (
+                session.execute(
+                    update(RunLog)
+                    .where(RunLog.status == "running", RunLog.started_at < cutoff)
+                    .values(
+                        status="interrupted",
+                        finished_at=datetime.now(UTC),
+                        error=INTERRUPTED_MESSAGE,
+                    )
+                ).rowcount
+                or 0
+            )
+            episodes = (
+                session.execute(
+                    update(Episode)
+                    .where(
+                        Episode.status.in_([EpisodeStatus.running, EpisodeStatus.pending]),
+                        Episode.created_at < cutoff,
+                    )
+                    .values(status=EpisodeStatus.failed, error=INTERRUPTED_MESSAGE)
+                ).rowcount
+                or 0
+            )
+        if runs or episodes:
+            log.warning("history.reaped_interrupted", runs=runs, episodes=episodes)
+        return runs, episodes
+    except Exception as exc:
+        log.warning("history.reap_failed", error=str(exc))
+        return 0, 0
 
 
 # ─────────────────────────────────────────────────────────────────────────────

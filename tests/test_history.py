@@ -309,3 +309,69 @@ class TestHistoryEndpoint:
         from voicebrief.api.main import app
 
         assert TestClient(app).get("/history", params={"date": "not-a-date"}).status_code == 422
+
+
+@pytest.mark.integration
+class TestInterruptedRuns:
+    """A laptop that freezes mid-brief leaves its run and episode 'running' forever."""
+
+    @pytest.fixture
+    def cleanup(self):
+        created: dict[str, list] = {"runs": [], "episodes": [], "users": []}
+        yield created
+        with Session(get_engine()) as s:
+            if created["episodes"]:
+                s.query(Episode).filter(Episode.id.in_(created["episodes"])).delete(
+                    synchronize_session=False
+                )
+            if created["runs"]:
+                s.query(RunLog).filter(RunLog.id.in_(created["runs"])).delete(
+                    synchronize_session=False
+                )
+            if created["users"]:
+                s.query(User).filter(User.id.in_(created["users"])).delete(
+                    synchronize_session=False
+                )
+            s.commit()
+
+    def test_stale_running_rows_are_closed_out_and_fresh_ones_left_alone(self, cleanup):
+        with Session(get_engine()) as s:
+            user = User(email=f"{uuid.uuid4().hex[:8]}@example.com")
+            s.add(user)
+            s.flush()
+            old = datetime.now(UTC) - timedelta(hours=5)
+            stale_run = RunLog(kind="daily", trigger="schedule", status="running", started_at=old)
+            fresh_run = RunLog(
+                kind="daily", trigger="cli", status="running", started_at=datetime.now(UTC)
+            )
+            stale_ep = Episode(
+                user_id=user.id,
+                mode=EpisodeMode.brief,
+                status=EpisodeStatus.running,
+                created_at=old,
+            )
+            fresh_ep = Episode(
+                user_id=user.id, mode=EpisodeMode.brief, status=EpisodeStatus.running
+            )
+            s.add_all([stale_run, fresh_run, stale_ep, fresh_ep])
+            s.commit()
+            cleanup["users"].append(user.id)
+            cleanup["runs"] += [stale_run.id, fresh_run.id]
+            cleanup["episodes"] += [stale_ep.id, fresh_ep.id]
+
+        runs, episodes = history.reap_interrupted()
+        assert runs >= 1 and episodes >= 1
+
+        with Session(get_engine()) as check:
+            assert check.get(RunLog, cleanup["runs"][0]).status == "interrupted"
+            assert "interrupted" in check.get(RunLog, cleanup["runs"][0]).error
+            assert check.get(RunLog, cleanup["runs"][1]).status == "running"
+            assert check.get(Episode, cleanup["episodes"][0]).status is EpisodeStatus.failed
+            assert check.get(Episode, cleanup["episodes"][1]).status is EpisodeStatus.running
+
+    def test_it_never_raises(self, monkeypatch):
+        def broken():
+            raise RuntimeError("database is down")
+
+        monkeypatch.setattr(history, "session_scope", broken)
+        assert history.reap_interrupted() == (0, 0)
