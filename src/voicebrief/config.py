@@ -57,6 +57,8 @@ class Settings(BaseSettings):
         default="qwen2.5:7b-instruct-q4_K_M", alias="VB_OLLAMA_SCRIPT_MODEL"
     )
     daily_budget_inr: float = Field(default=50.0, alias="VB_DAILY_BUDGET_INR")
+    # Model prices are in dollars and the ledger is in rupees. Update when the market moves.
+    usd_to_inr: float = Field(default=83.5, ge=50.0, le=200.0, alias="VB_USD_TO_INR")
     # How long full prompts and responses are kept. Cost, tokens and timing are kept
     # indefinitely; only the (large, sometimes sensitive) text bodies are pruned.
     history_retention_days: int = Field(default=90, alias="VB_HISTORY_RETENTION_DAYS")

@@ -322,7 +322,7 @@ adds integration tests against the Docker services.
   `running` are closed out automatically.
 - **Mode 2** cannot read scanned PDFs (no OCR), and a very short note is rejected rather than
   padded.
-- The exchange rate for rupee costs is a constant in `llm/pricing.py`. Update it when it matters.
+- The exchange rate for rupee costs is a setting (`VB_USD_TO_INR`, default 83.5, last set June 2026). Update it when it matters; costs are in rupees converted from dollar prices.
 
 ## License
 
