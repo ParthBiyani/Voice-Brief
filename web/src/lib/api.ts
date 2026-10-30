@@ -244,6 +244,31 @@ export const api = {
     request<Settings>(`/settings?${user}`, { method: "PUT", body: JSON.stringify(update) }),
 
   history: (date?: string) => request<HistoryDay>(`/history${date ? `?date=${date}` : ""}`),
+
+  /** Documents become an episode; progress arrives on the returned stream. */
+  uploadDocuments: async (files: File[], language?: string) => {
+    const form = new FormData();
+    for (const file of files) form.append("files", file);
+    form.append("email", USER_EMAIL);
+    if (language) form.append("language", language);
+    // No Content-Type header: the browser must set the multipart boundary itself.
+    const response = await fetch(`${BASE}/documents/podcast`, { method: "POST", body: form });
+    if (response.status === 401) throw new AuthRequired();
+    if (!response.ok) {
+      let detail = response.statusText;
+      try {
+        detail = ((await response.json()) as { detail?: string }).detail ?? detail;
+      } catch {
+        // keep the status text
+      }
+      throw new Error(detail);
+    }
+    return (await response.json()) as {
+      episode_id: string;
+      stream_url: string;
+      documents: { title: string; kind: string; sections: number }[];
+    };
+  },
 };
 
 /**

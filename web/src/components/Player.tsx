@@ -198,9 +198,16 @@ function TranscriptLine({
         <ul className="citations">
           {segment.citations.map((citation) => (
             <li key={citation.url}>
-              <a href={citation.url} target="_blank" rel="noreferrer noopener">
-                {citation.title || citation.url}
-              </a>
+              {citation.url.startsWith("doc://") ? (
+                // Your own document: a section to look up, not a web address to open.
+                <span className="doc-source" title="From your documents">
+                  {citation.title}
+                </span>
+              ) : (
+                <a href={citation.url} target="_blank" rel="noreferrer noopener">
+                  {citation.title || citation.url}
+                </a>
+              )}
             </li>
           ))}
         </ul>

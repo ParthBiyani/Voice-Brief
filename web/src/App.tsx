@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Documents } from "./components/Documents";
 import { History } from "./components/History";
 import { Player } from "./components/Player";
 import { Search } from "./components/Search";
@@ -21,11 +22,11 @@ import {
   watchProgress,
 } from "./lib/api";
 
-type View = "today" | "history" | "settings";
+type View = "today" | "documents" | "history" | "settings";
 
 function viewFromHash(): View {
   const hash = location.hash.replace(/^#\/?/, "");
-  return hash === "history" || hash === "settings" ? hash : "today";
+  return hash === "documents" || hash === "history" || hash === "settings" ? hash : "today";
 }
 
 const STAGE_TEXT: Record<string, string> = {
@@ -213,14 +214,14 @@ export default function App() {
       </header>
 
       <nav className="tabs" aria-label="Sections">
-        {(["today", "history", "settings"] as View[]).map((name) => (
+        {(["today", "documents", "history", "settings"] as View[]).map((name) => (
           <button
             key={name}
             className={view === name ? "is-on" : ""}
             onClick={() => go(name)}
             aria-current={view === name ? "page" : undefined}
           >
-            {name === "today" ? "Brief" : name[0].toUpperCase() + name.slice(1)}
+            {name === "today" ? "Brief" : name === "documents" ? "Your documents" : name[0].toUpperCase() + name.slice(1)}
           </button>
         ))}
       </nav>
@@ -235,6 +236,15 @@ export default function App() {
         </p>
       )}
 
+      {view === "documents" && (
+        <Documents
+          busy={generating}
+          onStarted={(streamUrl) => {
+            setProgress({ stage: "starting", at: new Date().toISOString() });
+            follow(streamUrl);
+          }}
+        />
+      )}
       {view === "history" && <History />}
       {view === "settings" && <Settings />}
 
