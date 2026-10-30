@@ -208,7 +208,6 @@ def generate_episode(
     LLM client and returns the same shape of result; everything after that (audio,
     storage, status, grounding, history, search) is shared.
     """
-    settings = get_settings()
     started = time.perf_counter()
 
     # Written before generation so a crash leaves a visible failure, not silence.
@@ -239,6 +238,18 @@ def generate_episode(
                 language=language,
                 style=style,
             )
+        # Voicing, storing and saving are inside the same guard as writing: a crash while
+        # saving segments used to leave the episode `running` until a later run noticed.
+        return _finalize_episode(
+            session,
+            episode,
+            written,
+            started=started,
+            language=language,
+            render_audio=render_audio,
+            max_stories=max_stories,
+            excluded=excluded,
+        )
     except Exception as exc:
         # Rolled back first so the failed row is written from a clean transaction, then
         # committed: the caller's scope rolls back on the re-raise, and without this the
@@ -253,6 +264,20 @@ def generate_episode(
         log.error("episode.failed", episode=str(episode.id), error=episode.error)
         raise
 
+
+def _finalize_episode(
+    session: Session,
+    episode: Episode,
+    written: dict,
+    *,
+    started: float,
+    language: str,
+    render_audio: bool,
+    max_stories: int,
+    excluded: list[dict] | None,
+) -> GenerationResult:
+    """Everything after the script exists: voice it, store it, judge it, record it."""
+    settings = get_settings()
     segments = written.get("segments", [])
     grounding = written.get("grounding", {})
     errors = list(written.get("errors", []))
