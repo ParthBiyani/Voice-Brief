@@ -39,8 +39,13 @@ _WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9.+#_-]*")
 
 # Content-free words carry no grounding signal; a sentence made only of these is
 # connective tissue, not a claim.
+# Verbs and connectives a script uses to move between facts. They say nothing about the
+# source, so a sentence is not "unsupported" for using them.
+_FILLER_WORDS = ("means", "mean", "meaning", "came", "come", "comes", "back", "so", "thus")
+
 STOPWORDS = frozenset(
     [
+        *_FILLER_WORDS,
         "a",
         "an",
         "the",
@@ -205,6 +210,11 @@ def is_claim(sentence: str) -> bool:
         return True
 
     found = spoken_numbers(sentence)
+    if "percent" not in sentence.lower():
+        # "The material gives three reasons", "in one place": counting what is in front
+        # of you is structure, not a checkable figure, and it is exempt from the strict
+        # numeric check for the same reason (see `_small_counts`).
+        found = {v for v in found if not (v.isdigit() and int(v) <= SMALL_COUNT_CEILING)}
     if not found:
         return False
 
@@ -269,6 +279,11 @@ def content_words(text: str) -> set[str]:
         word = raw.lower().rstrip(".")
         if len(word) < 2 or word in STOPWORDS or word in _SPOKEN_NUMBER_TOKENS:
             continue
+        # "forty-nine", "ninety-fifth": a spoken number joined by a hyphen is still just a
+        # number, and counting it as a prose word the source "lacks" sank sentences that
+        # were right about their figures.
+        if "-" in word and all(part in _SPOKEN_NUMBER_TOKENS for part in word.split("-")):
+            continue
         words.add(word)
         stem = re.match(r"^([a-z]{3,})[\d]", word)
         if stem:
@@ -318,7 +333,28 @@ _MULTIPLIERS = {
     "billion": 1_000_000_000,
     "trillion": 1_000_000_000_000,
 }
-_SPOKEN_NUMBER_TOKENS = frozenset([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "percent"])
+# Spoken ordinals. "ninety-fifth percentile" is the figure 95 (a source writes "p95"), so a
+# script that reads it aloud must not be flagged as having invented a 90. A bare "first"
+# or "second" is ordinary prose and is left alone; an ordinal only counts as a number
+# when it completes one ("ninety-fifth") or is itself unambiguous ("eleventh").
+_ORDINALS = {
+    "first": 1, "second": 2, "third": 3, "fourth": 4, "fifth": 5, "sixth": 6,
+    "seventh": 7, "eighth": 8, "ninth": 9, "tenth": 10, "eleventh": 11, "twelfth": 12,
+    "thirteenth": 13, "fourteenth": 14, "fifteenth": 15, "sixteenth": 16,
+    "seventeenth": 17, "eighteenth": 18, "nineteenth": 19, "twentieth": 20,
+    "thirtieth": 30, "fortieth": 40, "fiftieth": 50, "sixtieth": 60, "seventieth": 70,
+    "eightieth": 80, "ninetieth": 90, "hundredth": 100,
+}  # fmt: skip
+_PROSE_ORDINALS = frozenset({"first", "second", "third"})
+_SPOKEN_NUMBER_TOKENS = frozenset(
+    [
+        *_NUMBER_WORDS,
+        *_MULTIPLIERS,
+        *(o for o in _ORDINALS if o not in _PROSE_ORDINALS),
+        "point",
+        "percent",
+    ]
+)
 _TENS_STRINGS = frozenset(str(v) for v in range(20, 100, 10))
 _NUMBER_TOKEN = re.compile(
     r"\b(" + "|".join([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "and", "percent"]) + r")\b",
@@ -367,6 +403,10 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
             token = tokens[j]
             if token == "point":
                 groups.append([])
+            elif token in _ORDINALS and not groups and (current or _ORDINALS[token] >= 11):
+                current += _ORDINALS[token]
+                j += 1
+                break  # an ordinal ends the number: "ninety-fifth"
             elif token in _NUMBER_WORDS:
                 value = _NUMBER_WORDS[token]
                 if groups:
@@ -471,6 +511,53 @@ def _small_counts(sentence: str) -> set[str]:
     }
 
 
+# A source writes "12 ms" and "p95"; a script written for the ear says "twelve
+# milliseconds" and "the ninety-fifth percentile". Both are right, and a lexical check
+# that cannot tell flags the more faithful rewording as unsupported.
+_UNIT_EXPANSIONS = {
+    "ms": ("millisecond", "milliseconds"),
+    "us": ("microsecond", "microseconds"),
+    "sec": ("second", "seconds"),
+    "gb": ("gigabyte", "gigabytes"),
+    "mb": ("megabyte", "megabytes"),
+    "kb": ("kilobyte", "kilobytes"),
+    "tb": ("terabyte", "terabytes"),
+    "qps": ("queries", "second"),
+    "rps": ("requests", "second"),
+    "tps": ("tokens", "second"),
+    "p50": ("percentile", "median"),
+    "p90": ("percentile",),
+    "p95": ("percentile",),
+    "p99": ("percentile",),
+    "vram": ("memory",),
+    "ram": ("memory",),
+}
+_PERCENTILE = re.compile(r"\bp\d{2}\b", re.IGNORECASE)
+
+
+def _stem(word: str) -> str:
+    """Crude plural folding: queries/query, reasons/reason, indexes/index."""
+    if len(word) > 4 and word.endswith("ies"):
+        return word[:-3] + "y"
+    if len(word) > 4 and word.endswith(("sses", "xes", "ches", "shes")):
+        return word[:-2]
+    if len(word) > 3 and word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _expand_source_words(text: str, words: set[str]) -> set[str]:
+    expanded = set(words)
+    for word in list(words):
+        expanded.update(_UNIT_EXPANSIONS.get(word, ()))
+        expanded.add(_stem(word))
+    if _PERCENTILE.search(text):
+        expanded.add("percentile")
+    if "%" in text:
+        expanded.add("percent")
+    return expanded
+
+
 def verify_segment(
     script: str,
     summary,
@@ -503,7 +590,9 @@ def verify_segment(
             *[s.title for s in summary.sources],
         ]
     )
-    source_words = content_words(corpus) | {w.lower() for w in (extra_vocabulary or set())}
+    source_words = _expand_source_words(
+        corpus, content_words(corpus) | {w.lower() for w in (extra_vocabulary or set())}
+    )
     source_numbers = _numbers(corpus)
     allowed_urls = {u.rstrip("/") for u in summary.citation_urls}
 
@@ -549,7 +638,8 @@ def verify_segment(
             report.supported_sentences += 1
             continue
 
-        overlap = len(words & source_words) / len(words)
+        matched = {w for w in words if w in source_words or _stem(w) in source_words}
+        overlap = len(matched) / len(words)
         if overlap >= SUPPORT_THRESHOLD:
             report.supported_sentences += 1
         else:
