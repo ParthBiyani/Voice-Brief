@@ -284,7 +284,11 @@ def attach_personal(profile, context, *, login: str | None):
 
 
 def generate_brief(
-    session: Session, request: BriefRequest, *, run_id: uuid.UUID | None = None
+    session: Session,
+    request: BriefRequest,
+    *,
+    run_id: uuid.UUID | None = None,
+    episode_id: uuid.UUID | None = None,
 ) -> BriefOutcome:
     """Everything between "fresh clusters exist" and "an episode is stored".
 
@@ -322,6 +326,7 @@ def generate_brief(
         render_audio=request.render_audio,
         excluded=report.excluded,
         run_id=run_id,
+        episode_id=episode_id,
     )
     return BriefOutcome(
         result=result,

@@ -78,6 +78,10 @@ class Settings(BaseSettings):
     # ProjectMind: the owner's cross-project memory, borrowed for personalisation. Off
     # unless a command is configured or `projectmind` is on PATH; VB_PROJECTMIND_ENABLED
     # =false switches it off even then.
+    # Protects the API when it is reachable beyond this computer (see api/site.py).
+    api_token: SecretStr | None = Field(default=None, alias="VB_API_TOKEN")
+    web_dist: str | None = Field(default=None, alias="VB_WEB_DIST")
+
     projectmind_enabled: bool | None = Field(default=None, alias="VB_PROJECTMIND_ENABLED")
     projectmind_cmd: str | None = Field(default=None, alias="VB_PROJECTMIND_CMD")
     projectmind_project_path: str | None = Field(default=None, alias="VB_PROJECTMIND_PROJECT_PATH")
