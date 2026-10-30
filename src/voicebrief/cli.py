@@ -343,6 +343,62 @@ def personal_show(
     console.print(f"[bold]recent projects[/bold]  {', '.join(context.projects) or '-'}")
 
 
+deliver_app = typer.Typer(no_args_is_help=True, help="Send a brief to Slack or email")
+app.add_typer(deliver_app, name="deliver")
+
+
+@deliver_app.command("status")
+def deliver_status() -> None:
+    """Which delivery channels are configured."""
+    from voicebrief.delivery.deliver import configured_channels
+
+    channels = configured_channels()
+    if channels:
+        console.print(f"[green]Configured:[/green] {', '.join(channels)}")
+    else:
+        console.print(
+            "[yellow]No delivery channel configured.[/yellow] Set SLACK_BOT_TOKEN and "
+            "SLACK_CHANNEL_ID, and/or VB_SMTP_HOST, VB_MAIL_FROM and VB_EMAIL_TO in .env."
+        )
+
+
+@deliver_app.command("test")
+def deliver_test() -> None:
+    """Send a short test message to every configured channel (no model calls, no spend)."""
+    from voicebrief.delivery.deliver import configured_channels, notify_failure
+
+    if not configured_channels():
+        console.print("[yellow]Nothing configured; run `voicebrief deliver status`.[/yellow]")
+        raise typer.Exit(1)
+    results = notify_failure("This is only a test of VoiceBrief delivery. Nothing is wrong.")
+    for channel, outcome in results.items():
+        mark = "[green]ok[/green]" if outcome.get("ok") else f"[red]{outcome.get('error')}[/red]"
+        console.print(f"  {channel}: {mark}")
+    if not all(o.get("ok") for o in results.values()):
+        raise typer.Exit(1)
+
+
+@deliver_app.command("episode")
+def deliver_episode_command(
+    episode_id: str = typer.Argument(..., help="Episode id (see `history show`)"),
+    force: bool = typer.Option(False, "--force", help="Send again even if already delivered"),
+) -> None:
+    """Deliver an existing episode now."""
+    import uuid
+
+    from voicebrief.delivery.deliver import deliver_episode
+
+    results = deliver_episode(uuid.UUID(episode_id), force=force)
+    if not results:
+        console.print(
+            "[yellow]Nothing sent (no channel configured, or episode not found).[/yellow]"
+        )
+        raise typer.Exit(1)
+    for channel, outcome in results.items():
+        mark = "[green]ok[/green]" if outcome.get("ok") else f"[red]{outcome.get('error')}[/red]"
+        console.print(f"  {channel}: {mark}")
+
+
 @app.command("serve")
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="0.0.0.0 to reach it from a phone"),
