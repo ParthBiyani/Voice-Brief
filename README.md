@@ -213,7 +213,7 @@ makes labelled examples of what you found relevant.
 Episodes, history, feedback and the cost ledger cannot be re-crawled, and they live inside
 Docker's disk image, which a hard shutdown can corrupt (it happened). So every `daily` run
 that generates a brief ends with a dump of the database and a copy of any new audio into
-`%LOCALAPPDATA%\VoiceBriefackups` (`VB_BACKUP_DIR`), keeping the newest seven
+`%LOCALAPPDATA%\VoiceBrief\backups` (`VB_BACKUP_DIR`), keeping the newest seven
 (`VB_BACKUP_KEEP`). Each dump is verified before it counts, and a failed backup is recorded
 in the run's history without failing the brief.
 

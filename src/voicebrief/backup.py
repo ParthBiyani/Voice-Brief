@@ -207,7 +207,7 @@ def restore_backup(path: Path, *, with_media: bool = True) -> int:
                 "--clean",
                 "--if-exists",
                 "--no-owner",
-            ),  # fmt: skip
+            ),
             stdin=handle,
             capture_output=True,
             timeout=DUMP_TIMEOUT_SECONDS,
