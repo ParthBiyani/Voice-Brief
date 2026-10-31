@@ -27,10 +27,11 @@ from dataclasses import dataclass
 
 from voicebrief.config import get_settings
 
-# The default, last set 2026-06-08. A stale rate makes the cost ledger quietly wrong, so
-# the rate is a setting (`VB_USD_TO_INR`): set it when the market moves. The default is
-# asserted against in tests to force a conscious update.
-USD_TO_INR = 83.5
+# The default, last set 2026-10-31 by the owner. A stale rate makes the cost ledger
+# quietly wrong, so the rate is a setting (`VB_USD_TO_INR`): set it when the market moves.
+# The default is asserted against in tests (and against config.py) to force a conscious
+# update.
+USD_TO_INR = 100.0
 
 CACHE_READ_MULTIPLIER = 0.10
 CACHE_WRITE_MULTIPLIER = 1.25

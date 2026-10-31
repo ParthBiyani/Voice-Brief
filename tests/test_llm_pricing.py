@@ -85,13 +85,17 @@ class TestCostCalculation:
         opus = cost_inr("claude-opus-5", input_tokens=6_000, output_tokens=2_400)
         sonnet = cost_inr("claude-sonnet-5", input_tokens=6_000, output_tokens=2_400)
         assert opus > 7.0
-        assert sonnet < 3.5
+        assert opus > 2 * sonnet
+        assert sonnet < 4.0
 
 
 def test_exchange_rate_is_explicit():
     """Guards against the rate silently drifting far from reality and making every
     reported cost wrong."""
-    assert 70 < USD_TO_INR < 100
+    assert 70 < USD_TO_INR <= 110
+    from voicebrief.config import Settings
+
+    assert Settings.model_fields["usd_to_inr"].default == USD_TO_INR
 
 
 def test_the_rate_is_a_setting_and_drives_the_cost(monkeypatch):
