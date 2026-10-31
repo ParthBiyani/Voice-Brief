@@ -208,6 +208,10 @@ def is_claim(sentence: str) -> bool:
         return True
     if _PROPER_NOUN.search(sentence):
         return True
+    # "About ten percent of it..." opens with a small number but states a measurement; it
+    # was mistaken for an opening enumerator and exempted from checking.
+    if _PERCENT_FIGURE.search(sentence):
+        return True
 
     found = spoken_numbers(sentence)
     if "percent" not in sentence.lower():
@@ -262,6 +266,9 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in _SENTENCE_SPLIT.split(cleaned) if s.strip()]
 
 
+_BARE_NUMBER = re.compile(r"^\d+(?:[.,]\d+)*$")
+
+
 def content_words(text: str) -> set[str]:
     """Words that carry grounding signal.
 
@@ -278,6 +285,10 @@ def content_words(text: str) -> set[str]:
     for raw in _WORD_RE.findall(text):
         word = raw.lower().rstrip(".")
         if len(word) < 2 or word in STOPWORDS or word in _SPOKEN_NUMBER_TOKENS:
+            continue
+        # A bare figure ("1.8") is checked by the numeric comparison; counted here as a
+        # prose word it can never match a source that glues it to a unit ("1.8M").
+        if _BARE_NUMBER.match(word):
             continue
         # "forty-nine", "ninety-fifth": a spoken number joined by a hyphen is still just a
         # number, and counting it as a prose word the source "lacks" sank sentences that
@@ -500,13 +511,23 @@ SHORT_CLAIM_WORDS = 2
 SMALL_COUNT_CEILING = 10
 
 
+# "sixty percent", "ten percent", "4.5%": a percentage is a figure and must be sourced.
+_PERCENT_FIGURE = re.compile(
+    r"(?:\b(?:" + "|".join([*_NUMBER_WORDS, *_MULTIPLIERS, "point", "and"]) + r")\b[\s-]*)+percent"
+    r"|\d+(?:\.\d+)?\s*%",
+    re.IGNORECASE,
+)
+
+
 def _small_counts(sentence: str) -> set[str]:
-    if "percent" in sentence.lower() or "%" in sentence:
-        return set()
+    # The percentages are set aside rather than disabling the allowance for the whole
+    # sentence: "about sixty percent starts from one of four places" has a sourced figure
+    # and two ordinary counts, and used to be flagged for inventing "one" and "four".
+    rest = _PERCENT_FIGURE.sub(" ", sentence)
     written = set(re.findall(r"\d+(?:\.\d+)*", sentence))
     return {
         n
-        for n in spoken_numbers(sentence)
+        for n in spoken_numbers(rest)
         if n.isdigit() and int(n) <= SMALL_COUNT_CEILING and n not in written
     }
 
@@ -551,6 +572,13 @@ def _expand_source_words(text: str, words: set[str]) -> set[str]:
     for word in list(words):
         expanded.update(_UNIT_EXPANSIONS.get(word, ()))
         expanded.add(_stem(word))
+        # "1.8M-parameter" and "open-source" also say "parameter" and "open"/"source": a
+        # script that spells the same idea out of the compound is still on the source.
+        if "-" in word or any(c.isdigit() for c in word):
+            for part in re.findall(r"[a-z]{3,}", word):
+                if part not in STOPWORDS:
+                    expanded.add(part)
+                    expanded.add(_stem(part))
     if _PERCENTILE.search(text):
         expanded.add("percentile")
     if "%" in text:
