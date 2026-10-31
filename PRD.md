@@ -1,306 +1,272 @@
-# VoiceBrief — PRD v1.0 (Scoped Build)
+# VoiceBrief: Product Requirements (v2.0)
 
-**Owner:** Parth
-**Status:** Draft for build
-**Target:** Shippable v1 in 6 weeks, portfolio-grade with evaluation evidence
-**Positioning (one line):** *A personalized daily audio brief that knows what you're building — plus a knowledge-to-podcast engine for your own documents.*
-
----
-
-## 1. Scope Decisions (read this first)
-
-| Decision | Choice | Rationale |
-|---|---|---|
-| Modes | Both, but Mode 1 is the hero | Mode 2 is genuinely useful and shares 60% of the backend; it just isn't the pitch |
-| Crawl model | Scheduled batch (2x/day), not continuous | Cost and complexity collapse; user-visible difference is near zero |
-| Interruption | Deferred to v2 | Replaced by transcript + segment Q&A (text) in v1 |
-| Languages | English + Hindi | Hindi is the real differentiator vs. NotebookLM |
-| Personalization | GitHub-derived context, v1 | Highest demo value per unit of effort |
-| Evaluation | Mandatory, ships with v1 | This is the single highest hiring signal in the project |
-| Deployment | Web app (React) first, Flutter later | Recruiters click links, not APKs |
-| Dropped | LinkedIn scraping, ChatGPT/Claude memory import, Kubernetes, multi-speaker voice cloning, 8 podcast styles | ToS risk, non-existent APIs, or v1 scope bloat |
-
-**Non-goals for v1:** real-time crawling, mid-episode voice interruption, mobile apps, more than 2 languages, multi-tenant billing, more than 2 podcast styles.
+**Owner:** Parth Biyani
+**Status:** Current product, as running after the October 2026 repair (PRs 1 to 23)
+**Supersedes:** PRD v1.0 (the six-week scoped build, May 2026)
+**Positioning:** *A daily audio brief that knows what you are building, plus a way to turn your
+own documents and repositories into a podcast.*
 
 ---
 
-## 2. Problem & Users
+## 1. Summary
 
-**Problem:** Technical practitioners lose 45–90 min/day skimming feeds to stay current, and most of what they read is irrelevant to what they're actually building. Existing summarizers are per-item and generic; they don't know the user.
+VoiceBrief produces a short spoken news brief every morning, chosen for one engineer by what is in
+their own code. It reads 43 sources, removes duplicates and anything already heard,
+groups items into stories, ranks them against the listener's GitHub dependencies and stated
+interests, writes a script in which every sentence is checked against its source, voices it
+locally, and delivers it to Slack with the audio attached, where the listener can reply in the
+thread to ask about it. A second mode turns the listener's own
+documents or a repository into an episode.
 
-**Primary persona — "The builder"**
-Final-year CS student or 0–3 yr engineer, actively building side projects, follows 10+ sources loosely, commutes or works out daily. Wants to know *what changed that affects my stack*.
+Version 1 met its offline evaluation targets but had never run daily for a real person. An audit in
+October 2026 found stale and repeated stories, silent failures, under-counted cost and no
+automation. Version 2 is the product after those were fixed. This document describes what it does
+now, how success is measured, the current values, and what comes next.
 
-**Secondary persona — "The researcher"**
-Grad student or applied scientist with a folder of papers. Wants cross-document synthesis in audio form. (This is Mode 2's user.)
+---
+
+## 2. Problem
+
+Engineers lose time every day skimming feeds to stay current, and most of what they read does not
+touch what they build. (The v1 planning estimate was 45 to 90 minutes a day; it is an estimate, not
+a measurement.) Existing tools either show everything (feed readers), are written for everyone
+(newsletters), or need the person to do the gathering (chat assistants). None of them know the
+listener's codebase, remember what they already heard, or check their own facts.
+
+The question the product answers every morning: **what changed today that affects the code I
+write?**
+
+---
+
+## 3. Users
+
+**Primary: the builder.** A student or early-career engineer actively building projects, with code
+on GitHub, following many sources loosely, with daily time when their eyes are busy (commute, walk,
+gym). Wants to hear what changed that affects their stack. Today this is one user: the owner.
+
+**Secondary: the researcher.** Has a folder of papers or a repository and wants it explained, with
+the places where sources disagree called out. This is Mode 2's user.
 
 **Jobs to be done**
-1. "Tell me what happened that matters to my projects, in 12 minutes, while I walk."
-2. "I have 6 papers and 2 hours of commute. Explain how they relate."
-3. "You mentioned something about memory architectures last week — find it."
+
+1. "Tell me what happened that matters to my projects, in under ten minutes, without my doing
+   anything."
+2. "Never tell me the same story twice, and never make something up."
+3. "Explain these documents, or this repository, and where they disagree."
+4. "Show me why you picked what you picked, and what it cost."
 
 ---
 
-## 3. Source Strategy (expanded)
+## 4. Goals and non-goals
 
-The rule for every source: **official API or published feed only. No HTML scraping, no ToS violations, no headless browsers.** This is both an engineering and a hireability decision — "I respected rate limits and ToS" is a good interview answer.
+### Goals
 
-### Tier 1 — Ship in Week 1 (zero-auth, high signal)
+| # | Goal |
+|---|---|
+| G1 | A brief arrives every day with no manual step, and a failed day is announced rather than silent |
+| G2 | Most stories in a brief are tied to the listener's own stack or interests |
+| G3 | Every factual sentence is traceable to source text; no invented links |
+| G4 | No story repeats within 30 days; only news first seen since the last brief is a candidate |
+| G5 | Cost per episode stays within a few rupees and is measured per call, with a hard daily cap |
+| G6 | Every decision (ranking, model call, delivery, backup) is recorded and inspectable |
+| G7 | Data that cannot be re-crawled survives hardware failure |
 
-| Source | Access | What it gives | Volume/day |
-|---|---|---|---|
-| arXiv | Official API (Atom) | cs.AI, cs.CL, cs.LG, cs.CV, cs.SE new submissions | 300–600 |
-| Hacker News | Firebase API (official, free) | Top/best stories + comment counts as signal | 100–200 |
-| GitHub Trending | `gharchive` / trending via GitHub Search API sorted by stars + date | New and fast-growing repos | 50–150 |
-| GitHub Releases | GitHub REST API, watched repos | Version releases for the user's actual dependencies | 10–40 |
-| Papers with Code | Public API | Papers with implementations + benchmark deltas | 30–80 |
-| Hugging Face Hub | Official `huggingface_hub` API | New/trending models and datasets | 50–200 |
+### Non-goals (for this version)
 
-### Tier 2 — Ship in Week 2 (RSS/Atom, one uniform ingester)
+- Real-time or streaming news; the product is one brief a day.
+- A native mobile app or push notifications; Slack and a phone-friendly web app cover delivery.
+- Multi-tenant sign-up, billing or hosting for other users (the schema is multi-user, the
+  operation is not).
+- Voice interruption mid-episode; text Q&A on a segment replaces it.
+- Scraping any site without an official API or published feed.
+- OCR for scanned PDFs.
+- An LLM judge for factuality.
+- More than two languages (English and Hindi).
 
-A single generic RSS ingester unlocks all of these at near-zero marginal cost. This is why RSS is the highest-leverage source type in the whole system.
+---
 
-- **Company engineering & research blogs:** OpenAI, Anthropic, Google DeepMind, Google AI, Meta AI, Microsoft Research, Mistral, Cohere, Stability, NVIDIA Developer, AWS ML, Netflix Tech, Uber Eng, Stripe Eng, Cloudflare, Figma Eng
-- **Framework/tooling release notes:** LangChain/LangGraph, LlamaIndex, vLLM, Ollama, Hugging Face Transformers, PyTorch, FastAPI, Flutter, Qdrant, Weaviate, Pinecone, Supabase, DuckDB
-- **Newsletters with public feeds:** Import AI, The Batch (DeepLearning.AI), Ahead of AI (Sebastian Raschka), Hugging Face blog, Simon Willison's blog, Interconnects, The Gradient
-- **Standards & specs:** MCP spec changelog, A2A protocol repo, OpenAI/Anthropic API changelogs
-- **Aggregators:** Lobste.rs, r/MachineLearning + r/LocalLLaMA + user-chosen subreddits (Reddit's official JSON API with registered app + rate limiting)
+## 5. Features (as built)
 
-### Tier 3 — Ship in Week 4 (needs extra processing)
+### 5.1 Daily brief (Mode 1)
 
-| Source | Approach | Notes |
+| Feature | Requirement | Status |
 |---|---|---|
-| YouTube | YouTube Data API for channel uploads + `youtube-transcript-api` for captions | Restrict to a curated channel list (Yannic Kilcher, Two Minute Papers, conference channels, framework channels). Transcript only, never audio download. |
-| Podcasts | Public RSS + Whisper on episodes only when title/description passes a relevance gate | Expensive — gate hard |
-| Docs changelogs | Git-diff on public docs repos (LangGraph, MCP, FastAPI docs are all in GitHub) | Cheap, high signal, almost nobody does this — good differentiator |
-| Conference proceedings | NeurIPS/ICML/ICLR/ACL OpenReview API | Bursty, seasonal |
-| Product Hunt | Official API | Startup/product launch signal |
-| Crunchbase / funding | Free-tier API or TechCrunch RSS filtered | Only if user opts into "startup" topic |
+| Source registry | Sources are database rows seeded from `config/sources.yaml`; adding one is a config change. Removed sources are disabled, not deleted | Built: 43 sources (5 API, 2 GitHub, 36 RSS), including 11 news feeds added 31 Oct |
+| Polite, reliable ingest | Official APIs and feeds only; each source fetches from its last successful poll (1 h overlap, capped at 7 days); per-source error boundary and 90 s timeout; backoff capped at 24 h; arXiv fetched serially | Built |
+| Visible source failures | A source whose requests are all refused fails with the reason and reset time; partial failures appear in the run summary | Built |
+| Cheap filter | Recency, trust, engagement and topic score; window cut to 300 items; no source above 25% | Built |
+| Dedup | Exact URL/title, then cosine ≥ 0.92 with union-find; duplicates grouped, not deleted | Built |
+| Stories, not topic bags | HDBSCAN (leaf); multi-item clusters must reach mean pairwise similarity ≥ 0.76; template-like sources stay single | Built |
+| Freshness | Candidate only if an item was first seen in the window: 36 h, widening up to 7 days after a gap | Built |
+| No repeats | Stories cited in the last 30 days excluded, matched by source URL | Built |
+| Personal ranking | Heuristic over all candidates (dependencies 3.0 each up to 3, recency, topics, trust, coverage, interests, feedback ≤ 1.5, thin-story penalty), one batched model re-rank of the top 15, blend 0.4/0.6, at least 2 personal stories, no repeated events | Built |
+| Stack profile | Dependencies from GitHub manifests (Python, JS, Dart, Go, Rust), forks excluded, common-word names need package-style evidence; cached 7 days; incomplete rebuilds keep the last good profile | Built: 196 dependencies, 36 repos |
+| ProjectMind context | Interests, tools moved away from, recent projects, via its public CLI only; fail-soft; cached 24 h; its raw "files and notes" section never read | Built: 6 interests, 3 projects |
+| Feedback | Thumbs become smoothed per-source and per-topic affinity, plus recent liked/disliked headlines in the re-rank prompt | Built; effect not yet measured |
+| Grounded script | Summaries of cited facts; one segment per story plus cold open, agenda and sign-off; spoken register; no speculation | Built |
+| Verification | Deterministic per-sentence check of figures, versions, names and content words; invented-link check; report stored on the episode | Built |
+| Speech | Kokoro (82M) via kokoro-onnx, per-segment cache, timestamps from measured audio, MP3 via soundfile | Built |
+| Honest status | `ready` only with stories, stored audio with real sound, and at least half the requested stories; otherwise `degraded` or `failed` with a reason; exit codes 0/2/1 | Built |
+| Delivery | Slack bot posts a digest and the MP3 in its thread; optional email; delivered once, failures retried, failed runs announced; dates in local time | Built; Slack verified live 31 Oct |
+| Slack Q&A | Thread reply = question about that episode (matched by the digest's Slack `ts`); new channel message = latest brief; answers only from the episode and its sources (all scripts + sources of the 3 most similar segments); recorded with channel `slack`; Socket Mode, no public URL | Built |
+| Schedule | Windows Task Scheduler "VoiceBrief Daily Brief": 09:00 IST and 3 min after logon; `-NotBefore 09:00` so it is never early; idempotent and exclusive | Built |
+| Backups | After every generated brief: verified database dump plus incremental audio copy, outside Docker, newest 7 kept | Built |
+| History | `run_log`, `ranking_snapshot` (per-signal breakdown), every model call's prompt and response (90 days), `interaction`; CLI and web views; JSONL export | Built |
 
-### Source configuration model
+### 5.2 Your documents (Mode 2)
 
-Sources are **not hardcoded**. Store them in Postgres:
-
-```
-source(id, name, kind[api|rss|github|youtube], endpoint, auth_ref,
-       poll_interval, default_topics[], trust_weight, enabled)
-```
-
-Users subscribe to *topics*; topics map to source subsets. This means adding source #47 is a database row, not a deploy. **Design this on day one** — it's what makes "40+ sources" a defensible claim rather than 40 hardcoded scripts.
-
-**Budget guardrail:** cap ingestion at ~1,500 items/day globally. Cheap filters (keyword + recency + source trust weight) cut this to ~300 before any LLM touches it. Only ~40 items reach the ranking LLM. Only ~10 reach the script.
-
----
-
-## 4. Mode 1 — Daily Brief (Hero Feature)
-
-### Pipeline
-
-```
-Scheduled ingest (06:00 / 18:00 IST)
-   → Normalize to common Item schema
-   → Cheap filter (recency, keyword, source trust)     [1500 → 300]
-   → Embed + near-duplicate detection (cosine > 0.92)  [300 → 220]
-   → Cluster (HDBSCAN on embeddings)                   [220 → ~60 clusters]
-   → Cluster summarization (1 LLM call per cluster)
-   → Personalized ranking (user context + LLM scoring) [60 → 8-12]
-   → Script generation (LangGraph, one pass, styled)
-   → TTS (Kokoro local, per-segment, cached)
-   → Episode assembly + transcript with timestamps
-```
-
-### Personalization inputs (v1)
-
-1. **Declared topics** — user picks from a taxonomy (Agentic AI, Edge AI, Flutter, Systems, etc.)
-2. **GitHub context** — with a user-provided token, read: their repos' languages, `requirements.txt` / `package.json` / `pubspec.yaml` dependencies, starred repos, recent commit messages. Build a *stack profile*.
-3. **Feedback signal** — thumbs up/down per segment, stored and fed into the ranking prompt as few-shot examples.
-
-The stack profile is what produces the money line:
-> "LangGraph 0.4 shipped durable execution. You use LangGraph in ContextPilot and PlacementPilot — this replaces the checkpoint workaround in both."
-
-### Episode structure
-
-Cold open (10s) → agenda (20s) → 6–10 stories (60–120s each) → "also noted" rapid-fire (60s) → sign-off. Target 10–14 min.
-
-### Styles (v1: two only)
-- **Solo anchor** — single voice, brisk, news register
-- **Two-host** — question/answer dynamic, better for explaining hard concepts
-
----
-
-## 5. Mode 2 — Knowledge-to-Podcast
-
-Kept because it's genuinely useful, it reuses the chunking/embedding/retrieval/script/TTS half of the stack, and it makes the product useful on day one before enough sources are wired up.
-
-**How to make it not-a-NotebookLM-clone (pick these three):**
-1. **Hindi/Hinglish output** — NotebookLM's non-English support is weaker, and your Indic NLP background makes this credible.
-2. **Repository ingestion** — point it at a GitHub repo URL; it walks the tree, reads the README, key modules, and dependency graph, and explains the *architecture*, not just files. NotebookLM cannot do this.
-3. **Cross-document contrast mode** — an explicit "where do these sources disagree?" episode type, driven by a claim-extraction step rather than plain summarization.
-
-**Pipeline**
-
-```
-Upload (PDF / MD / ZIP / repo URL / .txt / .docx)
-   → Parse (PyMuPDF, markdown-it, tree walk for repos)
-   → Chunk (structure-aware: sections for papers, files for repos)
-   → Embed → Qdrant (per-document collection namespace)
-   → Claim/concept extraction per document
-   → Cross-document graph (agreements, contradictions, prerequisites)
-   → Outline generation
-   → Script generation (same generator as Mode 1, different context builder)
-   → TTS → Episode
-```
-
-**Limits for v1:** max 10 documents or 1 repo per episode, 200 pages total, 50 MB.
-
----
-
-## 6. Shared Systems
-
-### Interactive layer (v1 — text, not voice)
-- Full transcript with clickable timestamps
-- "Ask about this segment" — opens a chat scoped to that segment's source documents
-- "Explain like I'm five" / "show me the code" / "compare with X" as one-tap prompts
-- Answers are text + optionally TTS'd and appended as a bonus clip
-
-This is ~5% of the effort of true barge-in and demos just as well in a screenshot.
-
-### Episode memory & search
-Every episode's transcript, segments, and source links go into Postgres + Qdrant. Semantic search across all past episodes: *"which paper about long-term memory did you mention last week?"* → returns the segment, timestamp, and source URL.
-
-### Multilingual
-Script generated in English, then either (a) generated natively in Hindi with a language-specific prompt, or (b) translated then TTS'd. **Prefer (a)** — translated-then-spoken audio sounds wrong. Use IndicTTS or Kokoro's multilingual voices; evaluate both.
-
----
-
-## 7. Evaluation Plan (the resume centerpiece)
-
-This is the part that turns the project from "another RAG app" into evidence of engineering judgment. Build the harness before the UI is pretty.
-
-### Datasets to construct (do this in Week 2)
-- **Dedup set:** 500 items from one week of real crawls, hand-labeled into duplicate groups
-- **Cluster set:** same corpus, hand-labeled topic clusters
-- **Relevance set:** 200 (user-profile, item) pairs labeled relevant / not, across 3 synthetic personas
-- **Factuality set:** 100 script sentences with their source spans, labeled supported / unsupported
-
-### Metrics to report in the README
-
-| Component | Metric | Target |
+| Feature | Requirement | Status |
 |---|---|---|
-| Deduplication | Pairwise precision / recall | P ≥ 0.90, R ≥ 0.80 |
-| Clustering | Adjusted Rand Index vs. hand labels | ≥ 0.65 |
-| Ranking | nDCG@10, Precision@10 | P@10 ≥ 0.70 |
-| Script factuality | % sentences attributable to a source span | ≥ 0.95 |
-| Hallucinated links | Count of URLs not in source set | 0 |
-| Latency | End-to-end episode generation | < 6 min |
-| Cost | Per episode (LLM + TTS) | < ₹8 |
+| Inputs | PDF, DOCX, Markdown, text, zip, or a folder read as a repository | Built |
+| Repository walk | README and manifests first, then modules by import centrality | Built |
+| Contrast | Claims extracted per document, compared only when semantically close; a "Where your sources disagree" segment | Built |
+| Shared pipeline | Same graph (knowledge mode), verification, audio, status, history and ledger as the brief | Built |
+| Languages | English and Hindi (native generation, Devanagari sentence splitting) | Built |
+| Entry points | CLI, upload API with progress stream, web view with drag and drop | Built |
 
-### Regression harness
-A `make eval` command that runs the full pipeline against the frozen labeled set and prints a comparison against the last recorded run. Every prompt change gets a before/after. **Screenshot this table for your portfolio.** It is worth more than any UI.
+### 5.3 Web app
 
-### Ablations worth running
-- With vs. without GitHub stack profile (does personalization actually help ranking?)
-- Embedding dedup vs. LLM dedup (cost/quality tradeoff)
-- Cluster-then-summarize vs. summarize-then-cluster
+| Feature | Status |
+|---|---|
+| FastAPI serves the built React/Vite app and the API on one port | Built |
+| Always on: "VoiceBrief Web" task starts `serve` at logon and 09:00 and restarts it on failure; embedding model warmed at startup (first search used to take ~15 s) | Built |
+| Episode list grouped by day; player with tap-to-seek transcript | Built |
+| Audio streamed via `/episodes/{id}/audio` with HTTP Range (seekable from a phone) | Built |
+| "Why these stories?", per-story "your stack" badges, degraded/failed banners | Built |
+| Segment Q&A answered from the segment's source text | Built |
+| Search across past episodes | Built |
+| Settings (GitHub login, topics, language, format) with connection cards: GitHub profile, Delivery (Slack status), ProjectMind (recent projects) | Built |
+| History page (runs, every candidate with signals, model calls and spend, questions) | Built |
+| Token gate (`VB_API_TOKEN`) required to listen beyond localhost | Built |
 
 ---
 
-## 8. Architecture & Stack
+## 6. Success metrics
+
+### 6.1 Product metric
+
+**The listener uses the brief on at least 5 days a week without forcing themselves.** Not yet
+measured over a sustained period; the scheduled loop and delivery only became reliable at the end of
+October 2026.
+
+### 6.2 Quality and cost metrics (current values)
+
+Live values are from the final run on 30 October 2026 unless noted. Costs were recorded at ₹83.5 per
+US dollar; the ₹100/$ figure is shown alongside.
+
+| Area | Metric | Target | Current | Status |
+|---|---|---|---|---|
+| Personal relevance | Stories tied to the listener's stack or interests | ≥ 2 of 6 (the selection floor) | **5 of 6** (earlier runs: 0 and 1 of 6) | Met (single day) |
+| Factuality | Claim sentences attributable to a source | ≥ 0.95 | **0.966** (0.857 before grounding fixes) | Met (single day) |
+| Factuality | Invented links | 0 | **0** across all runs | Met |
+| Freshness | Already-heard stories in a brief | 0 | 0 (19 excluded on the final run) | Met |
+| Cost | Per episode (model calls) | < ₹8 | **₹6.43** at ₹83.5/$ (₹7.70 at ₹100/$) | Met |
+| Cost | Daily hard cap | ₹50 | `VB_DAILY_BUDGET_INR=50`, checked before every call | In place |
+| Latency | Generation time | < 6 min | 353 s (5.9 min) with 7.3 min of audio | Met |
+| Reliability | Brief produced or failure announced every scheduled day | 100% | Not yet measured over weeks | Open |
+| Durability | Verified backup after each brief | 100% | Ran and verified on the final run | Met (single run) |
+| Dedup (offline) | Pairwise precision / recall | ≥ 0.90 / ≥ 0.80 | **1.000 / 0.971** | Met |
+| Clustering (offline) | Homogeneity | ≥ 0.75 | **0.814** | Met |
+| Ranking (offline) | Precision@10, heuristic stage | ≥ 0.70 | **0.533** (nDCG@10 0.585) | **Not met** |
+| Personalisation (offline) | Ablation P@10: profile / topics / none | profile > topics > none | 0.533 / 0.467 / 0.133 | Met |
+| Engineering | Test suite / type errors | green / 0 | 821 tests / 0 mypy errors, enforced in CI; flaky tests fixed | Met |
+
+**On the ranking miss.** The offline number measures the free heuristic stage on 3 personas with
+rubric labels that favour a tag-based ranker; the model re-rank is not included. A semantic-similarity
+signal was tried and lowered P@10 to 0.467, so it was rejected (`eval/EXPERIMENTS.md`). The fix is
+real labels from the listener's thumbs and `history export`.
+
+---
+
+## 7. Constraints and budget
+
+| Constraint | Value | Why |
+|---|---|---|
+| Cost per episode | < ₹8; current ₹6.43 at ₹83.5/$ | A daily product must cost about a coffee a week |
+| Daily cap | `VB_DAILY_BUDGET_INR`, default ₹50, enforced before each call | A bug can cost one call, not a night |
+| Exchange rate | `VB_USD_TO_INR`, validated 50 to 200, default 100 | Prices are in dollars, the ledger in rupees |
+| Models | Sonnet 5.5 ($2/$10 per M tokens) for the script; Haiku 5.5 ($0.10/$0.50) for summaries, re-rank, Q&A, claims | The script is 96% of spend; quality is paid for only where it is heard |
+| Unpriced models | Refused at startup | A typo must not cost ₹0 and disarm the cap |
+| Embeddings and speech | Local (bge-small, Kokoro via ONNX) | Free per run; embeddings deterministic for the eval harness |
+| Python | 3.11 to 3.14 (CI on both ends) | Kokoro via ONNX because the PyTorch package stops at 3.12 |
+| Sources | Official APIs and published feeds only; arXiv serial; GitHub token recommended (60 requests/hour without one) | Terms of service and politeness |
+| Hosting | One Windows laptop, Docker Compose (Postgres 16, Qdrant 1.12.4 pinned, Redis 7, MinIO), Task Scheduler | One user; local speech; ProjectMind is local |
+| Availability | Needs the laptop on and the user logged in; catch-up after logon; Slack Q&A and the web app only while it is on | No stored password; Docker Desktop requirement |
+| Slack | Scopes `chat:write`, `files:write`, `channels:read`, `channels:history`; app-level token for Socket Mode | Q&A without exposing the laptop |
+| Privacy | ProjectMind's raw "files and notes" never read; prompt and response text pruned after 90 days; web app requires a token beyond localhost | Personal data minimisation |
+
+---
+
+## 8. Architecture (summary)
 
 ```
-React (Vite) web app
-        │  REST + SSE
-        ▼
-FastAPI
-   ├── /ingest     (source registry, scheduled runs)
-   ├── /episodes   (generate, list, stream audio)
-   ├── /chat       (segment Q&A)
-   └── /search     (episode memory)
-        │
-   LangGraph orchestrator
-   (ingest graph, brief graph, doc graph)
-        │
-   ┌────┴────┬──────────┬──────────┐
-Postgres   Qdrant    Object store  Redis
-(items,   (embeds,   (audio,       (cache,
- sources,  episode    uploads)      job locks)
- episodes) memory)
+Task Scheduler: Daily Brief (09:00 IST · logon catch-up · -NotBefore 09:00) · Web (serve at logon, restarts)
+   └─► voicebrief daily: lock ─► reap ─► ingest ─► enrich ─► rank ─► summarize ─► write
+                         ─► verify ─► voice ─► store ─► judge ─► index ─► backup ─► deliver ─► record
+
+Postgres: relational truth, history, ledger     Qdrant: item vectors, episode memory, documents
+MinIO: MP3s                                     Redis: provisioned, not yet used (future queue)
+Anthropic API · GitHub API · ProjectMind CLI · Slack
+
+Phone / browser ──► voicebrief serve (FastAPI + React, one port, token-gated)
+Slack thread reply ──► Slack listener in serve (Socket Mode) ──► answer from the episode's sources
 ```
 
-**Deliberately deferred:** Kubernetes, Celery/Temporal (a `cron` → FastAPI endpoint with a Postgres advisory lock is enough for v1), microservices split, Flutter.
-
-**LLMs:** BYOK. Claude for script generation (best long-form register), a small/cheap model for cluster summarization and ranking. Every LLM call goes through one wrapper with retries, token accounting, and a cost ledger written to Postgres — so the cost metric above is real, not estimated.
-
-**TTS:** Kokoro local (free, good quality, runs on your 3060). ElevenLabs behind a feature flag for a single showcase episode.
-
-**Observability:** LangSmith or Langfuse from day one. Trace every graph run. This is itself a hiring signal — "evaluation and observability" was one of your identified differentiators.
+Full detail, including the data model and the step-by-step morning run, is in the project deep dive.
 
 ---
 
-## 9. Roadmap
-
-### Week 1 — Skeleton + Tier 1 sources
-- Repo, Docker Compose (Postgres, Qdrant, Redis, MinIO), FastAPI skeleton
-- `source` registry schema + generic `Item` normalization
-- Ingesters: arXiv, Hacker News, GitHub Search/Releases, Papers with Code, HF Hub
-- Store raw items; no LLM yet
-- **Exit:** `python -m voicebrief.ingest` pulls 500+ items/day into Postgres
-
-### Week 2 — Dedup, clustering, and the eval harness
-- Embeddings (BGE or `all-MiniLM` locally) → Qdrant
-- Near-dup detection + HDBSCAN clustering
-- Generic RSS ingester → all of Tier 2 (~40 feeds)
-- **Hand-label the eval sets.** This is a full day. Do not skip it.
-- `make eval` harness printing the metrics table
-- **Exit:** measured dedup precision/recall and ARI on real data
-
-### Week 3 — Ranking, personalization, script
-- GitHub stack profile builder
-- LLM ranking with user context; nDCG measured against the labeled relevance set
-- LangGraph script generation, solo-anchor style, English
-- Cost ledger + LangSmith tracing
-- **Exit:** a readable, factually-grounded 12-minute script generated end-to-end
-
-### Week 4 — Audio + web app
-- Kokoro TTS, per-segment with caching, episode assembly
-- React app: episode list, player, timestamped transcript, thumbs up/down
-- Tier 3: YouTube transcripts, docs-changelog diffing
-- **Exit:** you listen to your own real brief on your commute
-
-### Week 5 — Mode 2 + Hindi
-- Document/repo upload, structure-aware chunking, cross-document claim graph
-- Repo ingestion (the differentiated bit)
-- Hindi script generation + TTS; side-by-side quality eval
-- **Exit:** upload 5 papers → get a coherent contrast episode; generate one Hindi brief
-
-### Week 6 — Memory, polish, ship
-- Episode semantic search, segment Q&A chat
-- Scheduling (morning/evening), two-host style
-- Deploy (Railway/Fly/single EC2), demo video, README with the eval table
-- **Exit:** public URL, 2-minute demo video, evaluation results in the README
-
-### v2 backlog (explicitly not now)
-Voice barge-in, Flutter app, more styles, podcast/Whisper ingestion, multi-user billing, ContextPilot deep integration, additional Indic languages.
-
----
-
-## 10. Risks
+## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
-| Source APIs rate-limit or change | Source registry + per-source adapter isolation; failures degrade gracefully, never block the episode |
-| LLM cost creep | Hard item caps per stage; cost ledger with a daily budget kill-switch |
-| Script hallucination | Every sentence must cite a source span; factuality metric gates releases |
-| Audio quality disappoints | Evaluate Kokoro vs. Piper vs. OpenAI TTS in Week 4, pick on a blind listen test |
-| Scope creep back to the original brief | This document is the contract. v2 backlog exists to absorb ideas without absorbing time. |
-| Hindi TTS sounds robotic | Test early (Week 2, not Week 5) with a throwaway script; if unusable, downgrade to English-only and say so honestly |
+| A source changes, rate-limits or dies | Per-source isolation, backfill from last success, visible failure with reason, registry pruning |
+| Silent degradation | Honest episode status with reasons, exit codes, run summaries with notes, failure announcements |
+| Cost creep | Funnel caps, per-call ledger on its own transaction, pre-call budget check, priced-models-only |
+| Hallucination | Facts-only writing, per-sentence verification, invented-link check, stored report; entailment planned |
+| Hardware failure | Verified backups outside Docker after each brief; crashed runs closed out automatically |
+| ProjectMind changes | Public CLI only, fixture-pinned parser, fail-soft, 24 h cache |
+| Ranking quality unproven | History and thumbs collected for real labels; experiments documented, including failures |
+| Single-laptop dependency | Catch-up trigger; production compose overlay ready for a cloud move |
+| Thin news items | Fetch full article text for top candidates (next step); until then single-outlet news usually takes the thin-story penalty |
 
 ---
 
-## 11. Success Criteria
+## 10. Roadmap
 
-**Product:** You personally listen to your own brief 5 days a week without forcing yourself. If you don't, the ranking is wrong and no amount of polish fixes it.
+### Now (next few weeks)
 
-**Portfolio:** README opens with the evaluation table, a 2-minute demo video, and one sentence that lands in an interview — *"it reads my repos' dependency files and only tells me about releases that affect code I've actually written."*
+- Fetch full article text for the top candidates, so single-outlet news items are not thin.
+- Run the scheduled brief daily and measure the product metric (days listened per week) and
+  reliability (briefs produced or announced per scheduled day).
+- Accumulate thumbs; build relevance labels from `history export` joined with votes; re-run the
+  ranking evaluation, including the rejected semantic-similarity signal, on those labels.
+- Measure the feedback signal's effect on precision once enough votes exist.
+- Blind listening test: Sonnet vs Haiku for the script. Switch if Haiku passes (about 95% cost cut).
+- Offline replay of cached re-rank responses so the model stage can be measured without an API key.
 
-**Interview readiness:** You can answer, without notes: how dedup works and its measured precision, why you chose batch over streaming and what it saved, what your per-episode cost is, and what your ablation showed about whether personalization actually helped.
+### Next (one to three months)
+
+- Local entailment check (a small NLI model) alongside the lexical verifier, to catch inverted meaning.
+- Ecosystem-qualified dependency matching (for example `pub:dio`) so short names can count safely.
+- Distinct voices for the two-host style.
+- Move to a small cloud VM using the existing production overlay; GitHub OAuth sign-up for a handful
+  of users; S3 instead of MinIO.
+
+### Later (scaling, triggered by measured pressure)
+
+| Phase | Users | Change |
+|---|---:|---|
+| 1 | 10 to 100 | One VM, per-user daily loop, full per-user script (about ₹23,000/month at 100 users at ₹7.70 each/day) |
+| 2 | 1k to 10k | Split shared story work from the per-user layer; Redis queue and workers; shared story segments and audio; CDN; partitioned Postgres |
+| 3 | 100k | Autoscaled worker pools; cohort re-ranking; batch precompute; TTS pool; read replicas; Qdrant cluster; metrics, tracing, alerts |
+| 4 | 1M | Sharded per-user data; multi-region; time-zone scheduling; second model provider; SLOs |
+
+Target variable cost at a million users on the shared-story design: about ₹5 per user per month
+(₹100/$), against about ₹231 for today's per-user design. The derivation is in the deep dive,
+section 13.
+
+### Explicitly not planned
+
+Voice barge-in, a native app before there are other users, scraping, paid TTS, and real-time
+streaming.
