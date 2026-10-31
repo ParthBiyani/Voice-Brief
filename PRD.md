@@ -92,6 +92,7 @@ the places where sources disagree called out. This is Mode 2's user.
 | Feature | Requirement | Status |
 |---|---|---|
 | Source registry | Sources are database rows seeded from `config/sources.yaml`; adding one is a config change. Removed sources are disabled, not deleted | Built: 43 sources (5 API, 2 GitHub, 36 RSS), including 11 news feeds added 31 Oct |
+| Article text | For sources with `fetch_article: true` (7), items with a summary under 900 chars and no body get the linked page's paragraphs (lxml); robots.txt honoured; ≤ 60 fetches/run, 6 concurrent, 10 s timeout, 2 MB cap; tried once, outcome recorded | Built: 48 of 60 fetched live; HN ~30 → ~5,000 chars |
 | Polite, reliable ingest | Official APIs and feeds only; each source fetches from its last successful poll (1 h overlap, capped at 7 days); per-source error boundary and 90 s timeout; backoff capped at 24 h; arXiv fetched serially | Built |
 | Visible source failures | A source whose requests are all refused fails with the reason and reset time; partial failures appear in the run summary | Built |
 | Cheap filter | Recency, trust, engagement and topic score; window cut to 300 items; no source above 25% | Built |
@@ -99,16 +100,16 @@ the places where sources disagree called out. This is Mode 2's user.
 | Stories, not topic bags | HDBSCAN (leaf); multi-item clusters must reach mean pairwise similarity ≥ 0.76; template-like sources stay single | Built |
 | Freshness | Candidate only if an item was first seen in the window: 36 h, widening up to 7 days after a gap | Built |
 | No repeats | Stories cited in the last 30 days excluded, matched by source URL | Built |
-| Personal ranking | Heuristic over all candidates (dependencies 3.0 each up to 3, recency, topics, trust, coverage, interests, feedback ≤ 1.5, thin-story penalty), one batched model re-rank of the top 15, blend 0.4/0.6, at least 2 personal stories, no repeated events | Built |
+| Personal ranking | Heuristic over all candidates (dependencies 3.0 each up to 3; content topics 1.2, source-tag prior 0.4; recency 2.0, 24 h half-life; trust, coverage, interests, feedback ≤ 1.5, thin-story penalty), one batched model re-rank of the top 30, blend 0.4/0.6, tail floor, at least 2 personal stories, no repeated events | Built |
 | Stack profile | Dependencies from GitHub manifests (Python, JS, Dart, Go, Rust), forks excluded, common-word names need package-style evidence; cached 7 days; incomplete rebuilds keep the last good profile | Built: 196 dependencies, 36 repos |
 | ProjectMind context | Interests, tools moved away from, recent projects, via its public CLI only; fail-soft; cached 24 h; its raw "files and notes" section never read | Built: 6 interests, 3 projects |
 | Feedback | Thumbs become smoothed per-source and per-topic affinity, plus recent liked/disliked headlines in the re-rank prompt | Built; effect not yet measured |
-| Grounded script | Summaries of cited facts; one segment per story plus cold open, agenda and sign-off; spoken register; no speculation | Built |
+| Grounded script | Summaries of cited facts; opens on the agenda (no cold open, no greeting), one segment per story, sign-off; spoken register; no speculation. Documents episodes keep a cold open | Built |
 | Verification | Deterministic per-sentence check of figures, versions, names and content words; invented-link check; report stored on the episode | Built |
 | Speech | Kokoro (82M) via kokoro-onnx, per-segment cache, timestamps from measured audio, MP3 via soundfile | Built |
 | Honest status | `ready` only with stories, stored audio with real sound, and at least half the requested stories; otherwise `degraded` or `failed` with a reason; exit codes 0/2/1 | Built |
-| Delivery | Slack bot posts a digest and the MP3 in its thread; optional email; delivered once, failures retried, failed runs announced; dates in local time | Built; Slack verified live 31 Oct |
-| Slack Q&A | Thread reply = question about that episode (matched by the digest's Slack `ts`); new channel message = latest brief; answers only from the episode and its sources (all scripts + sources of the 3 most similar segments); recorded with channel `slack`; Socket Mode, no public URL | Built |
+| Delivery | Slack bot posts a digest and the MP3 in its thread; optional email; delivered once, failures retried, failed runs announced; dates in local time | Built; verified live 31 Oct |
+| Slack Q&A (verified live) | Thread reply = question about that episode (matched by the digest's Slack `ts`); new channel message = latest brief; answers only from the episode and its sources (all scripts + sources of the 3 most similar segments); recorded with channel `slack`; Socket Mode, no public URL | Built |
 | Schedule | Windows Task Scheduler "VoiceBrief Daily Brief": 09:00 IST and 3 min after logon; `-NotBefore 09:00` so it is never early; idempotent and exclusive | Built |
 | Backups | After every generated brief: verified database dump plus incremental audio copy, outside Docker, newest 7 kept | Built |
 | History | `run_log`, `ranking_snapshot` (per-signal breakdown), every model call's prompt and response (90 days), `interaction`; CLI and web views; JSONL export | Built |
@@ -129,7 +130,7 @@ the places where sources disagree called out. This is Mode 2's user.
 | Feature | Status |
 |---|---|
 | FastAPI serves the built React/Vite app and the API on one port | Built |
-| Always on: "VoiceBrief Web" task starts `serve` at logon and 09:00 and restarts it on failure; embedding model warmed at startup (first search used to take ~15 s) | Built |
+| Always on: "VoiceBrief Web" task starts `serve` at logon and 09:00 and re-fires every 10 min; `run-serve.ps1` restarts the server if it exits; both tasks launch via `conhost.exe --headless`; embedding model warmed at startup (first search used to take ~15 s) | Built |
 | Episode list grouped by day; player with tap-to-seek transcript | Built |
 | Audio streamed via `/episodes/{id}/audio` with HTTP Range (seekable from a phone) | Built |
 | "Why these stories?", per-story "your stack" badges, degraded/failed banners | Built |
@@ -167,14 +168,18 @@ US dollar; the ₹100/$ figure is shown alongside.
 | Durability | Verified backup after each brief | 100% | Ran and verified on the final run | Met (single run) |
 | Dedup (offline) | Pairwise precision / recall | ≥ 0.90 / ≥ 0.80 | **1.000 / 0.971** | Met |
 | Clustering (offline) | Homogeneity | ≥ 0.75 | **0.814** | Met |
-| Ranking (offline) | Precision@10, heuristic stage | ≥ 0.70 | **0.533** (nDCG@10 0.585) | **Not met** |
-| Personalisation (offline) | Ablation P@10: profile / topics / none | profile > topics > none | 0.533 / 0.467 / 0.133 | Met |
-| Engineering | Test suite / type errors | green / 0 | 821 tests / 0 mypy errors, enforced in CI; flaky tests fixed | Met |
+| Ranking (offline) | Precision@10, full path (heuristic + re-rank top 30), judge labels | ≥ 0.70 | **0.600** (nDCG@10 0.730 to 0.756, two runs) | **Not met** |
+| Ranking (offline) | Heuristic only, judge / rubric labels | | 0.533 / 0.660 and 0.500 / 0.599 (before: judge 0.367 / 0.453, rubric 0.533 / 0.585) | |
+| Personalisation (offline) | Ablation, judge nDCG: profile + topics / topics / none | profile > topics > none | 0.660 / 0.606 / 0.084 | Met |
+| Engineering | Test suite / type errors | green / 0 | 857 tests / 0 mypy errors, enforced in CI | Met |
+| Operations | Scheduled runs complete | 100% | Fixed: runs were killed ~25 s in until launched via `conhost.exe --headless`; verified with a 90 s job | Fixed |
 
-**On the ranking miss.** The offline number measures the free heuristic stage on 3 personas with
-rubric labels that favour a tag-based ranker; the model re-rank is not included. A semantic-similarity
-signal was tried and lowered P@10 to 0.467, so it was rejected (`eval/EXPERIMENTS.md`). The fix is
-real labels from the listener's thumbs and `history export`.
+**On the ranking miss.** There are two label sets: a keyword rubric, and a model judge (Sonnet 5.5
+reading each persona's plain description, no rubric). A change is trusted only if it holds on both.
+The rubric's dependency clause is a substring match that rewards the `transformers` false positive,
+which is why its score dipped when that was fixed. Tuning stopped deliberately: with 3 personas and
+28 judge positives, further gains would be fitting the set. Every number is in `eval/EXPERIMENTS.md`.
+The next step is labels from real thumbs via `history export`.
 
 ---
 
@@ -228,7 +233,8 @@ Full detail, including the data model and the step-by-step morning run, is in th
 | ProjectMind changes | Public CLI only, fixture-pinned parser, fail-soft, 24 h cache |
 | Ranking quality unproven | History and thumbs collected for real labels; experiments documented, including failures |
 | Single-laptop dependency | Catch-up trigger; production compose overlay ready for a cloud move |
-| Thin news items | Fetch full article text for top candidates (next step); until then single-outlet news usually takes the thin-story penalty |
+| Thin news items | Article text fetched for 7 opted-in sources; paywalled or bot-refusing sites stay at one line |
+| Scheduled jobs dying silently | Headless launch; scheduled jobs tested with a 90 s job; next: alarm on runs that start but never finish |
 
 ---
 
@@ -236,14 +242,18 @@ Full detail, including the data model and the step-by-step morning run, is in th
 
 ### Now (next few weeks)
 
-- Fetch full article text for the top candidates, so single-outlet news items are not thin.
 - Run the scheduled brief daily and measure the product metric (days listened per week) and
   reliability (briefs produced or announced per scheduled day).
 - Accumulate thumbs; build relevance labels from `history export` joined with votes; re-run the
-  ranking evaluation, including the rejected semantic-similarity signal, on those labels.
+  ranking evaluation (both label sets plus real-thumb labels), including the rejected
+  semantic-similarity signal.
+- Alarm on any run that logs a start and no finish.
+- (Done in October: full article text for news sources, content-aware topics, a measured re-rank
+  and an independent judge label set.)
 - Measure the feedback signal's effect on precision once enough votes exist.
 - Blind listening test: Sonnet vs Haiku for the script. Switch if Haiku passes (about 95% cost cut).
-- Offline replay of cached re-rank responses so the model stage can be measured without an API key.
+- Offline replay of cached re-rank responses so the model stage can be measured without spending
+  ₹0.30 a run.
 
 ### Next (one to three months)
 
@@ -260,9 +270,10 @@ Full detail, including the data model and the step-by-step morning run, is in th
 | 1 | 10 to 100 | One VM, per-user daily loop, full per-user script (about ₹23,000/month at 100 users at ₹7.70 each/day) |
 | 2 | 1k to 10k | Split shared story work from the per-user layer; Redis queue and workers; shared story segments and audio; CDN; partitioned Postgres |
 | 3 | 100k | Autoscaled worker pools; cohort re-ranking; batch precompute; TTS pool; read replicas; Qdrant cluster; metrics, tracing, alerts |
-| 4 | 1M | Sharded per-user data; multi-region; time-zone scheduling; second model provider; SLOs |
+| 4 | 1M | Sharded per-user data; multi-region; time-zone scheduling; second model provider; Slack via the Events API on a public endpoint instead of Socket Mode; SLOs |
 
-Target variable cost at a million users on the shared-story design: about ₹5 per user per month
+Target variable cost at a million users on the shared-story design: about ₹7.5 per user per month
+(about ₹1.5 with cohort re-ranking and templated personal lines)
 (₹100/$), against about ₹231 for today's per-user design. The derivation is in the deep dive,
 section 13.
 
