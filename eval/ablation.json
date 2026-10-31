@@ -1,67 +1,138 @@
-{
-  "k": 10,
-  "per_persona": {
-    "agent-builder": {
-      "with_profile": {
-        "p_at_k": 0.5,
-        "ndcg": 0.5299
+[
+  {
+    "k": 10,
+    "labels": "relevance.jsonl",
+    "per_persona": {
+      "agent-builder": {
+        "with_profile": {
+          "p_at_k": 0.7,
+          "ndcg": 0.7846
+        },
+        "topics_only": {
+          "p_at_k": 0.7,
+          "ndcg": 0.7788
+        },
+        "no_personalization": {
+          "p_at_k": 0.4,
+          "ndcg": 0.5638
+        },
+        "pool": 76,
+        "relevant": 14
       },
-      "topics_only": {
-        "p_at_k": 0.5,
-        "ndcg": 0.4199
+      "edge-ml": {
+        "with_profile": {
+          "p_at_k": 0.7,
+          "ndcg": 0.7917
+        },
+        "topics_only": {
+          "p_at_k": 0.7,
+          "ndcg": 0.7968
+        },
+        "no_personalization": {
+          "p_at_k": 0.0,
+          "ndcg": 0.0
+        },
+        "pool": 76,
+        "relevant": 10
       },
-      "no_personalization": {
-        "p_at_k": 0.4,
-        "ndcg": 0.5638
-      },
-      "pool": 76,
-      "relevant": 14
+      "cv-researcher": {
+        "with_profile": {
+          "p_at_k": 0.1,
+          "ndcg": 0.2201
+        },
+        "topics_only": {
+          "p_at_k": 0.1,
+          "ndcg": 0.0694
+        },
+        "no_personalization": {
+          "p_at_k": 0.0,
+          "ndcg": 0.0
+        },
+        "pool": 76,
+        "relevant": 21
+      }
     },
-    "edge-ml": {
+    "mean": {
       "with_profile": {
         "p_at_k": 0.5,
-        "ndcg": 0.6422
+        "ndcg": 0.5988
       },
       "topics_only": {
         "p_at_k": 0.5,
-        "ndcg": 0.6325
+        "ndcg": 0.5483
       },
       "no_personalization": {
-        "p_at_k": 0.0,
-        "ndcg": 0.0
-      },
-      "pool": 76,
-      "relevant": 10
-    },
-    "cv-researcher": {
-      "with_profile": {
-        "p_at_k": 0.6,
-        "ndcg": 0.5829
-      },
-      "topics_only": {
-        "p_at_k": 0.4,
-        "ndcg": 0.3063
-      },
-      "no_personalization": {
-        "p_at_k": 0.0,
-        "ndcg": 0.0
-      },
-      "pool": 76,
-      "relevant": 21
+        "p_at_k": 0.1333,
+        "ndcg": 0.1879
+      }
     }
   },
-  "mean": {
-    "with_profile": {
-      "p_at_k": 0.5333,
-      "ndcg": 0.585
+  {
+    "k": 10,
+    "labels": "relevance_judge.jsonl",
+    "per_persona": {
+      "agent-builder": {
+        "with_profile": {
+          "p_at_k": 0.6,
+          "ndcg": 0.8256
+        },
+        "topics_only": {
+          "p_at_k": 0.6,
+          "ndcg": 0.8219
+        },
+        "no_personalization": {
+          "p_at_k": 0.1,
+          "ndcg": 0.2529
+        },
+        "pool": 76,
+        "relevant": 8
+      },
+      "edge-ml": {
+        "with_profile": {
+          "p_at_k": 0.5,
+          "ndcg": 0.6004
+        },
+        "topics_only": {
+          "p_at_k": 0.5,
+          "ndcg": 0.5491
+        },
+        "no_personalization": {
+          "p_at_k": 0.0,
+          "ndcg": 0.0
+        },
+        "pool": 76,
+        "relevant": 9
+      },
+      "cv-researcher": {
+        "with_profile": {
+          "p_at_k": 0.5,
+          "ndcg": 0.5548
+        },
+        "topics_only": {
+          "p_at_k": 0.5,
+          "ndcg": 0.4482
+        },
+        "no_personalization": {
+          "p_at_k": 0.0,
+          "ndcg": 0.0
+        },
+        "pool": 76,
+        "relevant": 11
+      }
     },
-    "topics_only": {
-      "p_at_k": 0.4667,
-      "ndcg": 0.4529
-    },
-    "no_personalization": {
-      "p_at_k": 0.1333,
-      "ndcg": 0.1879
+    "mean": {
+      "with_profile": {
+        "p_at_k": 0.5333,
+        "ndcg": 0.6603
+      },
+      "topics_only": {
+        "p_at_k": 0.5333,
+        "ndcg": 0.6064
+      },
+      "no_personalization": {
+        "p_at_k": 0.0333,
+        "ndcg": 0.0843
+      }
     }
   }
-}
+]
