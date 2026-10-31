@@ -304,9 +304,24 @@ class TestFlow:
         assert headings.index("Where your sources disagree") == len(headings) - 2
         assert episode["title"].startswith("For, Against")
         assert episode["claims"]["claims"] == 2
-        stored_claims = session.execute(select(ClaimRow)).scalars().all()
+        # Scoped to this test's documents: the database is shared with real Mode 2 use.
+        doc_ids = [pairs[0][0], pairs[1][0]]
+        stored_claims = (
+            session.execute(select(ClaimRow).where(ClaimRow.document_id.in_(doc_ids)))
+            .scalars()
+            .all()
+        )
         assert {c.text for c in stored_claims} >= {a.text, b.text}
-        assert session.execute(select(ClaimRelation)).scalars().first().relation == "contradicts"
+        relations = (
+            session.execute(
+                select(ClaimRelation).where(
+                    ClaimRelation.source_claim_id.in_([c.id for c in stored_claims])
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert [r.relation for r in relations] == ["contradicts"]
 
     def test_segments_carry_no_cluster_ids_because_documents_have_no_clusters(self, session, user):
         pairs = self.stored(session, user, document("Solo", 3))

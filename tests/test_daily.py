@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy.orm import Session
 
+from voicebrief.config import get_settings
 from voicebrief.db.models import Episode, EpisodeMode, EpisodeStatus, User
 from voicebrief.db.session import get_engine
 from voicebrief.pipeline.daily import (
@@ -32,6 +33,14 @@ def _keep_history_clean(monkeypatch):
         "notify_failure",
     ):
         monkeypatch.setattr(f"voicebrief.pipeline.daily.{name}", lambda *a, **k: None)
+
+
+def midday_today() -> datetime:
+    """Noon on the configured local day: "today" with no midnight edge on either side.
+
+    Episodes stamped "a minute ago" from the real clock fell on yesterday when the suite
+    ran just after local midnight."""
+    return local_day_start(datetime.now(UTC), get_settings().timezone) + timedelta(hours=12)
 
 
 def explode(*_args, **_kwargs):
@@ -96,26 +105,27 @@ class TestDailyRun:
                     mode=EpisodeMode.brief,
                     status=status,
                     title="Earlier brief",
-                    created_at=datetime.now(UTC) - timedelta(minutes=1),
+                    created_at=midday_today() - timedelta(minutes=1),
                 )
             )
             s.commit()
 
     def test_a_second_run_the_same_day_does_nothing(self, email):
         self._make_episode(email, status=EpisodeStatus.ready)
-        result = run_daily(BriefRequest(email=email), skip_ingest=True)
+        result = run_daily(BriefRequest(email=email), skip_ingest=True, now=midday_today())
         assert result.outcome == "already_done"
         assert result.exit_code == 0
         assert result.title == "Earlier brief"
 
     def test_a_degraded_brief_still_counts_as_todays(self, email):
         self._make_episode(email, status=EpisodeStatus.degraded)
-        assert run_daily(BriefRequest(email=email), skip_ingest=True).outcome == "already_done"
+        result = run_daily(BriefRequest(email=email), skip_ingest=True, now=midday_today())
+        assert result.outcome == "already_done"
 
     def test_a_failed_attempt_does_not_block_a_retry(self, email, monkeypatch):
         self._make_episode(email, status=EpisodeStatus.failed)
         monkeypatch.setattr("voicebrief.pipeline.enrich.enrich", explode)
-        result = run_daily(BriefRequest(email=email), skip_ingest=True)
+        result = run_daily(BriefRequest(email=email), skip_ingest=True, now=midday_today())
         assert result.outcome == "failed"
         assert "enrich exploded" in result.error
         assert result.exit_code == 1
@@ -130,7 +140,9 @@ class TestDailyRun:
         self._make_episode(email, status=EpisodeStatus.ready)
         monkeypatch.setattr("voicebrief.pipeline.enrich.enrich", explode)
         # Reaching the (sabotaged) enrich step proves the early return was bypassed.
-        result = run_daily(BriefRequest(email=email), skip_ingest=True, force=True)
+        result = run_daily(
+            BriefRequest(email=email), skip_ingest=True, force=True, now=midday_today()
+        )
         assert result.outcome == "failed"
 
     def test_settings_given_once_are_remembered(self, email, monkeypatch):

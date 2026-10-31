@@ -244,8 +244,14 @@ class TestStoredHistory:
         records = list(history.export_records(session, datetime.now(UTC) - timedelta(hours=1)))
         kinds = {r["type"] for r in records}
         assert {"ranking", "interaction", "run"} <= kinds
-        qa = next(r for r in records if r["type"] == "interaction" and r["kind"] == "qa")
-        assert qa["request"]["question"] == "why?"
+        # The database is shared with real use, so pick this test's row rather than the
+        # first question anyone asked in the last hour.
+        qa = next(
+            r
+            for r in records
+            if r["type"] == "interaction" and (r.get("request") or {}).get("question") == "why?"
+        )
+        assert qa["kind"] == "qa"
         assert all("type" in r for r in records)
 
 
