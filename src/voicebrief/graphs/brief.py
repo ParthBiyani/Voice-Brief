@@ -247,13 +247,18 @@ class BriefGraph:
         )
 
         errors = list(state.get("errors", []))
-        segments: list[Segment] = [
-            self._write_cold_open(summaries, language, style),
-            self._write_agenda(summaries, language, style),
-        ]
+        # The daily brief opens straight on the agenda: a teaser of the same headlines
+        # right before the agenda lists them was repetition the listener skipped. A
+        # documents episode keeps its cold open, which frames material the listener
+        # supplied rather than repeating a list.
+        segments: list[Segment] = []
+        if self.mode == "knowledge":
+            segments.append(self._write_cold_open(summaries, language, style))
+        segments.append(self._write_agenda(summaries, language, style))
+        opening = len(segments)
         for index, (story, summary) in enumerate(summaries):
             segment = self._write_story(
-                story, summary, index + 2, story_budget, profile, language, style
+                story, summary, index + opening, story_budget, profile, language, style
             )
             if segment:
                 segments.append(segment)
@@ -440,27 +445,27 @@ class BriefGraph:
         )
 
     def _write_cold_open(self, summaries, language: str, style: str) -> Segment:
+        """Documents episodes only; the daily brief opens on the agenda."""
         headlines = "; ".join(s.headline for _, s in summaries[:3] if s.headline)
-        if self.mode == "knowledge":
-            prompt = (
-                f"Write a 25-word cold open for an episode explaining the listener's own "
-                f"material: {self.subject}. What it covers: {headlines}.\n"
-                f"No greeting cliches. Land on the single most important point."
-                f"{' Write in Hindi.' if language == 'hi' else ''}"
-            )
-        else:
-            prompt = (
-                f"Write a 25-word cold open for today's brief. Today's top items: "
-                f"{headlines}.\nNo greeting cliches. Land on the single most important thing."
-                f"{' Write in Hindi.' if language == 'hi' else ''}"
-            )
+        prompt = (
+            f"Write a 25-word cold open for an episode explaining the listener's own "
+            f"material: {self.subject}. What it covers: {headlines}.\n"
+            f"No greeting cliches. Land on the single most important point."
+            f"{' Write in Hindi.' if language == 'hi' else ''}"
+        )
         return self._simple_segment(prompt, "cold_open", "Cold open", 200)
 
     def _write_agenda(self, summaries, language: str, style: str) -> Segment:
         headlines = "\n".join(f"- {s.headline}" for _, s in summaries if s.headline)
+        opener = (
+            ""
+            if self.mode == "knowledge"
+            else " It is the first thing the listener hears, so start right in on the news: "
+            "no greeting, no 'welcome back', no throat-clearing."
+        )
         prompt = (
             f"Write a 45-word agenda naming what is coming up:\n{headlines}\n"
-            f"Spoken, flowing prose. Not a list read aloud."
+            f"Spoken, flowing prose. Not a list read aloud.{opener}"
             f"{' Write in Hindi.' if language == 'hi' else ''}"
         )
         return self._simple_segment(prompt, "agenda", "Agenda", 250)

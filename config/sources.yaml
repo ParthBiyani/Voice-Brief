@@ -43,6 +43,7 @@ sources:
     default_topics: [engineering, startups, systems]
     config:
       adapter: hackernews
+      fetch_article: true  # the feed gives a line; the linked page has the article
       feed: topstories
       limit: 120
       min_score: 40
@@ -365,6 +366,7 @@ sources:
     default_topics: [engineering, systems]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: reddit-localllama
     name: r/LocalLLaMA
@@ -402,6 +404,7 @@ sources:
     default_topics: [industry, machine-learning, startups]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: verge-ai
     name: The Verge — AI
@@ -412,6 +415,7 @@ sources:
     default_topics: [industry, machine-learning]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: ars-technica
     name: Ars Technica
@@ -432,6 +436,7 @@ sources:
     default_topics: [industry, machine-learning]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: mit-tech-review-ai
     name: MIT Technology Review — AI
@@ -452,6 +457,7 @@ sources:
     default_topics: [industry, machine-learning]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: infoq
     name: InfoQ
@@ -462,6 +468,7 @@ sources:
     default_topics: [engineering, systems]
     config:
       adapter: rss
+      fetch_article: true  # the feed gives a line; the linked page has the article
 
   - slug: latent-space
     name: Latent Space

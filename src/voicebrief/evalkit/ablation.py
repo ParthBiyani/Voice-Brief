@@ -46,9 +46,9 @@ def persona_profile(persona) -> StackProfileData:
     )
 
 
-def run_ablation(k: int = 10) -> dict:
+def run_ablation(k: int = 10, labels_file: str = "relevance.jsonl") -> dict:
     corpus = {r["id"]: r for r in _read_jsonl(DATASETS / "corpus.jsonl")}
-    labels = _read_jsonl(DATASETS / "relevance.jsonl")
+    labels = _read_jsonl(DATASETS / labels_file)
 
     results = {}
     for persona in PERSONAS:
@@ -108,13 +108,13 @@ def run_ablation(k: int = 10) -> dict:
         }
         for arm in arm_names
     }
-    return {"k": k, "per_persona": results, "mean": summary}
+    return {"k": k, "labels": labels_file, "per_persona": results, "mean": summary}
 
 
 def format_table(report: dict) -> str:
     k = report["k"]
     lines = [
-        f"Ablation: does the stack profile help? (k={k})",
+        f"Ablation: does the stack profile help? (k={k}, labels: {report['labels']})",
         "",
         f"{'Arm':<22} {'P@' + str(k):>8} {'nDCG@' + str(k):>10} {'vs none':>10}",
         "-" * 54,
@@ -143,11 +143,18 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    report = run_ablation(k=args.k)
-    print(json.dumps(report, indent=2) if args.json else format_table(report))
+    # Both label sets: the keyword rubric and the independent model judgement (see
+    # evalkit/run.py eval_ranking). A conclusion that holds on only one is not drawn.
+    reports = [
+        run_ablation(k=args.k, labels_file=name)
+        for name in ("relevance.jsonl", "relevance_judge.jsonl")
+        if (DATASETS / name).exists()
+    ]
+    for report in reports:
+        print(json.dumps(report, indent=2) if args.json else format_table(report) + "\n")
 
     out = ROOT / "eval" / "ablation.json"
-    out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    out.write_text(json.dumps(reports, indent=2), encoding="utf-8")
     return 0
 
 

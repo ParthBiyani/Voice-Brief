@@ -182,8 +182,16 @@ def eval_clustering(corpus: Corpus) -> list[MetricResult]:
     ]
 
 
-def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
+def eval_ranking(
+    corpus: Corpus, *, k: int = 10, labels_file: str = "relevance.jsonl", label: str = ""
+) -> list[MetricResult]:
     """Rank each persona's candidate pool with the production ranker.
+
+    Two label sets exist. `relevance.jsonl` is the keyword rubric (topics and dependency
+    names, see scripts/build_eval_sets.py); `relevance_judge.jsonl` is a model's judgement
+    from each persona's plain description, with no rubric (scripts/build_judge_labels.py).
+    A ranker that thinks in the rubric's keywords is favoured by the first and not by
+    the second, so a change is trusted only when it holds on both.
 
     Calls `pipeline.ranking.prerank` directly rather than reimplementing scoring here.
     An earlier version had its own scorer and reported P@10 = 0.4333 while the real
@@ -193,7 +201,10 @@ def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
     This is the pre-LLM path only. The LLM re-rank sits on top and is measured
     separately, which is what keeps the personalization ablation interpretable.
     """
-    labels = _read_jsonl(DATASETS / "relevance.jsonl")
+    path = DATASETS / labels_file
+    if not path.exists():
+        return []
+    labels = _read_jsonl(path)
     by_id = corpus.by_id
 
     precisions, ndcgs, per_persona = [], [], {}
@@ -243,14 +254,14 @@ def eval_ranking(corpus: Corpus, *, k: int = 10) -> list[MetricResult]:
     return [
         MetricResult(
             "Ranking",
-            f"precision@{k}",
+            f"precision@{k}{label}",
             float(np.mean(precisions)) if precisions else 0.0,
             target=0.70,
             detail=per_persona,
         ),
         MetricResult(
             "Ranking",
-            f"nDCG@{k}",
+            f"nDCG@{k}{label}",
             float(np.mean(ndcgs)) if ndcgs else 0.0,
             target=None,
             detail={"note": "pre-LLM heuristic path; LLM re-rank measured separately"},
@@ -275,6 +286,7 @@ def run_all(*, threshold: float = 0.92) -> dict:
     results += eval_dedup(corpus, threshold=threshold)
     results += eval_clustering(corpus)
     results += eval_ranking(corpus)
+    results += eval_ranking(corpus, labels_file="relevance_judge.jsonl", label=" (judge labels)")
 
     return {
         "generated_at": datetime.now(UTC).isoformat(),
