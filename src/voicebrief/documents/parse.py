@@ -199,8 +199,9 @@ def parse_docx(data: bytes, title: str) -> ParsedDocument:
         if not text:
             continue
         # Re-emit Word headings as markdown so one splitter handles every format.
-        if paragraph.style.name.startswith("Heading"):
-            level = paragraph.style.name.removeprefix("Heading ").strip()
+        style_name = paragraph.style.name if paragraph.style is not None else ""
+        if style_name.startswith("Heading"):
+            level = style_name.removeprefix("Heading ").strip()
             hashes = "#" * (int(level) if level.isdigit() else 2)
             lines.append(f"{hashes} {text}")
         else:

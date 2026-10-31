@@ -57,7 +57,7 @@ lint:  ## Lint and check formatting (what CI enforces)
 	ruff check src tests
 	ruff format --check src tests
 
-typecheck:  ## Static types (informational: not yet clean, not enforced in CI)
+typecheck:  ## Static types (clean; enforced in CI)
 	mypy src
 
 fmt:  ## Auto-format

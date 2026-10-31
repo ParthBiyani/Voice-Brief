@@ -19,6 +19,7 @@ import shutil
 import wave
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from voicebrief.logging import get_logger
 from voicebrief.tts.base import SpeechClip, TTSEngine, TTSError, voice_key
@@ -78,10 +79,10 @@ def synthesize_segments(
     voice: str,
     cache_dir: Path,
     speed: float = 1.0,
-) -> tuple[list[tuple[object, SpeechClip | None]], int]:
+) -> tuple[list[tuple[Any, SpeechClip | None]], int]:
     """Render each segment, reusing cached audio where the text is unchanged."""
     cache_dir.mkdir(parents=True, exist_ok=True)
-    results: list[tuple[object, SpeechClip | None]] = []
+    results: list[tuple[Any, SpeechClip | None]] = []
     hits = 0
 
     for segment in segments:

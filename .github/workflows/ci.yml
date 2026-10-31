@@ -64,6 +64,9 @@ jobs:
         run: |
           pip install --extra-index-url https://download.pytorch.org/whl/cpu \
             -e ".[ml,llm,docs,dev]"
+      - name: Types
+        if: matrix.python-version == '3.11'
+        run: mypy src
       - name: Migrate
         run: alembic upgrade head
       - name: Schema matches the models

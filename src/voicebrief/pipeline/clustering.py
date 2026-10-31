@@ -142,7 +142,7 @@ def cluster_items(
         labels = model.fit_predict(vectors)
 
     clusters: list[Cluster] = []
-    next_synthetic = int(labels.max()) + 1 if len(labels) else 0
+    next_synthetic = int(np.max(labels)) + 1 if len(labels) else 0
 
     grouped: dict[int, list[int]] = {}
     for index, raw_label in enumerate(labels):

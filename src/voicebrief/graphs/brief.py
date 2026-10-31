@@ -29,6 +29,7 @@ from langgraph.graph import END, StateGraph
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
+from voicebrief.personalization.feedback import Affinity
 from voicebrief.personalization.github_profile import StackProfileData
 from voicebrief.pipeline.grounding import content_words, verify_segment
 from voicebrief.pipeline.ranking import (
@@ -54,8 +55,8 @@ class BriefState(TypedDict, total=False):
     """Graph state. Everything the nodes read or write."""
 
     candidates: Annotated[list, _keep_last]
-    profile: Annotated[object, _keep_last]
-    affinity: Annotated[object, _keep_last]
+    profile: Annotated[StackProfileData | None, _keep_last]
+    affinity: Annotated[Affinity | None, _keep_last]
     declared_topics: Annotated[set, _keep_last]
     language: Annotated[str, _keep_last]
     style: Annotated[str, _keep_last]
@@ -513,7 +514,7 @@ class BriefGraph:
         declared_topics: set[str] | None = None,
         language: str = "en",
         style: str = "solo_anchor",
-        affinity: object | None = None,
+        affinity: Affinity | None = None,
     ) -> dict:
         result = self.graph.invoke(
             {

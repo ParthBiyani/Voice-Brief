@@ -164,7 +164,7 @@ class RSSAdapter(SourceAdapter):
         for key in ("published_parsed", "updated_parsed", "created_parsed"):
             parsed = entry.get(key)
             if parsed:
-                return datetime(*parsed[:6], tzinfo=UTC)
+                return datetime(*parsed[:6]).replace(tzinfo=UTC)
 
         for key in ("published", "updated", "created", "date"):
             value = entry.get(key)

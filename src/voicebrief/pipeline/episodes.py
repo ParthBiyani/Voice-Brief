@@ -36,6 +36,7 @@ from voicebrief.graphs.brief import BriefGraph
 from voicebrief.history import record_ranking
 from voicebrief.llm.client import LLMClient, episode_cost_inr
 from voicebrief.logging import get_logger
+from voicebrief.personalization.feedback import Affinity
 from voicebrief.personalization.github_profile import StackProfileData
 from voicebrief.tts.assemble import assemble
 from voicebrief.tts.engines import build_engine
@@ -200,7 +201,7 @@ def generate_episode(
     episode_id: uuid.UUID | None = None,
     mode: EpisodeMode = EpisodeMode.brief,
     produce: Callable[[LLMClient], dict] | None = None,
-    affinity: object | None = None,
+    affinity: Affinity | None = None,
 ) -> GenerationResult:
     """Make, voice, store and judge one episode.
 

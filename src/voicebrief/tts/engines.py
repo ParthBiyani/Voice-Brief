@@ -298,9 +298,9 @@ def build_engine(name: str, *, language: str = "en") -> TTSEngine:
             hint="run `voicebrief tts setup` to download the voice model",
         )
     elif name == "piper":
-        engine = PiperEngine()
-        if engine.available():
-            return engine
+        piper = PiperEngine()
+        if piper.available():
+            return piper
         log.warning("tts.unavailable", engine="piper", fallback="null")
 
     return SilentEngine()

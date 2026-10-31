@@ -162,7 +162,8 @@ def build_candidates(
             .order_by(Item.engagement.desc())
         ).scalars()
         for item in rows:
-            items_by_cluster[item.cluster_id].append(item)
+            if item.cluster_id is not None:
+                items_by_cluster[item.cluster_id].append(item)
 
     sources = {s.id: s for s in session.execute(select(Source)).scalars()}
 

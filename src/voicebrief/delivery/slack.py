@@ -34,11 +34,12 @@ class SlackClient:
     # ── plumbing ──────────────────────────────────────────────────────────────
     def _call(self, method: str, *, json: dict | None = None, data: dict | None = None) -> dict:
         for attempt in (1, 2):
-            response = self._client.post(
-                f"{API}/{method}",
-                headers=self._headers,
-                **({"json": json} if json is not None else {"data": data or {}}),
-            )
+            if json is not None:
+                response = self._client.post(f"{API}/{method}", headers=self._headers, json=json)
+            else:
+                response = self._client.post(
+                    f"{API}/{method}", headers=self._headers, data=data or {}
+                )
             if response.status_code == 429 and attempt == 1:
                 wait = min(int(response.headers.get("Retry-After", "2")), 30)
                 log.warning("slack.rate_limited", method=method, wait=wait)

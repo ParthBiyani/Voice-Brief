@@ -104,7 +104,7 @@ class ArxivAdapter(SourceAdapter):
         parsed = entry.get("published_parsed") or entry.get("updated_parsed")
         if not parsed:
             return None
-        return datetime(*parsed[:6], tzinfo=UTC)
+        return datetime(*parsed[:6]).replace(tzinfo=UTC)
 
     def _topics_for(self, categories: list[str]) -> list[str]:
         mapping = {

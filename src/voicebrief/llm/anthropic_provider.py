@@ -253,6 +253,8 @@ class AnthropicProvider(LLMProvider):
         if not text.strip():
             raise LLMError(f"model returned no text for stage {stage.value}", retryable=True)
 
+        if response is None:  # unreachable: the loop above always makes one request
+            raise LLMError("no response was received", retryable=True)
         return Completion(
             text=text,
             usage=usage,

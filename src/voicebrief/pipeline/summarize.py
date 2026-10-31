@@ -152,7 +152,7 @@ def summarize_cluster(
         log.warning("summarize.failed", cluster=str(cluster_id), error=str(exc))
         return None
 
-    payload = completion.parsed or {}
+    payload = completion.parsed if isinstance(completion.parsed, dict) else {}
 
     # Resolve source indices to real URLs here. If the model invents an index, the
     # fact is dropped rather than carried forward with a fabricated citation — this

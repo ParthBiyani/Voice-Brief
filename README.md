@@ -318,7 +318,7 @@ adds integration tests against the Docker services.
   during development; migrations were re-applied and nothing else was lost. Runs a crash left
   `running` are closed out automatically.
 - **Mode 2** cannot read scanned PDFs (no OCR), and a very short note is rejected rather than
-  padded. `mypy` is not clean (65 pre-existing findings) and is not enforced in CI.
+  padded.
 - The exchange rate for rupee costs is a constant in `llm/pricing.py`. Update it when it matters.
 
 ## License

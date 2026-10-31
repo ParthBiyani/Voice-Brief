@@ -14,6 +14,7 @@ import argparse
 import json
 import pathlib
 import uuid
+from typing import Any
 
 from voicebrief.evalkit.annotation import PERSONAS
 from voicebrief.evalkit.metrics import ndcg_at_k, precision_at_k
@@ -87,7 +88,7 @@ def run_ablation(k: int = 10) -> dict:
             "no_personalization": (None, set()),
         }
 
-        persona_result = {}
+        persona_result: dict[str, Any] = {}
         for arm, (arm_profile, arm_topics) in arms.items():
             ranked = prerank(candidates, profile=arm_profile, declared_topics=set(arm_topics))
             order = [id_by_cluster[s.candidate.cluster_id] for s in ranked]
@@ -99,13 +100,13 @@ def run_ablation(k: int = 10) -> dict:
         persona_result["relevant"] = len(relevant)
         results[persona.key] = persona_result
 
-    arms = ["with_profile", "topics_only", "no_personalization"]
+    arm_names = ["with_profile", "topics_only", "no_personalization"]
     summary = {
         arm: {
             metric: round(sum(r[arm][metric] for r in results.values()) / max(len(results), 1), 4)
             for metric in ("p_at_k", "ndcg")
         }
-        for arm in arms
+        for arm in arm_names
     }
     return {"k": k, "per_persona": results, "mean": summary}
 

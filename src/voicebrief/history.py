@@ -19,11 +19,12 @@ import time
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from datetime import UTC, date, datetime, timedelta, tzinfo
+from typing import Any, cast
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, update
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from voicebrief.config import get_settings
@@ -113,6 +114,11 @@ INTERRUPTED_MESSAGE = (
 )
 
 
+def _updated(result: object) -> int:
+    """Rows an UPDATE touched; `Session.execute` is typed as the generic Result."""
+    return cast(CursorResult, result).rowcount or 0
+
+
 def reap_interrupted(*, older_than: timedelta = INTERRUPTED_AFTER) -> tuple[int, int]:
     """Close out runs and episodes a crash left in `running` forever.
 
@@ -124,7 +130,7 @@ def reap_interrupted(*, older_than: timedelta = INTERRUPTED_AFTER) -> tuple[int,
     cutoff = datetime.now(UTC) - older_than
     try:
         with session_scope() as session:
-            runs = (
+            runs = _updated(
                 session.execute(
                     update(RunLog)
                     .where(RunLog.status == "running", RunLog.started_at < cutoff)
@@ -133,10 +139,9 @@ def reap_interrupted(*, older_than: timedelta = INTERRUPTED_AFTER) -> tuple[int,
                         finished_at=datetime.now(UTC),
                         error=INTERRUPTED_MESSAGE,
                     )
-                ).rowcount
-                or 0
+                )
             )
-            episodes = (
+            episodes = _updated(
                 session.execute(
                     update(Episode)
                     .where(
@@ -144,8 +149,7 @@ def reap_interrupted(*, older_than: timedelta = INTERRUPTED_AFTER) -> tuple[int,
                         Episode.created_at < cutoff,
                     )
                     .values(status=EpisodeStatus.failed, error=INTERRUPTED_MESSAGE)
-                ).rowcount
-                or 0
+                )
             )
         if runs or episodes:
             log.warning("history.reaped_interrupted", runs=runs, episodes=episodes)
@@ -275,13 +279,14 @@ def prune_llm_bodies(session: Session, *, days: int | None = None) -> int:
         )
         .values(prompt=None, response=None, system_prompt=None)
     )
-    return result.rowcount or 0
+    return _updated(result)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Reading it back
 # ─────────────────────────────────────────────────────────────────────────────
 def _day_bounds(day: date, timezone: str) -> tuple[datetime, datetime]:
+    tz: tzinfo
     try:
         tz = ZoneInfo(timezone)
     except Exception:
