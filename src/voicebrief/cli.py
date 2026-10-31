@@ -308,7 +308,7 @@ def personal_show(
     from voicebrief.db import session_scope
     from voicebrief.db.models import User
     from voicebrief.personalization.projectmind import configured_command
-    from voicebrief.pipeline.daily import resolve_personal
+    from voicebrief.pipeline.daily import resolve_personal, resolve_profile, seed_terms
 
     command = configured_command()
     console.print(
@@ -325,7 +325,8 @@ def personal_show(
         if user is None:
             console.print("[red]No such user yet. Run `voicebrief daily` first.[/red]")
             raise typer.Exit(1)
-        context = resolve_personal(session, user, refresh=refresh)
+        seeds = seed_terms(resolve_profile(session, user))
+        context = resolve_personal(session, user, refresh=refresh, seeds=seeds)
 
     if context is None or context.is_empty:
         console.print("[yellow]No personal context available.[/yellow]")
@@ -338,6 +339,10 @@ def personal_show(
     console.print("[bold]how you work[/bold]")
     for statement in context.statements[:15]:
         console.print(f"  - {statement}")
+    if context.history:
+        console.print("[bold]relevant history[/bold]")
+        for item in context.history[:10]:
+            console.print(f"  - {item.project} ({item.when}): {item.what[:100]}")
     console.print(f"[bold]interests[/bold]  {', '.join(context.interests) or '-'}")
     console.print(f"[bold]moved away from[/bold]  {', '.join(context.avoid) or '-'}")
     console.print(f"[bold]recent projects[/bold]  {', '.join(context.projects) or '-'}")

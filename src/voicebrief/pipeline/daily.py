@@ -236,7 +236,29 @@ def resolve_profile(session: Session, user: User, *, refresh: bool = False):
     return built
 
 
-def resolve_personal(session: Session, user: User, *, refresh: bool = False):
+def seed_terms(profile, limit: int = 4) -> list[str]:
+    """The technologies the listener uses most, to ask ProjectMind about by name.
+
+    Only plain, recognisable names: transitive packages (`flutter_test`, `markdown-it-py`)
+    and common words are noise to ProjectMind's relevance gate.
+    """
+    import re
+
+    from voicebrief.pipeline.ranking import is_ambiguous_dependency
+
+    if profile is None:
+        return []
+    ranked = sorted(
+        profile.dependencies.items(), key=lambda kv: len(kv[1].get("repos", [])), reverse=True
+    )
+    plain = re.compile(r"^[a-z][a-z0-9]{3,}$")
+    names = [n for n, _ in ranked if plain.match(n) and not is_ambiguous_dependency(n)]
+    return names[:limit]
+
+
+def resolve_personal(
+    session: Session, user: User, *, refresh: bool = False, seeds: list[str] | None = None
+):
     """Personal context from ProjectMind: cached for a day, never a reason to fail.
 
     ProjectMind is a separate, independently changing program. If it is not configured,
@@ -261,7 +283,7 @@ def resolve_personal(session: Session, user: User, *, refresh: bool = False):
     if configured_command() is None:
         return cached
 
-    fetched = fetch_personal_context()
+    fetched = fetch_personal_context(seeds=seeds)
     if fetched is not None:
         save_personal(session, user.id, fetched)
         return fetched
@@ -302,7 +324,8 @@ def generate_brief(
     user = resolve_user(session, request)
     profile = resolve_profile(session, user)
     try:
-        profile = attach_personal(profile, resolve_personal(session, user), login=user.github_login)
+        personal = resolve_personal(session, user, seeds=seed_terms(profile))
+        profile = attach_personal(profile, personal, login=user.github_login)
     except Exception as exc:  # personal context is an enhancement, never a precondition
         log.warning("daily.personal_failed", error=f"{type(exc).__name__}: {exc}"[:200])
 
