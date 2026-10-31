@@ -92,3 +92,24 @@ def test_exchange_rate_is_explicit():
     """Guards against the rate silently drifting far from reality and making every
     reported cost wrong."""
     assert 70 < USD_TO_INR < 100
+
+
+def test_the_rate_is_a_setting_and_drives_the_cost(monkeypatch):
+    from voicebrief import config
+    from voicebrief.llm import pricing
+
+    base = pricing.cost_inr("claude-haiku-5-5", input_tokens=1_000_000, output_tokens=0)
+    doubled = config.get_settings().model_copy(update={"usd_to_inr": USD_TO_INR * 2})
+    monkeypatch.setattr(pricing, "get_settings", lambda: doubled)
+    assert pricing.cost_inr(
+        "claude-haiku-5-5", input_tokens=1_000_000, output_tokens=0
+    ) == pytest.approx(base * 2)
+
+
+def test_an_absurd_rate_is_rejected_at_startup():
+    from pydantic import ValidationError
+
+    from voicebrief.config import Settings
+
+    with pytest.raises(ValidationError):
+        Settings(VB_USD_TO_INR=5)

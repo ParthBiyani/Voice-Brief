@@ -25,8 +25,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Updated 2026-06-08. A stale rate makes the cost ledger quietly wrong, so this
-# constant is asserted against in tests to force a conscious update.
+from voicebrief.config import get_settings
+
+# The default, last set 2026-06-08. A stale rate makes the cost ledger quietly wrong, so
+# the rate is a setting (`VB_USD_TO_INR`): set it when the market moves. The default is
+# asserted against in tests to force a conscious update.
 USD_TO_INR = 83.5
 
 CACHE_READ_MULTIPLIER = 0.10
@@ -104,4 +107,4 @@ def cost_inr(
         + cache_write_tokens * price.input_per_mtok * CACHE_WRITE_MULTIPLIER
         + output_tokens * price.output_per_mtok
     ) / 1_000_000
-    return usd * USD_TO_INR
+    return usd * get_settings().usd_to_inr
