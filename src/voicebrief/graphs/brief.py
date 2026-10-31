@@ -26,6 +26,7 @@ from typing import Annotated, TypedDict
 
 from langgraph.graph import END, StateGraph
 
+from voicebrief.config import local_timezone
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
@@ -498,7 +499,7 @@ class BriefGraph:
 
     def _title(self, state: BriefState, segments: list[Segment]) -> str:
         stories = [s for s in segments if s.kind == "story"]
-        date = datetime.now(UTC).strftime("%d %b %Y")
+        date = datetime.now(local_timezone()).strftime("%d %b %Y")
         if self.mode == "knowledge" and self.subject:
             return f"{self.subject[:110]} · {date}"
         if not stories:

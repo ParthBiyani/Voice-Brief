@@ -15,6 +15,7 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from voicebrief.config import local_timezone
 from voicebrief.db.models import Episode, RankingSnapshot, Segment
 
 MAX_SUMMARY_CHARS = 280
@@ -119,7 +120,7 @@ def build_digest(session: Session, episode_id: uuid.UUID, *, base_url: str | Non
     link = f"{base_url.rstrip('/')}/" if base_url else None
     return Digest(
         title=episode.title or "Today's brief",
-        date_label=created.strftime("%a %d %b"),
+        date_label=created.astimezone(local_timezone()).strftime("%a %d %b"),
         status=episode.status.value,
         duration_minutes=(episode.duration_seconds or 0) / 60,
         cost_inr=float(episode.cost_inr) if episode.cost_inr is not None else None,

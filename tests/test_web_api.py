@@ -365,6 +365,9 @@ class TestSettings:
         assert body["language"] == "en" and body["style"] == "solo_anchor"
         assert body["topics"] == [] and body["github_login"] is None
         assert body["projectmind"]["configured"] in (True, False)
+        # conftest blanks the Slack and SMTP settings, so nothing is delivered.
+        assert body["delivery"]["configured"] is False
+        assert "nothing is sent" in body["delivery"]["detail"]
 
     def test_saved_settings_are_returned_and_persist(self, email):
         client = TestClient(app)

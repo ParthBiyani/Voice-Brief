@@ -95,6 +95,7 @@ export interface Settings {
   style: string;
   github: Integration;
   projectmind: Integration;
+  delivery: Integration;
   llm_provider: string;
   tts_engine: string;
   daily_budget_inr: number;

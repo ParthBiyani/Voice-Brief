@@ -53,11 +53,15 @@ class SlackClient:
         raise SlackError(f"{method}: rate limited")  # pragma: no cover
 
     # ── messages ──────────────────────────────────────────────────────────────
-    def post_message(self, text: str, blocks: list[dict] | None = None) -> str:
+    def post_message(
+        self, text: str, blocks: list[dict] | None = None, *, thread_ts: str | None = None
+    ) -> str:
         """Post to the channel. Returns the message timestamp (the thread id)."""
         body: dict = {"channel": self.channel, "text": text, "unfurl_links": False}
         if blocks:
             body["blocks"] = blocks
+        if thread_ts:
+            body["thread_ts"] = thread_ts
         return self._call("chat.postMessage", json=body)["ts"]
 
     def upload_file(
@@ -102,15 +106,15 @@ class SlackClient:
         return result
 
     def send_failure(self, message: str) -> str:
+        return self.send_notice(":x:", "VoiceBrief could not make today's brief.", message)
+
+    def send_notice(self, icon: str, headline: str, message: str) -> str:
         return self.post_message(
-            f":x: VoiceBrief could not make today's brief: {message[:600]}",
+            f"{icon} {headline} {message[:600]}",
             [
                 {
                     "type": "section",
-                    "text": {
-                        "type": "mrkdwn",
-                        "text": f":x: *VoiceBrief could not make today's brief.*\n{message[:600]}",
-                    },
+                    "text": {"type": "mrkdwn", "text": f"{icon} *{headline}*\n{message[:600]}"},
                 }
             ],
         )

@@ -7,8 +7,10 @@ other stacks on a developer machine.
 
 from __future__ import annotations
 
+from datetime import UTC, tzinfo
 from functools import lru_cache
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -58,7 +60,7 @@ class Settings(BaseSettings):
     )
     daily_budget_inr: float = Field(default=50.0, alias="VB_DAILY_BUDGET_INR")
     # Model prices are in dollars and the ledger is in rupees. Update when the market moves.
-    usd_to_inr: float = Field(default=83.5, ge=50.0, le=200.0, alias="VB_USD_TO_INR")
+    usd_to_inr: float = Field(default=100.0, ge=50.0, le=200.0, alias="VB_USD_TO_INR")
     # How long full prompts and responses are kept. Cost, tokens and timing are kept
     # indefinitely; only the (large, sometimes sensitive) text bodies are pruned.
     history_retention_days: int = Field(default=90, alias="VB_HISTORY_RETENTION_DAYS")
@@ -87,6 +89,8 @@ class Settings(BaseSettings):
     # Delivery. Each channel is off until its settings are present.
     slack_bot_token: SecretStr | None = Field(default=None, alias="SLACK_BOT_TOKEN")
     slack_channel_id: str | None = Field(default=None, alias="SLACK_CHANNEL_ID")
+    # Socket Mode app token (xapp-...): lets the bot answer questions in the channel.
+    slack_app_token: SecretStr | None = Field(default=None, alias="SLACK_APP_TOKEN")
     smtp_host: str | None = Field(default=None, alias="VB_SMTP_HOST")
     smtp_port: int = Field(default=587, alias="VB_SMTP_PORT")
     smtp_user: str | None = Field(default=None, alias="VB_SMTP_USER")
@@ -122,3 +126,14 @@ class Settings(BaseSettings):
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings()
+
+
+def local_timezone() -> tzinfo:
+    """The owner's timezone (`VB_TIMEZONE`), UTC if the name is unknown.
+
+    Dates a person reads (titles, digests) are local: a brief made at 00:18 IST belongs
+    to the Indian date, not to the UTC one that is still yesterday."""
+    try:
+        return ZoneInfo(get_settings().timezone)
+    except Exception:
+        return UTC
