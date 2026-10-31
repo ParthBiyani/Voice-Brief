@@ -19,7 +19,7 @@ it to Slack, where you can ask it follow-up questions.
 
 | | |
 |---|---|
-| **Personal** | Ranks by your GitHub dependencies, declared topics, your thumbs, and (optionally) [ProjectMind](#projectmind)'s memory of how you work. 5 of 6 stories matched the owner's stack on the latest run |
+| **Personal** | Ranks by your GitHub dependencies, declared topics, your thumbs, and (optionally) [ProjectMind](https://github.com/ParthBiyani/ProjectMind)'s memory of how you work. 5 of 6 stories matched the owner's stack on the latest run |
 | **Fresh, never repeated** | Only what's new since your last brief; anything already aired is skipped, even if re-clustered |
 | **Grounded** | Every sentence's figures, versions and names are checked against the source; 0 invented links across every recorded run |
 | **Hands-off** | Windows Task Scheduler runs it at 09:00 and catches up after sleep; the web app stays up on its own |
@@ -32,13 +32,14 @@ it to Slack, where you can ask it follow-up questions.
 ```
  09:00 ─► ingest ─► filter ─► embed ─► dedup ─► cluster ─► rank ─► re-rank ─► write ─► verify ─► voice ─► deliver
           43 feeds   fresh +   bge-     0.92     stories    stack,   LLM on     one      every     Kokoro   Slack +
-          & APIs     trusted   small    cosine   not topics topics,  the top    segment  claim     → MP3    web app
-                                                            thumbs   15         a story  checked
+          & APIs,    trusted   small    cosine   not topics content  the top    segment  claim     → MP3    web app
+          full text                                         topics,  30         a story  checked
+                                                            thumbs
 ```
 
 | Layer | Choice |
 |---|---|
-| Sources | arXiv, Hacker News, GitHub (trending + your dependencies' releases), Hugging Face, AI lab and engineering blogs, tech news (Techmeme, TechCrunch, The Verge, Ars Technica, WIRED, MIT Tech Review, InfoQ, Inc42 …). Official APIs and published feeds only |
+| Sources | arXiv, Hacker News, GitHub (trending + your dependencies' releases), Hugging Face, AI lab and engineering blogs, tech news (Techmeme, TechCrunch, The Verge, Ars Technica, WIRED, MIT Tech Review, InfoQ, Inc42 …). Official APIs and published feeds; where a feed gives one line, the linked article's text is fetched (robots.txt honoured) |
 | Pipeline | Python 3.14 · LangGraph · sentence-transformers (bge-small) · HDBSCAN |
 | Models | Claude Sonnet 5.5 writes the script; Haiku 5.5 does ranking, summaries and Q&A |
 | Speech | Kokoro via ONNX Runtime (local, no GPU), encoded to MP3 |
@@ -56,8 +57,9 @@ Deep dive: [PRD.md](PRD.md) for requirements and success metrics; [eval/EXPERIME
 |---|---|---:|---:|
 | Deduplication | pairwise precision / recall | **1.000 / 0.971** | 0.90 / 0.80 ✅ |
 | Clustering | homogeneity | **0.814** | 0.75 ✅ |
-| Ranking (heuristic stage) | precision@10 | **0.533** | 0.70 ❌ |
-| Personalization ablation | P@10: stack + topics / topics / none | **0.533** / 0.467 / 0.133 | |
+| Ranking, full path (heuristic + model re-rank) | precision@10 / nDCG@10, independent judge labels | **0.600 / 0.74** | 0.70 ❌ |
+| Ranking, heuristic stage | precision@10, judge / rubric labels | 0.533 / 0.500 | |
+| Personalization ablation | nDCG@10, judge labels: stack + topics / topics / none | **0.660** / 0.606 / 0.084 | |
 
 **Live** (real sources, real models, one laptop):
 
@@ -69,8 +71,10 @@ Deep dive: [PRD.md](PRD.md) for requirements and success metrics; [eval/EXPERIME
 | Time | ~45 s without audio, ~3 min with 6–7 min of speech |
 | Invented links | **0** |
 
-These are single-user runs, not a benchmark. Ranking misses its offline target and says so:
-the model re-rank on top is not in the offline harness, and the labels come from a rubric.
+These are single-user runs, not a benchmark. Ranking misses its target and says so. It is
+measured on two label sets, a keyword rubric and an independent model judgement, because
+each alone flatters a different kind of ranker. The details and what was tried are in
+[eval/EXPERIMENTS.md](eval/EXPERIMENTS.md).
 
 ## Quick start (Windows)
 
@@ -211,11 +215,12 @@ src/voicebrief/
 
 ## Limitations
 
-- **Ranking is below its offline target** (P@10 0.533 vs 0.70); the labels are rubric-based.
+- **Ranking is below its offline target** (P@10 0.600 vs 0.70 for the full path). The
+  labels are synthetic (3 personas); real thumbs are the route to a trustworthy number.
 - **Verification is lexical, not entailment:** it catches invented figures, versions and
   names, not a sentence that reuses the source's words with the meaning flipped.
-- **News articles aren't fetched in full yet:** feeds give a one-line summary, so a news
-  story usually needs several outlets covering it to make the brief.
+- **Some articles can't be fetched:** full text comes from the linked page (robots.txt
+  honoured), so paywalls and sites that refuse bots stay at their one-line summary.
 - **Thumbs are a gentle nudge** (at most 1.5 points vs 3 for a dependency match), not a learned model.
 - **It runs on one laptop**, which must be on and signed in; Docker Desktop must be running.
 - **Documents mode** can't read scanned PDFs (no OCR).
