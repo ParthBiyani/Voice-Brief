@@ -337,11 +337,14 @@ def generate_brief(
             "has already been aired"
         )
 
+    from voicebrief.personalization.feedback import load_affinity
+
     result = generate_episode(
         session,
         user_id=user.id,
         candidates=candidates,
         profile=profile,
+        affinity=load_affinity(session, user.id),
         declared_topics=set(user.topics or DEFAULT_TOPICS),
         language=user.language.value,
         style=user.style.value,
