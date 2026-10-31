@@ -50,6 +50,9 @@ Frozen, hand-labelled corpus of 500 real crawled items; production code paths, n
 Ranking misses its target and is reported as such. This number is the free heuristic stage
 alone; the model re-rank that sits on top (now confirmed running: it scores every
 candidate) is not part of the offline harness, because measuring it needs an API key.
+One idea for closing the gap, content similarity to your profile, made the number worse and
+was not shipped; the harness's labels come from topic tags, so it cannot judge that kind of
+signal. The experiment and its caveat are in [eval/EXPERIMENTS.md](eval/EXPERIMENTS.md).
 
 **Does personalization help?** `make ablation`, same ranker three ways on identical data:
 
