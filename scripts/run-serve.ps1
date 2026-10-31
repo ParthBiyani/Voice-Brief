@@ -30,7 +30,7 @@ function Write-Log([string]$message) {
     Add-Content -Path $log -Value $line -Encoding utf8
 }
 
-Get-ChildItem $logDir -Filter 'serve-*.log' -ErrorAction SilentlyContinue |
+Get-ChildItem $logDir -Filter 'serve-*' -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item -Force -ErrorAction SilentlyContinue
 
@@ -41,8 +41,15 @@ if (-not (Test-Path $python)) {
     exit 1
 }
 
+# A live process listening on the port. Windows can briefly report a listener owned by
+# PID 0 after a server is killed; that is no one, and must not keep the app down.
+function Test-PortTaken {
+    [bool](Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $_.OwningProcess -gt 4 -and (Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue) })
+}
+
 # Someone (or an earlier start) already serves on this port: nothing to do.
-if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
+if (Test-PortTaken) {
     Write-Log "Port $Port is already in use; leaving it alone"
     exit 0
 }
@@ -72,11 +79,27 @@ try {
 
     $env:PYTHONUTF8 = '1'
     if (-not $env:OMP_NUM_THREADS) { $env:OMP_NUM_THREADS = '4' }
-    Write-Log "Serving on http://${Address}:$Port"
-    cmd.exe /c ('""{0}" -m voicebrief.cli serve --host {1} --port {2} >> "{3}" 2>&1"' -f $python, $Address, $Port, $log)
-    $code = $LASTEXITCODE
-    Write-Log "voicebrief serve exited with code $code"
-    exit $code
+    # Task Scheduler's "restart on failure" only covers a task that fails to start, not a
+    # server that exits later, so the loop does the restarting. The task also re-fires
+    # every few minutes, which brings this script back if it was itself stopped.
+    #
+    # The server gets its own hidden console (Start-Process) rather than sharing this
+    # script's: a console close or Ctrl event aimed at the task's console used to take the
+    # server down with it (exit 0xC000013A) seconds after it started.
+    $appLog = Join-Path $logDir ("serve-{0}.app.log" -f (Get-Date -Format 'yyyy-MM-dd'))
+    $outLog = Join-Path $logDir ("serve-{0}.out.log" -f (Get-Date -Format 'yyyy-MM-dd'))
+    while ($true) {
+        Write-Log "Serving on http://${Address}:$Port (server output: $appLog)"
+        $server = Start-Process -FilePath $python -PassThru -Wait -WindowStyle Hidden `
+            -ArgumentList @('-m', 'voicebrief.cli', 'serve', '--host', $Address, '--port', "$Port") `
+            -RedirectStandardError $appLog -RedirectStandardOutput $outLog
+        Write-Log "voicebrief serve exited with code $($server.ExitCode); restarting in 10 seconds"
+        Start-Sleep -Seconds 10
+        if (Test-PortTaken) {
+            Write-Log "Port $Port was taken meanwhile; leaving it alone"
+            exit 0
+        }
+    }
 }
 finally {
     Pop-Location

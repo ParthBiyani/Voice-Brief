@@ -10,8 +10,9 @@
     triggers never produce a second brief, and the task passes -NotBefore so a logon
     earlier in the morning waits for the 09:00 run instead of jumping ahead of it.
 
-    A second task, "VoiceBrief Web", starts the web app at logon (run-serve.ps1) and
-    restarts it if it exits, so http://localhost:8000 is there whenever the laptop is on.
+    A second task, "VoiceBrief Web", starts the web app at logon (run-serve.ps1), which
+    restarts the server if it exits; the task re-fires every 10 minutes in case the script
+    itself was stopped. So http://localhost:8000 is there whenever the laptop is on.
     -NoWeb skips it.
 
     The tasks run only while the user is logged on (no password is stored), which is also
@@ -52,9 +53,17 @@ if ($Remove) {
 $runner = Join-Path $PSScriptRoot 'run-daily.ps1'
 if (-not (Test-Path $runner)) { throw "Cannot find $runner" }
 
-$action = New-ScheduledTaskAction `
-    -Execute 'powershell.exe' `
-    -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -NotBefore {1}' -f $runner, $At)
+# Through `conhost --headless`, not a "hidden" powershell.exe: where Windows Terminal is the
+# default console, a hidden PowerShell started by Task Scheduler still gets a terminal that
+# goes away about 25 seconds later, killing the run (exit 0xC000013A). Short runs survived;
+# a real three-minute generation did not. A headless conhost has no window to lose.
+function New-HeadlessAction([string]$script, [string]$extra = '') {
+    New-ScheduledTaskAction `
+        -Execute 'conhost.exe' `
+        -Argument ('--headless powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" {1}' -f $script, $extra).Trim()
+}
+
+$action = New-HeadlessAction $runner "-NotBefore $At"
 
 $daily = New-ScheduledTaskTrigger -Daily -At $At
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
@@ -93,14 +102,16 @@ if ($NoWeb) {
     }
 } else {
     $serveRunner = Join-Path $PSScriptRoot 'run-serve.ps1'
-    $webAction = New-ScheduledTaskAction `
-        -Execute 'powershell.exe' `
-        -Argument ('-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}"' -f $serveRunner)
+    $webAction = New-HeadlessAction $serveRunner
     $webLogon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $webLogon.Delay = 'PT1M'
+    # Re-fire every 10 minutes for the rest of the session: if the server is already up the
+    # script sees the port in use and exits at once; if anything stopped it, it comes back.
+    $webLogon.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
+        -RepetitionInterval (New-TimeSpan -Minutes 10)).Repetition
     # And each morning with the brief, in case it was stopped; a running server ignores it.
     $webDaily = New-ScheduledTaskTrigger -Daily -At $At
-    # Long-running by design: no time limit, and restarted if the server exits.
+    # Long-running by design: no time limit. run-serve.ps1 restarts the server itself.
     $webSettings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
         -AllowStartIfOnBatteries `
