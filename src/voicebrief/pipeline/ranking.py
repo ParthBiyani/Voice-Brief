@@ -36,6 +36,7 @@ from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 from voicebrief.personalization.feedback import Affinity, examples_block
 from voicebrief.personalization.github_profile import StackProfileData
+from voicebrief.pipeline.topics import content_topics
 
 log = get_logger(__name__)
 
@@ -43,6 +44,8 @@ log = get_logger(__name__)
 W_DEPENDENCY = 3.0
 W_LANGUAGE = 0.8
 W_TOPIC = 1.2
+# A declared topic the story's source is tagged with but its own words do not mention.
+W_SOURCE_TOPIC = 0.4
 W_STARRED = 0.4
 W_ENGAGEMENT = 0.6
 W_TRUST = 1.0
@@ -76,6 +79,9 @@ AMBIGUOUS_DEPENDENCIES = frozenset(
         "typing", "http", "socket", "random", "string", "docs", "data", "model", "agent",
         "agents", "tools", "config", "cache", "queue", "events", "image", "audio",
         "video", "search", "graph", "chart", "table", "form", "router", "layout",
+        # ML vocabulary that is also a library name: "looped transformers" is the
+        # architecture, not Hugging Face's package.
+        "transformers", "transformer", "datasets", "accelerate", "evaluate", "tokenizers",
     }
 )  # fmt: skip
 
@@ -112,7 +118,12 @@ def is_ambiguous_dependency(name: str) -> bool:
 AMBIGUOUS_LANGUAGES = {"go": "golang", "c": "", "r": "", "d": "", "v": ""}
 _WORD_RE = re.compile(r"[a-z0-9+#]+")
 
-RERANK_CANDIDATES = 15
+# How many heuristic leaders the model re-scores, in one call. Measured offline against
+# independent labels (eval/EXPERIMENTS.md): P@10 0.567 at 15, 0.600 at 25, 0.667 at 30,
+# 0.633 at 40 (noise from here on). Anything the heuristic puts below this line can never
+# reach the brief, and the model is the better judge, so it sees thirty: about five paise
+# more a day in input tokens, no extra call.
+RERANK_CANDIDATES = 30
 
 
 @dataclass(slots=True)
@@ -251,6 +262,15 @@ def score_parts(
     """The heuristic score, the dependencies it matched, and each signal's contribution."""
     text = f"{candidate.title} {candidate.summary}"
     matched = match_dependencies(text, profile)
+    about_text = content_topics(text)
+    source_tags = {t.lower() for t in candidate.topics}
+
+    def topic_overlap(wanted: set[str], full: float, prior: float) -> float:
+        # What the story is about counts fully; the source's blanket tag only as a prior.
+        # Scored on source tags alone, every paper from one feed tied (see topics.py).
+        about = about_text & wanted
+        tagged = (source_tags & wanted) - about
+        return full * min(len(about), 3) + prior * min(len(tagged), 3)
 
     parts: dict[str, float] = {"stack": W_DEPENDENCY * min(len(matched), 3)}
 
@@ -258,8 +278,8 @@ def score_parts(
         parts["language"] = W_LANGUAGE * sum(
             1 for language in profile.languages if mentions_language(text, language)
         )
-        parts["starred"] = W_STARRED * len(
-            {t.lower() for t in candidate.topics} & set(profile.starred_topics)
+        parts["starred"] = topic_overlap(
+            set(profile.starred_topics), W_STARRED, W_STARRED * W_SOURCE_TOPIC / W_TOPIC
         )
         interests, avoided = match_interests(text, profile)
         if interests:
@@ -268,8 +288,7 @@ def score_parts(
             parts["moved_away"] = -W_MOVED_AWAY
 
     if declared_topics:
-        overlap = {t.lower() for t in candidate.topics} & declared_topics
-        parts["topics"] = W_TOPIC * min(len(overlap), 3)
+        parts["topics"] = topic_overlap(declared_topics, W_TOPIC, W_SOURCE_TOPIC)
 
     parts["engagement"] = W_ENGAGEMENT * candidate.engagement
     parts["trust"] = W_TRUST * candidate.trust_weight
@@ -429,7 +448,7 @@ def rerank(
 ) -> list[RankedStory]:
     """Re-score the top `limit` stories in one batched call.
 
-    One call for fifteen stories rather than fifteen calls: the system prompt and the
+    One call for thirty stories rather than thirty calls: the system prompt and the
     stack profile are the bulk of the input, and repeating them per story would cost
     roughly ten times as much for the same judgement.
 
