@@ -209,12 +209,14 @@ class SettingsOut(BaseModel):
     style: str = "solo_anchor"
     github: IntegrationStatus
     projectmind: IntegrationStatus
+    delivery: IntegrationStatus
     llm_provider: str
     tts_engine: str
     daily_budget_inr: float
 
 
 def _settings_out(session: Session, user: User) -> SettingsOut:
+    from voicebrief.delivery.deliver import configured_channels
     from voicebrief.personalization.projectmind import configured_command
 
     settings = get_settings()
@@ -244,8 +246,16 @@ def _settings_out(session: Session, user: User) -> SettingsOut:
     projectmind = IntegrationStatus(
         configured=command is not None,
         detail=(
-            f"{len(personal.get('interests', []))} interests, "
-            f"{len(personal.get('statements', []))} statements"
+            ", ".join(
+                f"{len(personal.get(key, []))} {label}"
+                for key, label in (
+                    ("interests", "interests"),
+                    ("projects", "recent projects"),
+                    ("statements", "statements"),
+                )
+                if personal.get(key)
+            )
+            or "connected; nothing relevant found yet"
             if personal
             else (
                 "connected; nothing fetched yet"
@@ -257,6 +267,23 @@ def _settings_out(session: Session, user: User) -> SettingsOut:
         items=len(personal.get("interests", [])),
     )
 
+    channels = configured_channels()
+    delivery = IntegrationStatus(
+        configured=bool(channels),
+        detail=(
+            "the brief is sent to "
+            + " and ".join(c.capitalize() for c in channels)
+            + (
+                "; questions asked in the Slack channel are answered"
+                if "slack" in channels and settings.slack_app_token
+                else ""
+            )
+            if channels
+            else "the brief is only in this app; nothing is sent"
+        ),
+        items=len(channels),
+    )
+
     return SettingsOut(
         email=user.email,
         github_login=user.github_login,
@@ -265,6 +292,7 @@ def _settings_out(session: Session, user: User) -> SettingsOut:
         style=user.style.value,
         github=github,
         projectmind=projectmind,
+        delivery=delivery,
         llm_provider=settings.llm_provider,
         tts_engine=settings.tts_engine,
         daily_budget_inr=settings.daily_budget_inr,

@@ -145,6 +145,11 @@ export function Settings() {
         info={loaded.projectmind}
         hint="Set VB_PROJECTMIND_CMD in the server's .env to let your ProjectMind memory shape the brief."
       />
+      <Status
+        title="Delivery"
+        info={loaded.delivery}
+        hint="Set SLACK_BOT_TOKEN and SLACK_CHANNEL_ID (or the SMTP settings) in the server's .env."
+      />
 
       <h3>System</h3>
       <p className="notice-text">

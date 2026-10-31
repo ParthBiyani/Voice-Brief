@@ -16,7 +16,6 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from voicebrief.api.schemas import (
@@ -27,13 +26,15 @@ from voicebrief.api.schemas import (
     SearchResponse,
 )
 from voicebrief.db import get_session
-from voicebrief.db.models import Episode, Item, Segment
+from voicebrief.db.models import Episode, Segment
 from voicebrief.history import record_interaction, timed
 from voicebrief.llm.base import Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
 from voicebrief.pipeline.embedding import get_embedding_service, item_text
 from voicebrief.pipeline.vectorstore import get_vector_store
+from voicebrief.qa import MAX_SOURCE_CHARS, QA_SYSTEM  # noqa: F401  (re-exported)
+from voicebrief.qa import source_text as _source_text
 
 log = get_logger(__name__)
 
@@ -45,54 +46,6 @@ PRESETS = {
     "show_code": "Show what this looks like in code, if the sources support it.",
     "compare_with": "How does this compare with the alternatives mentioned?",
 }
-
-QA_SYSTEM = """\
-You answer a listener's question about one segment of an audio brief they just heard.
-
-You are given that segment's script and the sources behind it. Answer only from those.
-
-- If the sources do not contain the answer, say so plainly and stop. Do not fill the
-  gap from general knowledge — the listener cannot tell the difference, and the whole
-  point of the citations is that they can check.
-- Be direct and short. This is a follow-up, not an essay.
-- Never invent a URL, version number, or benchmark figure.\
-"""
-
-
-MAX_SOURCE_CHARS = 1500
-
-
-def _source_text(session: Session, citations: list[dict]) -> str:
-    """The sources behind a segment, with their text.
-
-    The prompt used to list only titles and URLs, so the model could answer from nothing
-    but the segment's own script while the UI claimed the answer came from the sources.
-    """
-    if not citations:
-        return "(no sources recorded for this segment)"
-
-    ids = []
-    for citation in citations:
-        try:
-            ids.append(uuid.UUID(str(citation["item_id"])))
-        except (KeyError, ValueError, TypeError):
-            continue
-    items = (
-        {i.id: i for i in session.execute(select(Item).where(Item.id.in_(ids))).scalars()}
-        if ids
-        else {}
-    )
-
-    blocks = []
-    for number, citation in enumerate(citations, start=1):
-        head = f"[{number}] {citation.get('title') or 'source'} ({citation.get('url', '')})"
-        try:
-            item = items.get(uuid.UUID(str(citation.get("item_id"))))
-        except (ValueError, TypeError):
-            item = None
-        text = ((item.body or item.summary or "") if item else "").strip()
-        blocks.append(f"{head}\n{text[:MAX_SOURCE_CHARS]}" if text else head)
-    return "\n\n".join(blocks)
 
 
 def index_episode_segments(session: Session, episode_id: uuid.UUID) -> int:

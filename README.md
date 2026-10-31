@@ -1,329 +1,225 @@
 # VoiceBrief
 
-**A daily audio brief that knows what you're building, plus a way to turn your own
-documents and repositories into a podcast.**
+[![CI](https://github.com/ParthBiyani/Voice-Brief/actions/workflows/ci.yml/badge.svg)](https://github.com/ParthBiyani/Voice-Brief/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.11%20%7C%203.14-blue)
+![Types](https://img.shields.io/badge/mypy-clean-brightgreen)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-Every morning it reads the sources you care about, drops what you already heard, picks the
-stories that matter to *your* stack, writes a spoken script in which every sentence is
-checked against its source, voices it, and sends it to your phone.
+**A daily audio brief that knows what you're building.** Every morning it reads 43 tech
+sources, drops what you've already heard, picks the stories that matter to *your* stack,
+writes a script in which every claim is checked against its source, voices it, and sends
+it to Slack, where you can ask it follow-up questions.
 
-> *"Kokoro can now clone a voice. A new recipe pairs it with OpenVoice's
-> ToneColorConverter. This touches Voice-Brief directly, because you use Kokoro there."*
-> — from a real brief, generated from live sources and the author's own GitHub profile.
+![The VoiceBrief web app: today's episode with player, cost, sourcing and transcript](docs/images/web-app.jpg)
+
+> *"Kokoro can now clone a voice … This touches Voice-Brief directly, because you use
+> Kokoro there."* (from a real brief, generated from live sources and the author's GitHub)
+
+## Highlights
 
 | | |
 |---|---|
-| **Daily brief** | 32 live sources → ~6 stories, ~6 minutes of audio, ₹3–7, ready before you are awake |
-| **Your documents** | PDFs, notes, Word files or a whole repository → an episode that explains them, with a segment on where they disagree |
-| **Where you listen** | Slack (audio in the thread) or email, and a web app that works from a phone |
-| **Why it is trustworthy** | Every claim is traced to a source passage; the full reasoning behind every pick is kept |
-
----
-
-## A day with it
-
-1. **07:00, on its own.** A Windows scheduled task runs `voicebrief daily`: ingest, enrich,
-   rank, write, voice, deliver. A laptop that was off or asleep catches up when it wakes.
-2. **A message arrives** (Slack and/or email) with the stories, why each one is yours, source
-   links, and the audio attached. Or open the web app on any device.
-3. **While listening**, tap a line to jump to it, give a thumbs up or down, or ask a
-   question about a segment; the answer comes from that segment's sources only.
-4. **Whenever**, drop your own PDFs or a repo into the app and get an episode explaining them.
-5. **Later**, open *History* to see exactly why a story was picked or skipped, what each
-   model call said and cost, and everything you asked.
-
----
-
-## Measured, not claimed
-
-### The pipeline (offline, reproducible: `make eval`)
-
-Frozen, hand-labelled corpus of 500 real crawled items; production code paths, no API key.
-
-| Component | Metric | Result | Target | |
-|---|---|---:|---:|---|
-| Deduplication | pairwise precision | **1.000** | ≥ 0.90 | ✅ |
-| Deduplication | pairwise recall | **0.971** | ≥ 0.80 | ✅ |
-| Clustering | homogeneity | **0.814** | ≥ 0.75 | ✅ |
-| Ranking | precision@10 (heuristic only) | **0.533** | ≥ 0.70 | ❌ |
-
-Ranking misses its target and is reported as such. This number is the free heuristic stage
-alone; the model re-rank that sits on top (now confirmed running: it scores every
-candidate) is not part of the offline harness, because measuring it needs an API key.
-One idea for closing the gap, content similarity to your profile, made the number worse and
-was not shipped; the harness's labels come from topic tags, so it cannot judge that kind of
-signal. The experiment and its caveat are in [eval/EXPERIMENTS.md](eval/EXPERIMENTS.md).
-
-**Does personalization help?** `make ablation`, same ranker three ways on identical data:
-
-| Arm | P@10 | nDCG@10 |
-|---|---:|---:|
-| GitHub stack profile + declared topics | **0.533** | **0.585** |
-| Declared topics only | 0.467 | 0.453 |
-| No personalization | 0.133 | 0.188 |
-
-### Live runs (real sources, real model, this laptop)
-
-| | Result |
-|---|---|
-| Cost per 6-story brief | **₹3.4 – ₹7.2** (Sonnet 5.5 writes, Haiku 5.5 does the bulk work) |
-| Time, end to end | 45 s without audio, about 3 min with ~6 min of speech |
-| Hallucinated links | **0** across every run |
-| Sentences traced to a source | **0.85 – 0.96** on briefs; 1.0 on a two-document episode |
-| Prompt caching | ~21% of input tokens served from cache |
-| Where the money goes | script writing is **94%** of spend |
-
-These are single-user, hand-checked runs, not a benchmark. The honest reading is "it works
-and costs about a coffee a week", not a statistical claim.
-
----
+| **Personal** | Ranks by your GitHub dependencies, declared topics, your thumbs, and (optionally) [ProjectMind](#projectmind)'s memory of how you work. 5 of 6 stories matched the owner's stack on the latest run |
+| **Fresh, never repeated** | Only what's new since your last brief; anything already aired is skipped, even if re-clustered |
+| **Grounded** | Every sentence's figures, versions and names are checked against the source; 0 invented links across every recorded run |
+| **Hands-off** | Windows Task Scheduler runs it at 09:00 and catches up after sleep; the web app stays up on its own |
+| **Ask anything** | Reply in Slack or tap a line in the web app; answers come only from that brief's sources |
+| **Your documents too** | PDFs, notes or a whole repo become an episode, with a segment on where they disagree |
+| **Cheap** | About ₹7–8 a brief (≈ $0.08), capped by a daily budget checked before every model call |
 
 ## How it works
 
 ```
- schedule ─► ingest ─► filter ─► embed ─► dedup ─► cluster ─► rank ─► re-rank ─► script ─► verify ─► voice ─► deliver
-            32 sources  recency   bge     0.92     stories     stack    model       one      every     Kokoro   Slack /
-            + backfill  + trust   small   cosine   not topics  + you    (top 15)    segment  sentence  + MP3    email
+ 09:00 ─► ingest ─► filter ─► embed ─► dedup ─► cluster ─► rank ─► re-rank ─► write ─► verify ─► voice ─► deliver
+          43 feeds   fresh +   bge-     0.92     stories    stack,   LLM on     one      every     Kokoro   Slack +
+          & APIs     trusted   small    cosine   not topics topics,  the top    segment  claim     → MP3    web app
+                                                            thumbs   15         a story  checked
 ```
 
-- **Ingest.** arXiv, Hacker News, GitHub trending and watched releases, Hugging Face, and
-  RSS. Official APIs and published feeds only. Each source fetches from its last successful
-  poll, so a skipped run loses nothing.
-- **Fresh, never repeated.** Only stories first seen since your last brief are candidates,
-  and anything you already heard (matched by source URL, so re-clustering cannot hide a
-  repeat) is skipped. Skip a weekend and the next brief catches up.
-- **Stories, not topics.** Clusters are broken apart unless their members are genuinely about
-  one thing (mean pairwise similarity ≥ 0.76). Trending-list entries stay individual.
-- **Rank.** Recency, source trust, your GitHub dependencies, declared topics, and (when
-  connected) what [ProjectMind](#projectmind) knows about how you work. A dependency named
-  like an ordinary English word needs package-style evidence to count. A story about one
-  event is picked once, however many sources covered it.
-- **Script.** One spoken segment per story, written only from cited facts. Short sources
-  are demoted rather than padded.
-- **Verify.** Every sentence's figures, versions and names are checked against its source
-  text; invented figures are caught. See [limitations](#honest-limitations).
-- **Voice.** Kokoro locally (through ONNX Runtime, so it runs on current Python), encoded to
-  MP3, with timestamps measured from the audio so tapping a line lands on the right words.
-- **Remember.** Every run, every candidate with each ranking signal's contribution, every
-  model call (prompt and response) and every question is stored. See [History](#history).
+| Layer | Choice |
+|---|---|
+| Sources | arXiv, Hacker News, GitHub (trending + your dependencies' releases), Hugging Face, AI lab and engineering blogs, tech news (Techmeme, TechCrunch, The Verge, Ars Technica, WIRED, MIT Tech Review, InfoQ, Inc42 …). Official APIs and published feeds only |
+| Pipeline | Python 3.14 · LangGraph · sentence-transformers (bge-small) · HDBSCAN |
+| Models | Claude Sonnet 5.5 writes the script; Haiku 5.5 does ranking, summaries and Q&A |
+| Speech | Kokoro via ONNX Runtime (local, no GPU), encoded to MP3 |
+| Storage | Postgres 16 · Qdrant · MinIO (audio) · Redis (reserved for a job queue), all in Docker |
+| App | FastAPI + React/Vite, served together on one port |
+| Delivery | Slack bot (digest, audio in thread, Q&A over Socket Mode) · optional email |
 
-### Your documents
+Deep dive: [PRD.md](PRD.md) for requirements and success metrics; [eval/EXPERIMENTS.md](eval/EXPERIMENTS.md) for what was tried and rejected.
 
-`python -m voicebrief.cli docs podcast notes.md paper.pdf ./my-repo`
+## Results
 
-One document becomes a walk through it, in order. A folder is read as a repository:
-README and manifests first, then modules ordered by how much the rest of the code imports
-them, so it explains what the project *is* before the details. With two or more documents,
-claims are extracted and compared, and where sources contradict each other becomes its own
-segment. Same verification, same audio, same history; nothing is read from the web.
+**Offline, reproducible** (`make eval`; a frozen, hand-labelled corpus of 500 crawled items, no API key):
 
----
+| Component | Metric | Result | Target |
+|---|---|---:|---:|
+| Deduplication | pairwise precision / recall | **1.000 / 0.971** | 0.90 / 0.80 ✅ |
+| Clustering | homogeneity | **0.814** | 0.75 ✅ |
+| Ranking (heuristic stage) | precision@10 | **0.533** | 0.70 ❌ |
+| Personalization ablation | P@10: stack + topics / topics / none | **0.533** / 0.467 / 0.133 | |
 
-## Set it up (Windows)
+**Live** (real sources, real models, one laptop):
 
-**You need:** Python 3.11+ (3.14 tested), Docker Desktop, Node 22 (for the web app), and an
-Anthropic API key. Everything else is optional.
+| | |
+|---|---|
+| Claims traced to a source | **0.966** on the latest brief (0.857 before the verifier fixes) |
+| Stories matched to the listener | **5 of 6** (0–1 before personal context was wired in) |
+| Cost | ₹6.4 recorded at ₹83.5/$, which is **₹7.7 at ₹100/$**; the script is ~95% of it |
+| Time | ~45 s without audio, ~3 min with 6–7 min of speech |
+| Invented links | **0** |
+
+These are single-user runs, not a benchmark. Ranking misses its offline target and says so:
+the model re-rank on top is not in the offline harness, and the labels come from a rubric.
+
+## Quick start (Windows)
+
+You need Python 3.11+ (3.14 tested), Docker Desktop, Node 22 and an Anthropic API key.
 
 ```powershell
 git clone https://github.com/ParthBiyani/Voice-Brief.git; cd Voice-Brief
 py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[ml,llm,docs,tts,dev]"
 
-copy .env.example .env            # put ANTHROPIC_API_KEY in it
-docker compose up -d --wait       # Postgres, Qdrant, Redis, MinIO (non-default ports)
+copy .env.example .env                                          # add ANTHROPIC_API_KEY
+docker compose up -d --wait                                     # Postgres, Qdrant, Redis, MinIO
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m voicebrief.cli sources sync
-.\.venv\Scripts\python.exe -m voicebrief.cli tts setup     # one-off, ~350 MB voice model
-
-cd web; npm ci; npm run build; cd ..                        # the web app
+.\.venv\Scripts\python.exe -m voicebrief.cli tts setup          # one-off, ~350 MB voice model
+cd web; npm ci; npm run build; cd ..
 
 .\.venv\Scripts\python.exe -m voicebrief.cli daily --github YOUR_GITHUB_LOGIN
-.\scripts\install-schedule.ps1                              # every morning at 07:00
+.\scripts\install-schedule.ps1      # brief at 09:00 + web app always on at http://localhost:8000
 ```
 
-`daily` remembers your GitHub login and topics, so the scheduled run needs no arguments.
-Run it again the same day and it does nothing; `--force` makes another.
+`daily` remembers your settings, does nothing if today's brief exists (`--force` makes another),
+and exits **0** ok, **2** degraded, **1** failed. Logs: `%LOCALAPPDATA%\VoiceBrief\logs`.
 
-> On machines where Windows blocks the generated `.exe` launchers, use
-> `python -m voicebrief.cli ...` as above. Where they work, `voicebrief ...` is the same.
+Strongly recommended: a fine-grained `GITHUB_TOKEN` (*Contents: read-only*), which raises
+GitHub's limit from 60 to 5,000 requests an hour.
 
-**Recommended:** a GitHub token in `.env` (`GITHUB_TOKEN`, fine-grained, *Contents: read-only*).
-Without one GitHub allows 60 requests an hour, which a profile of dozens of repositories
-exhausts; VoiceBrief detects that, keeps your last good profile and says so, but a token
-makes it complete.
+## Slack
 
-### On your phone
+1. Create a Slack app with bot scopes `chat:write`, `files:write`, `channels:read`,
+   `channels:history`; enable **Socket Mode** and subscribe to the `message.channels` bot event.
+2. Install it, invite the bot to a channel, and set `SLACK_BOT_TOKEN`, `SLACK_CHANNEL_ID`
+   and `SLACK_APP_TOKEN` (the `xapp-` token, scope `connections:write`) in `.env`.
+3. `python -m voicebrief.cli deliver test`
 
-```powershell
-# in .env:  VB_API_TOKEN=pick-a-long-random-string     VB_PUBLIC_URL=http://<laptop-ip>:8000
-python -m voicebrief.cli serve --host 0.0.0.0
-```
-
-Open `http://<laptop-ip>:8000` on the phone and enter the token once. Audio is streamed
-through the app (seekable, never expires), so it plays from any device that can reach it.
-`serve` refuses to listen on the network without a token: anyone who could reach it could
-generate briefs, which cost money. For use away from home, a private network such as
-Tailscale is the sensible way to reach the laptop; do not expose it to the internet.
-
-### Delivery
-
-| Channel | Set in `.env` |
-|---|---|
-| Slack | `SLACK_BOT_TOKEN` (scopes `chat:write`, `files:write`, `channels:read`) and `SLACK_CHANNEL_ID` |
-| Email | `VB_SMTP_HOST`, `VB_MAIL_FROM`, `VB_EMAIL_TO`, plus user and password (Gmail: an app password) |
-
-Then `python -m voicebrief.cli deliver test` sends a short message with no model calls. A
-brief is delivered once; a failed delivery is retried next time; and a failed *run* sends a
+Each brief arrives as a digest with the audio in its thread. **Reply in the thread** to ask
+about that brief, or post in the channel to ask about the latest one. Socket Mode means no
+public URL is needed; the listener runs inside the web app's process. A failed run posts a
 short "could not make today's brief" message, so silence never means confusion.
 
----
+## Usage
 
-## Using it
-
-| | |
+| Command | What it does |
 |---|---|
-| `daily` | The whole morning loop; idempotent; what the scheduler runs |
-| `serve` | The web app and API on one port |
-| `docs podcast <files or folders>` | Your own material as an episode |
-| `history show [--date]` / `history export` | What happened and why; JSONL for analysis |
-| `personal show [--refresh]` | What ProjectMind has told VoiceBrief about you |
+| `daily` | The whole morning loop (what the scheduler runs) |
+| `serve [--host 0.0.0.0]` | Web app + API on one port; also answers in Slack |
+| `docs podcast <files/folders>` | Your own material as an episode |
+| `history show [--date]` · `history export` | What happened and why; JSONL for analysis |
 | `deliver status / test / episode <id>` | Slack and email |
-| `brief generate`, `ingest run`, `enrich` | The same steps, individually |
-| `sources sync / list` | The source registry |
-| `tts setup / test` | The voice model |
+| `backup create / list / restore` | Database dump + audio copy |
+| `personal show [--refresh]` | What ProjectMind told VoiceBrief |
+| `ingest run [-s slug]` · `enrich` · `brief generate` | Individual steps |
+| `sources sync / list` · `tts setup / test` | Source registry, voice model |
 
-Exit codes from `daily`: **0** done or nothing to do, **2** a brief was made but is
-degraded (for example silent audio), **1** failure. Logs: `%LOCALAPPDATA%\VoiceBrief\logs`.
+All commands: `python -m voicebrief.cli <command>` (or `voicebrief <command>` where Windows allows the launcher).
 
-### What "ready" means
-
-An episode is `ready` only with stories, stored audio that has sound, and a reasonable share
-of what was asked for. Otherwise it is `degraded` (a usable transcript, something missing,
-reason stored) or `failed`. A run cut short by a crash is marked `interrupted` the next time
-it starts. A brief never silently passes for complete.
-
-### History
-
-Every run is recorded: per-source ingest results, what was considered and why it was picked,
-skipped or already heard (each ranking signal's contribution and the model's stated reason),
-every model call with its full prompt, response, tokens and cost, and every question you
-asked and the answer you got. Prompt and response text is kept 90 days (`VB_HISTORY_RETENTION_DAYS`);
-costs and metadata are kept. `history export` writes flat JSONL, which with your thumbs
-makes labelled examples of what you found relevant.
-
-### Backups
-
-Episodes, history, feedback and the cost ledger cannot be re-crawled, and they live inside
-Docker's disk image, which a hard shutdown can corrupt (it happened). So every `daily` run
-that generates a brief ends with a dump of the database and a copy of any new audio into
-`%LOCALAPPDATA%\VoiceBrief\backups` (`VB_BACKUP_DIR`), keeping the newest seven
-(`VB_BACKUP_KEEP`). Each dump is verified before it counts, and a failed backup is recorded
-in the run's history without failing the brief.
-
-```powershell
-.\.venv\Scripts\python.exe -m voicebrief.cli backup create    # now, on demand
-.\.venv\Scripts\python.exe -m voicebrief.cli backup list
-.\.venv\Scripts\python.exe -m voicebrief.cli backup restore   # newest dump; stop serve/daily first
-```
-
-### ProjectMind
-
-[ProjectMind](https://github.com/ParthBiyani/ProjectMind) is a separate project: a memory of
-how its owner works and what they have been building. VoiceBrief can ask it three questions
-a day and use the answers to rank (tools you reach for up, tools you left behind down) and
-to brief the writer, which may then say "this is the tradeoff you made in another project".
-It uses only ProjectMind's public CLI, never its database, and degrades to "no personal
-context" if it is absent or changes. Set `VB_PROJECTMIND_CMD` to enable it, then
-`personal show --refresh`.
-
-### Configuration
+## Configuration
 
 | Variable | Default | |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | | Required for real briefs |
-| `VB_LLM_SCRIPT_MODEL` / `VB_LLM_UTILITY_MODEL` | `claude-sonnet-5-5` / `claude-haiku-5-5` | Writing and bulk work |
+| `ANTHROPIC_API_KEY` | | Required |
+| `GITHUB_TOKEN` | | Recommended |
 | `VB_DAILY_BUDGET_INR` | `50` | Hard stop, checked before every model call |
-| `VB_TTS_ENGINE` | `kokoro` | `kokoro` \| `piper` \| `null` (silent, for tests) |
+| `VB_USD_TO_INR` | `100` | Rate for the rupee cost ledger |
+| `VB_LLM_SCRIPT_MODEL` / `VB_LLM_UTILITY_MODEL` | `claude-sonnet-5-5` / `claude-haiku-5-5` | |
 | `VB_TIMEZONE` | `Asia/Kolkata` | What "today" means |
-| `GITHUB_TOKEN` | | Recommended (see above) |
-| `VB_API_TOKEN`, `VB_PUBLIC_URL` | | For the web app beyond localhost |
-| `SLACK_*`, `VB_SMTP_*` | | Delivery |
-| `VB_PROJECTMIND_CMD` | | Enable ProjectMind |
+| `SLACK_BOT_TOKEN`, `SLACK_CHANNEL_ID`, `SLACK_APP_TOKEN` | | Delivery and Q&A |
+| `VB_SMTP_*`, `VB_MAIL_FROM`, `VB_EMAIL_TO` | | Optional email delivery |
+| `VB_API_TOKEN`, `VB_PUBLIC_URL` | | Needed to serve beyond localhost |
+| `VB_PROJECTMIND_CMD` | | Enables ProjectMind |
+| `VB_BACKUP_DIR`, `VB_BACKUP_KEEP` | per-user folder, `7` | |
 | `VB_HISTORY_RETENTION_DAYS` | `90` | How long prompt text is kept |
-| `VB_BACKUP_DIR`, `VB_BACKUP_KEEP` | per-user folder, `7` | Where backups go, and how many dumps to keep |
 
-`VB_LLM_PROVIDER=echo` runs everything with a deterministic stub, for tests. `ollama` runs a
-local model for ₹0.
+`VB_LLM_PROVIDER=echo` and `VB_TTS_ENGINE=null` run everything offline for tests;
+`ollama` runs a local model for ₹0. Full list: [.env.example](.env.example).
+
+<details>
+<summary><b>More: phone access, history, backups, ProjectMind, adding a source</b></summary>
+
+### On your phone
+Set `VB_API_TOKEN` (a long random string) and `VB_PUBLIC_URL=http://<laptop-ip>:8000`, run
+`serve --host 0.0.0.0` (or `run-serve.ps1 -Address 0.0.0.0`), open the URL and enter the
+token once. `serve` refuses to listen on the network without a token, because anyone who
+reached it could spend money. Away from home, use a private network such as Tailscale.
+
+### What "ready" means
+An episode is `ready` only with stories, stored audio that actually has sound, and at least
+half the stories asked for; otherwise `degraded` (usable, something missing, reason stored)
+or `failed`. A crash leaves `interrupted`, closed out on the next run.
+
+### History
+Every run, every candidate considered (each ranking signal's contribution, the model's
+reason, picked or skipped and why), every model call (prompt, response, tokens, cost) and
+every question asked on the web or in Slack is stored. Prompt text is kept 90 days; costs
+and metadata forever. The *History* page and `history show` replay any day.
+
+### Backups
+After every generated brief, the database is dumped (verified with `pg_restore --list`)
+and new audio copied to `%LOCALAPPDATA%\VoiceBrief\backups`, outside Docker's disk image,
+keeping the newest seven. This exists because a hard freeze once corrupted that image.
+`backup restore` puts the newest dump back.
+
+### ProjectMind
+[ProjectMind](https://github.com/ParthBiyani/ProjectMind) is the author's cross-project
+memory. When `VB_PROJECTMIND_CMD` is set, VoiceBrief asks it about your technologies, uses
+the answers in ranking and lets the writer say "this is the tradeoff you made in another
+project". Only its public CLI is used; its raw private notes are never read.
 
 ### Adding a source
+Add an entry to `config/sources.yaml` and run `sources sync` (idempotent; removed entries are
+disabled, not deleted). `cluster: solo` marks a trending-list source whose entries are each
+their own story.
 
-A source is a database row. Add it to `config/sources.yaml` and re-run `sources sync`
-(idempotent; sources removed from the file are disabled, not deleted). `cluster: solo` in a
-source's config marks a trending-list source whose entries are each their own story.
+</details>
 
----
+## Development
 
-## Under the hood
-
+```powershell
+make test         # hermetic unit tests (echo LLM, silent TTS)
+make test-all     # + integration tests against the Docker services
+make lint; make typecheck; make eval; make ablation
 ```
-React (Vite)  ──REST + SSE──►  FastAPI  ──►  Postgres · Qdrant · MinIO · Redis
-                                  │
- Windows Task Scheduler ─► voicebrief daily ─► ingest · enrich · rank · write · voice · deliver
-```
+
+**821 tests**; CI runs lint, mypy, the web build and the backend suite against real Postgres
+and Qdrant on Python 3.11 and 3.14 for every push.
 
 ```
 src/voicebrief/
-├── sources/        one adapter per upstream; the registry resolves kind -> class
-├── pipeline/       ingest, filter, embed, dedup, cluster, rank, summarize, ground, daily, episodes
-├── graphs/         the writing graph (brief and knowledge modes)
-├── documents/      parsing, claim extraction, cross-document contrast
-├── llm/            providers, pricing, cost ledger, budget
-├── personalization/  GitHub profile (cached), ProjectMind adapter
-├── delivery/       digest, Slack, email
-├── tts/            speech engines, assembly, timestamps
-├── history.py      the audit trail
-├── evalkit/        offline metrics and the ablation
-└── api/            routes, progress streaming, audio, settings, hosting
+├── sources/          one adapter per upstream
+├── pipeline/         ingest, filter, embed, dedup, cluster, rank, summarize, ground, daily, episodes
+├── graphs/           the writing graphs (brief, documents)
+├── personalization/  GitHub profile, ProjectMind adapter, feedback affinity
+├── delivery/         digest, Slack (send + listen), email
+├── llm/  tts/  documents/  api/  evalkit/
+├── qa.py             answering questions about a segment or a whole episode
+└── history.py        the audit trail
 ```
 
-**~760 tests** run on every push against real Postgres and Qdrant on Python 3.11 and 3.14,
-alongside lint and the web build. `make test` runs the hermetic subset; `make test-all`
-adds integration tests against the Docker services.
+## Limitations
 
----
-
-## Honest limitations
-
-- **Ranking is below target offline (0.533 vs 0.70).** That is the free heuristic stage.
-  The model re-rank runs on top and visibly improves what gets picked, but it is not in the
-  offline harness. The eval labels come from a documented rubric, not independent raters;
-  `history export` plus your thumbs is the route to real labels.
-- **Your thumbs are a gentle nudge, not yet a learned model.** Each vote becomes a smoothed
-  per-source and per-topic affinity worth at most 1.5 points (a matched dependency is 3), and
-  your latest liked and disliked headlines are shown to the re-rank. It needs a few days of
-  real votes to show, and it has not been measured against held-out labels.
-- **Verification is lexical, not entailment.** It reliably catches invented figures,
-  versions and names, and tolerates faithful rewording (units, plurals, spoken numbers). It
-  cannot catch a sentence that reuses a source's words while inverting its meaning. Small
-  spoken counts (up to ten, such as "two releases") are not held to the strict figure check,
-  a deliberate trade against flagging every sentence that counts what is in front of it.
-- **The GitHub profile includes transitive dependencies** from frozen requirements files, so
-  a few names are noise; common-word names are filtered, but it is not perfect.
-- **Slack and email are tested against mocked services, not live ones.** The first real run
-  is `deliver test`. ProjectMind was integrated against its documented output and fixtures,
-  not run live, because it was being changed in parallel.
-- **The web app was typechecked, built and exercised over real HTTP but not viewed in a
-  browser** by the automation that built it. Look at it once.
-- **It needs your laptop on and logged in.** The scheduled task runs while you are signed in
-  (no password is stored) and catches up after a missed start. A phone can only reach it
-  while the laptop is on and reachable.
-- **A hard power-off can cost the last minutes of database writes** on Docker Desktop. One did,
-  during development; migrations were re-applied and nothing else was lost. Runs a crash left
-  `running` are closed out automatically.
-- **Mode 2** cannot read scanned PDFs (no OCR), and a very short note is rejected rather than
-  padded.
-- The exchange rate for rupee costs is a setting (`VB_USD_TO_INR`, default 83.5, last set June 2026). Update it when it matters; costs are in rupees converted from dollar prices.
+- **Ranking is below its offline target** (P@10 0.533 vs 0.70); the labels are rubric-based.
+- **Verification is lexical, not entailment:** it catches invented figures, versions and
+  names, not a sentence that reuses the source's words with the meaning flipped.
+- **News articles aren't fetched in full yet:** feeds give a one-line summary, so a news
+  story usually needs several outlets covering it to make the brief.
+- **Thumbs are a gentle nudge** (at most 1.5 points vs 3 for a dependency match), not a learned model.
+- **It runs on one laptop**, which must be on and signed in; Docker Desktop must be running.
+- **Documents mode** can't read scanned PDFs (no OCR).
 
 ## License
 
-MIT
+[MIT](LICENSE) © Parth Biyani

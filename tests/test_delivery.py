@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import ClassVar
 
@@ -237,7 +238,20 @@ class TestSlack:
             return_value=httpx.Response(200, json={"ok": True, "ts": "9.9"})
         )
         slack.send_failure("no fresh stories to cover")
-        assert "no fresh stories" in route.calls[0].request.content.decode()
+        sent = route.calls[0].request.content.decode()
+        assert "no fresh stories" in sent and "could not make" in sent
+
+    def test_the_delivery_test_does_not_read_as_a_failure(self, monkeypatch):
+        configure(monkeypatch, slack_bot_token="xoxb-1", slack_channel_id="C1", smtp_host=None)
+        fake = RecordingSlack()
+        monkeypatch.setattr(deliver, "slack_client", lambda: fake)
+        from typer.testing import CliRunner
+
+        from voicebrief.cli import app
+
+        assert CliRunner().invoke(app, ["deliver", "test"]).exit_code == 0
+        ((icon, headline, _),) = fake.failures
+        assert icon != ":x:" and "could not" not in headline
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -335,10 +349,10 @@ class RecordingSlack:
         self.sent.append((digest.title, audio, filename))
         return {"ts": "1.1", "audio": audio is not None}
 
-    def send_failure(self, message):
+    def send_notice(self, icon, headline, message):
         if self.fail:
             raise SlackError("invalid_auth")
-        self.failures.append(message)
+        self.failures.append((icon, headline, message))
 
 
 class TestNothingConfigured:
@@ -445,6 +459,13 @@ class TestWithAnEpisode:
         assert built.web_url == "http://phone.local:8000/"
         assert len(built.stories) == 1 and len(built.stories[0].links) == 2  # capped
         assert built.stories[0].summary.startswith("LangGraph adds durable execution")
+
+    def test_the_digest_date_is_the_local_one(self, episode_id):
+        # 00:18 IST on Sat 31 Oct is still Fri 30 Oct in UTC.
+        with Session(get_engine()) as s:
+            s.get(Episode, episode_id).created_at = datetime(2026, 10, 30, 18, 48, tzinfo=UTC)
+            s.commit()
+            assert build_digest(s, episode_id).date_label == "Sat 31 Oct"
 
     def test_delivery_is_sent_and_recorded_on_the_episode(self, episode_id, monkeypatch):
         configure(monkeypatch, slack_bot_token="xoxb-1", slack_channel_id="C1", smtp_host=None)

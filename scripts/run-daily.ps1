@@ -9,11 +9,15 @@
 
     Exit code mirrors `voicebrief daily`: 0 done or nothing to do, 2 a degraded brief
     (for example silent audio), 1 failure.
+
+    -NotBefore HH:mm makes an earlier start a no-op. The scheduled task passes it so a
+    logon at 08:00 does not produce the brief ahead of the 09:00 slot; by hand, omit it.
 #>
 [CmdletBinding()]
 param(
     [switch]$Force,
-    [int]$DockerWaitSeconds = 240
+    [int]$DockerWaitSeconds = 240,
+    [string]$NotBefore
 )
 
 $ErrorActionPreference = 'Stop'
@@ -34,6 +38,14 @@ function Write-Log([string]$message) {
 Get-ChildItem $logDir -Filter 'daily-*.log' -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item -Force -ErrorAction SilentlyContinue
+
+if ($NotBefore -and -not $Force) {
+    $earliest = [datetime]::ParseExact($NotBefore, 'HH:mm', $null)
+    if ((Get-Date) -lt $earliest) {
+        Write-Log "Before $NotBefore; leaving it to the scheduled run"
+        exit 0
+    }
+}
 
 Write-Log '--- VoiceBrief daily start ---'
 

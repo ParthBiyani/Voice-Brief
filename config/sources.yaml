@@ -376,3 +376,120 @@ sources:
     config:
       adapter: rss
 
+  # ── Tech news: what the industry is talking about today ─────────────────────
+  # Probed live on 2026-10-31; each had fresh entries within the last day except where
+  # noted. A story several of these cover clusters into one, and the ranker's coverage
+  # signal lifts it, which is how "the headline everyone is discussing" reaches the brief.
+  # Not added: VentureBeat and most subreddits (HTTP 429 to feed readers), Google News
+  # (links are Google redirects, which would weaken every citation).
+
+  - slug: techmeme
+    name: Techmeme
+    kind: rss
+    endpoint: https://www.techmeme.com/feed.xml
+    poll_interval_minutes: 360
+    trust_weight: 0.75
+    default_topics: [industry, startups]
+    config:
+      adapter: rss
+
+  - slug: techcrunch-ai
+    name: TechCrunch — AI
+    kind: rss
+    endpoint: https://techcrunch.com/category/artificial-intelligence/feed/
+    poll_interval_minutes: 360
+    trust_weight: 0.70
+    default_topics: [industry, machine-learning, startups]
+    config:
+      adapter: rss
+
+  - slug: verge-ai
+    name: The Verge — AI
+    kind: rss
+    endpoint: https://www.theverge.com/rss/ai-artificial-intelligence/index.xml
+    poll_interval_minutes: 360
+    trust_weight: 0.68
+    default_topics: [industry, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: ars-technica
+    name: Ars Technica
+    kind: rss
+    endpoint: https://feeds.arstechnica.com/arstechnica/index
+    poll_interval_minutes: 360
+    trust_weight: 0.72
+    default_topics: [industry, systems]
+    config:
+      adapter: rss
+
+  - slug: wired-ai
+    name: WIRED — AI
+    kind: rss
+    endpoint: https://www.wired.com/feed/tag/ai/latest/rss
+    poll_interval_minutes: 720
+    trust_weight: 0.68
+    default_topics: [industry, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: mit-tech-review-ai
+    name: MIT Technology Review — AI
+    kind: rss
+    endpoint: https://www.technologyreview.com/topic/artificial-intelligence/feed
+    poll_interval_minutes: 720  # a few pieces a week, but careful ones
+    trust_weight: 0.80
+    default_topics: [industry, research]
+    config:
+      adapter: rss
+
+  - slug: the-decoder
+    name: The Decoder
+    kind: rss
+    endpoint: https://the-decoder.com/feed/
+    poll_interval_minutes: 360
+    trust_weight: 0.66
+    default_topics: [industry, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: infoq
+    name: InfoQ
+    kind: rss
+    endpoint: https://feed.infoq.com/
+    poll_interval_minutes: 360
+    trust_weight: 0.68
+    default_topics: [engineering, systems]
+    config:
+      adapter: rss
+
+  - slug: latent-space
+    name: Latent Space
+    kind: rss
+    endpoint: https://www.latent.space/feed
+    poll_interval_minutes: 720
+    trust_weight: 0.78
+    default_topics: [agentic-ai, machine-learning]
+    config:
+      adapter: rss
+
+  - slug: producthunt
+    name: Product Hunt
+    kind: rss
+    endpoint: https://www.producthunt.com/feed
+    poll_interval_minutes: 720  # the day's launches, published once a day
+    trust_weight: 0.55
+    default_topics: [tooling, startups]
+    config:
+      adapter: rss
+
+  - slug: inc42
+    name: Inc42 (Indian tech and startups)
+    kind: rss
+    endpoint: https://inc42.com/feed/
+    poll_interval_minutes: 360
+    trust_weight: 0.60
+    default_topics: [industry, startups]
+    config:
+      adapter: rss
+

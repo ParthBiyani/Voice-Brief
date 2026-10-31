@@ -138,12 +138,17 @@ def deliver_episode(episode_id: uuid.UUID, *, force: bool = False) -> dict[str, 
 
 def notify_failure(message: str) -> dict[str, dict]:
     """Tell the configured channels that today's brief did not happen. Never raises."""
+    return notify(":x:", "VoiceBrief could not make today's brief", message)
+
+
+def notify(icon: str, headline: str, message: str) -> dict[str, dict]:
+    """A short notice to every configured channel. Never raises."""
     results: dict[str, dict] = {}
     try:
         settings = get_settings()
         if client := slack_client():
             try:
-                client.send_failure(message)
+                client.send_notice(icon, headline + ".", message)
                 results["slack"] = {"ok": True}
             except Exception as exc:
                 results["slack"] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"[:300]}
@@ -154,7 +159,7 @@ def notify_failure(message: str) -> dict[str, dict]:
                 note = EmailMessage()
                 note["From"] = settings.mail_from or ""
                 note["To"] = settings.email_to or ""
-                note["Subject"] = "VoiceBrief could not make today's brief"
+                note["Subject"] = headline
                 note.set_content(message[:2000])
                 email_channel.send(
                     note,

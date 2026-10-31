@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import sys
+import threading
 from pathlib import Path
 
 import typer
@@ -16,7 +17,7 @@ from rich.console import Console
 from rich.table import Table
 
 from voicebrief.config import get_settings
-from voicebrief.logging import configure_logging
+from voicebrief.logging import configure_logging, get_logger
 
 app = typer.Typer(no_args_is_help=True, add_completion=False, help="VoiceBrief operator CLI")
 sources_app = typer.Typer(no_args_is_help=True, help="Manage the source registry")
@@ -25,6 +26,7 @@ app.add_typer(sources_app, name="sources")
 app.add_typer(ingest_app, name="ingest")
 
 console = Console()
+log = get_logger(__name__)
 
 
 @app.callback()
@@ -425,12 +427,16 @@ def deliver_status() -> None:
 @deliver_app.command("test")
 def deliver_test() -> None:
     """Send a short test message to every configured channel (no model calls, no spend)."""
-    from voicebrief.delivery.deliver import configured_channels, notify_failure
+    from voicebrief.delivery.deliver import configured_channels, notify
 
     if not configured_channels():
         console.print("[yellow]Nothing configured; run `voicebrief deliver status`.[/yellow]")
         raise typer.Exit(1)
-    results = notify_failure("This is only a test of VoiceBrief delivery. Nothing is wrong.")
+    results = notify(
+        ":white_check_mark:",
+        "VoiceBrief delivery works",
+        "This is a test message. Each morning's brief will arrive here.",
+    )
     for channel, outcome in results.items():
         mark = "[green]ok[/green]" if outcome.get("ok") else f"[red]{outcome.get('error')}[/red]"
         console.print(f"  {channel}: {mark}")
@@ -488,7 +494,23 @@ def serve(
     console.print(f"[green]VoiceBrief at http://{where}:{port}[/green]")
     if settings.api_token:
         console.print("[dim]Protected by VB_API_TOKEN: open the page and enter it once.[/dim]")
+    threading.Thread(target=_warm_search, daemon=True).start()
+    from voicebrief.delivery.slack_listener import start_in_background
+
+    if start_in_background():
+        console.print("[dim]Answering questions in Slack.[/dim]")
     uvicorn.run(build_site(), host=host, port=port, log_level="info")
+
+
+def _warm_search() -> None:
+    """Load the embedding model in the background, so the first search does not spend
+    ~15 s loading it while the page says "Searching…"."""
+    try:
+        from voicebrief.pipeline.embedding import get_embedding_service
+
+        get_embedding_service().encode_one("warm up")
+    except Exception as exc:  # search still works; it is just slow the first time
+        log.warning("serve.warmup_failed", error=str(exc))
 
 
 history_app = typer.Typer(no_args_is_help=True, help="Review what the system did and was asked")

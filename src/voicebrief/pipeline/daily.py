@@ -2,7 +2,7 @@
 
 `run_daily` is what the scheduler fires and what a person types to "just get today's
 brief". It is built to be fired carelessly: twice in a row, from a laptop that was
-asleep at 07:00, while another run is still going.
+asleep at 09:00, while another run is still going.
 
 * **Idempotent.** If today's brief (by the configured local timezone, not UTC) already
   exists in a usable state, it does nothing and says so. `force` overrides that.

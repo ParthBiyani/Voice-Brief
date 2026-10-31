@@ -15,7 +15,7 @@ independently and may be mid-change:
   and a warning, never a failed brief.
 * **Pinned by fixtures.** The parser is exercised against recorded samples of the
   documented format, so a format change fails a test instead of silently degrading the
-  7am run.
+  morning run.
 * **Read-only and offline.** ProjectMind's own privacy rules apply; what comes back is
   used to rank and to brief the writer, and is stored only as the derived context in the
   history of the episode that used it.
