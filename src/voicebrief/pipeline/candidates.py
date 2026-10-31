@@ -34,6 +34,15 @@ log = get_logger(__name__)
 MAX_SOURCES_PER_CLUSTER = 4
 MAX_BODY_CHARS = 1200
 
+
+def best_text(item: Item) -> str:
+    """The fuller of the feed summary and the body. A fetched article (see
+    pipeline/articles.py) usually dwarfs the one-line summary that came with it; for
+    sources whose summary is the real text, the summary still wins."""
+    summary, body = item.summary or "", item.body or ""
+    return body if len(body) > len(summary) else summary
+
+
 # The default look-back, and the most a long gap between episodes may widen it to.
 DEFAULT_FRESH_HOURS = 36
 MAX_FRESH_HOURS = 24 * 7
@@ -198,7 +207,9 @@ def build_candidates(
             RankCandidate(
                 cluster_id=cluster.id,
                 title=head.title,
-                summary=(head.summary or "")[:600],
+                # The fuller text: a Hacker News link has no feed summary at all, and the
+                # ranker and re-rank would otherwise judge it on its title alone.
+                summary=best_text(head)[:600],
                 url=head.url,
                 topics=list(cluster.topics or head.topics or []),
                 engagement=float(head.engagement or 0.0),
@@ -214,10 +225,10 @@ def build_candidates(
                     )
                     for i in items
                 ],
-                bodies={i.id: (i.summary or i.body or "")[:MAX_BODY_CHARS] for i in items},
+                bodies={i.id: best_text(i)[:MAX_BODY_CHARS] for i in items},
                 freshness=newest,
                 item_urls=urls,
-                substance_chars=sum(len(m.summary or m.body or "") for m in members),
+                substance_chars=sum(len(best_text(m)) for m in members),
             )
         )
 

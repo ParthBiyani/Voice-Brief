@@ -24,6 +24,7 @@ from voicebrief.config import get_settings
 from voicebrief.db.models import Cluster as ClusterRow
 from voicebrief.db.models import Item, Segment, Source
 from voicebrief.logging import get_logger
+from voicebrief.pipeline.articles import hydrate_articles
 from voicebrief.pipeline.clustering import cluster_items
 from voicebrief.pipeline.dedup import DedupCandidate, find_duplicates
 from voicebrief.pipeline.embedding import get_embedding_service, item_text
@@ -52,6 +53,7 @@ def enrich(
     keep: int | None = None,
     dedup_threshold: float = 0.92,
     now: datetime | None = None,
+    fetch_articles: bool = True,
 ) -> EnrichResult:
     settings = get_settings()
     now = now or datetime.now(UTC)
@@ -78,6 +80,10 @@ def enrich(
         items, trust_by_source=trust_by_source, user_topics=user_topics, keep=keep, now=now
     )
     kept_items = [s.item for s in survivors]
+
+    # 1b — full article text where the feed gave only a line (opted-in sources only)
+    if fetch_articles:
+        hydrate_articles(session, kept_items)
 
     # 2 — embed
     service = get_embedding_service()
