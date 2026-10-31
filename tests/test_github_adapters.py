@@ -223,3 +223,62 @@ class TestGitHubReleases:
         async with httpx.AsyncClient() as client:
             items = await releases_adapter(["o/r"]).fetch(client, since)
         assert [i.raw["tag"] for i in items] == ["new"]
+
+
+class TestQuotaVisibility:
+    """Rate limiting used to leave a source "ok" with zero items; it must now show."""
+
+    @respx.mock
+    async def test_every_repo_failing_fails_the_source(self, since):
+        respx.get(url__regex=rf"{REPOS_URL}/.*/releases").mock(
+            return_value=httpx.Response(
+                403, headers={"x-ratelimit-remaining": "0", "x-ratelimit-reset": "1793350000"}
+            )
+        )
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(httpx.HTTPError, match="rate limit exhausted"):
+                await releases_adapter(["a/a", "b/b", "c/c"]).fetch(client, since)
+
+    @respx.mock
+    async def test_a_partial_failure_is_reported_on_the_adapter(self, since):
+        respx.get(f"{REPOS_URL}/dead/repo/releases").mock(return_value=httpx.Response(404))
+        respx.get(f"{REPOS_URL}/live/repo/releases").mock(
+            return_value=httpx.Response(200, json=[release("v9")])
+        )
+        adapter = releases_adapter(["dead/repo", "live/repo"])
+        async with httpx.AsyncClient() as client:
+            await adapter.fetch(client, since)
+        assert len(adapter.notes) == 1 and "1 of 2 repositories failed" in adapter.notes[0]
+
+    @respx.mock
+    async def test_no_notes_when_everything_worked(self, since):
+        respx.get(f"{REPOS_URL}/o/r/releases").mock(
+            return_value=httpx.Response(200, json=[release("v1")])
+        )
+        adapter = releases_adapter(["o/r"])
+        async with httpx.AsyncClient() as client:
+            await adapter.fetch(client, since)
+        assert adapter.notes == []
+
+    @respx.mock
+    async def test_once_refused_the_remaining_repos_are_not_requested(self, since):
+        route = respx.get(url__regex=rf"{REPOS_URL}/.*/releases").mock(
+            return_value=httpx.Response(403, headers={"x-ratelimit-remaining": "0"})
+        )
+        repos = [f"o/r{i}" for i in range(20)]
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(httpx.HTTPError):
+                await releases_adapter(repos).fetch(client, since)
+        # Five run concurrently before the first refusal lands; the other fifteen never go out.
+        assert route.call_count <= 5
+
+    @respx.mock
+    async def test_the_message_says_when_the_quota_returns(self, since):
+        respx.get(f"{REPOS_URL}/o/r/releases").mock(
+            return_value=httpx.Response(
+                403, headers={"x-ratelimit-remaining": "0", "x-ratelimit-reset": "1793350000"}
+            )
+        )
+        async with httpx.AsyncClient() as client:
+            with pytest.raises(httpx.HTTPError, match=r"resets \d\d:\d\d UTC"):
+                await releases_adapter(["o/r"]).fetch(client, since)
