@@ -66,6 +66,11 @@ function New-HeadlessAction([string]$script, [string]$extra = '') {
 $action = New-HeadlessAction $runner "-NotBefore $At"
 
 $daily = New-ScheduledTaskTrigger -Daily -At $At
+# Try again every 30 minutes for the rest of the day until a run succeeds (run-daily.ps1
+# turns the later firings into no-ops once it has): Docker slow to start after a reboot, a
+# network that is not up yet, or a laptop opened at 11:00 all end in a brief anyway.
+$daily.Repetition = (New-ScheduledTaskTrigger -Once -At $At `
+    -RepetitionInterval (New-TimeSpan -Minutes 30) -RepetitionDuration (New-TimeSpan -Hours 15)).Repetition
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 # Let the desktop, network and Docker settle after a login before the first attempt.
 $logon.Delay = 'PT3M'
@@ -105,12 +110,14 @@ if ($NoWeb) {
     $webAction = New-HeadlessAction $serveRunner
     $webLogon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
     $webLogon.Delay = 'PT1M'
-    # Re-fire every 10 minutes for the rest of the session: if the server is already up the
-    # script sees the port in use and exits at once; if anything stopped it, it comes back.
-    $webLogon.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
-        -RepetitionInterval (New-TimeSpan -Minutes 10)).Repetition
-    # And each morning with the brief, in case it was stopped; a running server ignores it.
-    $webDaily = New-ScheduledTaskTrigger -Daily -At $At
+    # The real guarantee: a clock trigger that fires every 10 minutes, all day, every day.
+    # If the server is up the script sees the port in use and exits at once; if anything
+    # stopped it (a crash, a kill, a sleep), it is back within 10 minutes. It hangs off
+    # the clock, not the logon trigger, because a repetition attached to a logon trigger
+    # proved unreliable (it stopped re-firing after the task was stopped once).
+    $webTick = New-ScheduledTaskTrigger -Daily -At '00:00'
+    $webTick.Repetition = (New-ScheduledTaskTrigger -Once -At '00:00' `
+        -RepetitionInterval (New-TimeSpan -Minutes 10) -RepetitionDuration (New-TimeSpan -Days 1)).Repetition
     # Long-running by design: no time limit. run-serve.ps1 restarts the server itself.
     $webSettings = New-ScheduledTaskSettingsSet `
         -StartWhenAvailable `
@@ -125,11 +132,12 @@ if ($NoWeb) {
         -TaskName $webTaskName `
         -Description 'Keeps the VoiceBrief web app running at http://localhost:8000.' `
         -Action $webAction `
-        -Trigger @($webLogon, $webDaily) `
+        -Trigger @($webLogon, $webTick) `
         -Settings $webSettings `
         -Principal $principal `
         -Force | Out-Null
-    Write-Host "Installed '$webTaskName': http://localhost:8000 from 1 minute after each logon (and checked daily at $At)."
+    Write-Host "Installed '$webTaskName': http://localhost:8000 from 1 minute after each logon, re-checked every 10 minutes."
+    Start-ScheduledTask -TaskName $webTaskName  # up now, without waiting for the next tick
 }
 
 Write-Host "Logs: $env:LOCALAPPDATA\VoiceBrief\logs"
