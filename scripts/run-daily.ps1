@@ -16,7 +16,7 @@
 [CmdletBinding()]
 param(
     [switch]$Force,
-    [int]$DockerWaitSeconds = 240,
+    [int]$DockerWaitSeconds = 600,
     [string]$NotBefore
 )
 
@@ -35,7 +35,10 @@ function Write-Log([string]$message) {
 }
 
 # Keep a month of logs; older ones are noise.
-Get-ChildItem $logDir -Filter 'daily-*.log' -ErrorAction SilentlyContinue |
+Get-ChildItem $logDir -Filter 'daily-*' -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
+    Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem $logDir -Filter 'done-*.flag' -ErrorAction SilentlyContinue |
     Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } |
     Remove-Item -Force -ErrorAction SilentlyContinue
 
@@ -46,6 +49,12 @@ if ($NotBefore -and -not $Force) {
         exit 0
     }
 }
+
+# The scheduled task re-fires every 30 minutes after 09:00 so a failed attempt (Docker not
+# up yet, network down) is retried. Once a run has succeeded, the rest of the day's firings
+# end here, without waking Docker or the database.
+$doneFlag = Join-Path $logDir ("done-{0}.flag" -f (Get-Date -Format 'yyyy-MM-dd'))
+if ((Test-Path $doneFlag) -and -not $Force) { exit 0 }
 
 Write-Log '--- VoiceBrief daily start ---'
 
@@ -64,21 +73,12 @@ function Invoke-Logged([string]$exe, [string[]]$arguments) {
     return $LASTEXITCODE
 }
 
-# 1. Docker. After a reboot or a login the engine may still be starting.
-function Test-Docker { cmd.exe /c 'docker info >nul 2>&1'; return ($LASTEXITCODE -eq 0) }
-
-if (-not (Test-Docker)) {
-    $desktop = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
-    if (Test-Path $desktop) {
-        Write-Log 'Docker is not running; starting Docker Desktop'
-        Start-Process $desktop
-    }
-    $deadline = (Get-Date).AddSeconds($DockerWaitSeconds)
-    while (-not (Test-Docker) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 5 }
-    if (-not (Test-Docker)) {
-        Write-Log "Docker did not become ready within $DockerWaitSeconds seconds; giving up for now"
-        exit 1
-    }
+# 1. Docker. After a reboot or a login the engine may still be starting. If it never
+# comes up, the next scheduled attempt (every 30 minutes) tries again.
+. (Join-Path $PSScriptRoot 'docker-ready.ps1')
+if (-not (Start-DockerIfNeeded $DockerWaitSeconds { param($m) Write-Log $m })) {
+    Write-Log 'Giving up for now; the next scheduled attempt will try again'
+    exit 1
 }
 
 # 2. The datastores. `--wait` returns only when every healthcheck passes.
@@ -97,6 +97,8 @@ try {
     Write-Log ("Running: voicebrief " + ($arguments[2..($arguments.Length - 1)] -join ' '))
     $code = Invoke-Logged $python $arguments
     Write-Log "voicebrief daily finished with exit code $code"
+    # 0 is "brief made, or today's already exists"; anything else is retried later today.
+    if ($code -eq 0) { New-Item -ItemType File -Force -Path $doneFlag | Out-Null }
     exit $code
 }
 finally {

@@ -14,7 +14,7 @@
 param(
     [string]$Address = '127.0.0.1',
     [int]$Port = 8000,
-    [int]$DockerWaitSeconds = 240
+    [int]$DockerWaitSeconds = 600
 )
 
 $ErrorActionPreference = 'Stop'
@@ -54,21 +54,9 @@ if (Test-PortTaken) {
     exit 0
 }
 
-# Same reasoning as run-daily.ps1: native stderr must not abort the script.
-function Test-Docker { cmd.exe /c 'docker info >nul 2>&1'; return ($LASTEXITCODE -eq 0) }
-
-if (-not (Test-Docker)) {
-    $desktop = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
-    if (Test-Path $desktop) {
-        Write-Log 'Docker is not running; starting Docker Desktop'
-        Start-Process $desktop
-    }
-    $deadline = (Get-Date).AddSeconds($DockerWaitSeconds)
-    while (-not (Test-Docker) -and (Get-Date) -lt $deadline) { Start-Sleep -Seconds 5 }
-    if (-not (Test-Docker)) {
-        Write-Log "Docker did not become ready within $DockerWaitSeconds seconds"
-        exit 1
-    }
+. (Join-Path $PSScriptRoot 'docker-ready.ps1')
+if (-not (Start-DockerIfNeeded $DockerWaitSeconds { param($m) Write-Log $m })) {
+    exit 1  # the task re-fires every 10 minutes
 }
 
 Push-Location $repo
