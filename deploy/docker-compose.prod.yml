@@ -11,9 +11,8 @@ services:
       dockerfile: Dockerfile
     env_file: [../.env]
     environment:
-      VB_POSTGRES_DSN: postgresql+psycopg://voicebrief:voicebrief@postgres:5432/voicebrief
+      VB_POSTGRES_DSN: postgresql+psycopg://voicebrief:${VB_PG_PASSWORD:-voicebrief}@postgres:5432/voicebrief
       VB_QDRANT_URL: http://qdrant:6333
-      VB_REDIS_URL: redis://redis:6379/0
       VB_S3_ENDPOINT: http://minio:9000
     ports: ["8000:8000"]
     depends_on:

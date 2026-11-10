@@ -38,7 +38,6 @@ class Settings(BaseSettings):
         alias="VB_POSTGRES_DSN",
     )
     qdrant_url: str = Field(default="http://localhost:56333", alias="VB_QDRANT_URL")
-    redis_url: str = Field(default="redis://localhost:56379/0", alias="VB_REDIS_URL")
 
     s3_endpoint: str = Field(default="http://localhost:59000", alias="VB_S3_ENDPOINT")
     s3_access_key: str = Field(default="voicebrief", alias="VB_S3_ACCESS_KEY")

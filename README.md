@@ -43,7 +43,7 @@ it to Slack, where you can ask it follow-up questions.
 | Pipeline | Python 3.14 · LangGraph · sentence-transformers (bge-small) · HDBSCAN |
 | Models | Claude Sonnet 5.5 writes the script; Haiku 5.5 does ranking, summaries and Q&A |
 | Speech | Kokoro via ONNX Runtime (local, no GPU), encoded to MP3 |
-| Storage | Postgres 16 · Qdrant · MinIO (audio) · Redis (reserved for a job queue), all in Docker |
+| Storage | Postgres 16 · Qdrant · MinIO (audio) · all in Docker, published on localhost only |
 | App | FastAPI + React/Vite, served together on one port |
 | Delivery | Slack bot (digest, audio in thread, Q&A over Socket Mode) · optional email |
 
@@ -86,7 +86,7 @@ py -3.14 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -e ".[ml,llm,docs,tts,dev]"
 
 copy .env.example .env                                          # add ANTHROPIC_API_KEY
-docker compose up -d --wait                                     # Postgres, Qdrant, Redis, MinIO
+docker compose up -d --wait                                     # Postgres, Qdrant, MinIO
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m voicebrief.cli sources sync
 .\.venv\Scripts\python.exe -m voicebrief.cli tts setup          # one-off, ~350 MB voice model

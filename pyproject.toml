@@ -15,7 +15,6 @@ dependencies = [
     "sqlalchemy>=2.0.36",
     "alembic>=1.14",
     "psycopg[binary]>=3.2",
-    "redis>=5.2",
     # Kept within one minor of the server image in docker-compose.yml; a wider
     # gap makes the client warn and risks wire-format drift.
     "qdrant-client>=1.12,<1.14",

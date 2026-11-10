@@ -51,14 +51,17 @@ work is added at the bottom of the right section.
 
 ## Security and ops hygiene
 
-- [ ] **9. Bind datastores to localhost and replace default passwords.** `docker-compose.yml`
+- [x] **9. Bind datastores to localhost and replace default passwords.** `docker-compose.yml`
   publishes Postgres, Redis, Qdrant and MinIO on all interfaces; passwords are "voicebrief" and
   Redis and Qdrant have none. Why: this is a laptop that joins public Wi-Fi.
-- [ ] **10. Fill in settings.** Topics are empty and the email is the placeholder
-  `me@example.com`. Check that the GitHub stack profile (last refreshed 30 Oct) refreshes on its own.
+- [ ] **10. Fill in settings (needs the owner).** Topics are empty and the email is the placeholder
+  `me@example.com`. The GitHub stack profile does refresh on its own (rebuilt 10 Nov). Topics are a personal
+  choice; the email is the internal user key, so changing it would orphan history and feedback.
   Why: declared interests feed the ranker.
-- [ ] **11. Replace the `bitnamilegacy/minio` image; use or drop Redis.** Why: the legacy image is
-  unmaintained, and Redis runs without being used.
+- [ ] **11. Replace the `bitnamilegacy/minio` image.** Redis is dropped (it was unused). Tried
+  `cgr.dev/chainguard/minio`: it reads the existing data and works as root, but fails with
+  "file access denied" as its non-root user even after chown. Needs a proper migration (fresh
+  volume, then `voicebrief backup restore` of the media copy). Why: the legacy image is unmaintained.
 
 ## Testing and later
 
