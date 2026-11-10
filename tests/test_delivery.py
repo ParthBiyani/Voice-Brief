@@ -610,3 +610,27 @@ class TestDailyRunWiring:
         result, calls, _ = self.run(email, monkeypatch, "failed")
         assert calls["deliver"] == [] and "could not be produced" in calls["notify"][0]
         assert result.exit_code == 1
+
+
+class TestAlarm:
+    def test_it_tells_the_channel_why_and_needs_no_database(self, monkeypatch):
+        configure(monkeypatch, slack_bot_token="xoxb-1", slack_channel_id="C1", smtp_host=None)
+        fake = RecordingSlack()
+        monkeypatch.setattr(deliver, "slack_client", lambda: fake)
+        from typer.testing import CliRunner
+
+        from voicebrief.cli import app
+
+        result = CliRunner().invoke(app, ["deliver", "alarm", "Docker never started"])
+        assert result.exit_code == 0
+        ((icon, headline, message),) = fake.failures
+        assert icon == ":rotating_light:" and "no brief" in headline
+        assert "Docker never started" in message
+
+    def test_with_no_channel_it_says_so_and_fails(self, monkeypatch):
+        configure(monkeypatch, slack_bot_token=None, slack_channel_id=None, smtp_host=None)
+        from typer.testing import CliRunner
+
+        from voicebrief.cli import app
+
+        assert CliRunner().invoke(app, ["deliver", "alarm", "x"]).exit_code == 1

@@ -34,6 +34,21 @@ _MODEL_LOCK = threading.Lock()
 _BATCH_SIZE = 32
 
 
+def _load_model(factory, name: str):
+    """Load from the local cache when the model is already there.
+
+    sentence-transformers asks the Hugging Face Hub about the model on every load even
+    when every file is cached, so a dropped connection made the web app (and the 09:00
+    run) stall or fail on a model that was sitting on disk. Offline first; online only
+    when the model has never been downloaded.
+    """
+    try:
+        return factory(name, device="cpu", local_files_only=True)
+    except Exception as exc:
+        log.info("embedding.not_cached", model=name, reason=type(exc).__name__)
+        return factory(name, device="cpu")
+
+
 class EmbeddingService:
     """Wraps a sentence-transformers model with batching and a content cache.
 
@@ -54,7 +69,7 @@ class EmbeddingService:
                     from sentence_transformers import SentenceTransformer
 
                     log.info("embedding.loading", model=self.model_name)
-                    self._model = SentenceTransformer(self.model_name, device="cpu")
+                    self._model = _load_model(SentenceTransformer, self.model_name)
                     # Renamed in sentence-transformers 6; keep the old name working
                     # so the package range in pyproject stays honest.
                     getter = getattr(

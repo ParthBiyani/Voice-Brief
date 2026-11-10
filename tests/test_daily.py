@@ -15,6 +15,7 @@ from voicebrief.pipeline.daily import (
     BriefRequest,
     DailyResult,
     daily_lock,
+    finish_existing,
     local_day_start,
     run_daily,
 )
@@ -33,6 +34,8 @@ def _keep_history_clean(monkeypatch):
         "notify_failure",
     ):
         monkeypatch.setattr(f"voicebrief.pipeline.daily.{name}", lambda *a, **k: None)
+    # Completing a half-finished day touches Slack and pg_dump; each test opts in.
+    monkeypatch.setattr("voicebrief.pipeline.daily.finish_existing", lambda *a, **k: ({}, []))
 
 
 def midday_today() -> datetime:
@@ -74,10 +77,74 @@ class TestExitCodes:
             (DailyResult(outcome="generated", status="degraded"), 2),
             (DailyResult(outcome="generated", status="failed"), 1),
             (DailyResult(outcome="failed", status="failed", error="x"), 1),
+            (DailyResult(outcome="already_done", status="ready", unfinished=["backup"]), 1),
+            (DailyResult(outcome="generated", status="ready", unfinished=["delivery:slack"]), 1),
         ],
     )
     def test_the_scheduler_can_tell_outcomes_apart(self, result, code):
         assert result.exit_code == code
+
+
+class TestFinishingAHalfDoneDay:
+    """The episode exists but delivery or the backup was cut short: the next firing must
+    complete them instead of stopping at "already done"."""
+
+    @pytest.fixture
+    def calls(self, monkeypatch):
+        calls: list[str] = []
+        monkeypatch.setattr(
+            "voicebrief.pipeline.daily.deliver_episode",
+            lambda eid: calls.append("deliver") or {"slack": {"ok": True}},
+        )
+        monkeypatch.setattr(
+            "voicebrief.backup.backup_after_generation",
+            lambda: calls.append("backup") or {"ok": True},
+        )
+        return calls
+
+    def test_both_outstanding_are_completed(self, calls, monkeypatch):
+        outstanding = iter([["slack"], []])
+        monkeypatch.setattr(
+            "voicebrief.pipeline.daily.delivery_outstanding", lambda eid: next(outstanding)
+        )
+        monkeypatch.setattr("voicebrief.pipeline.daily.backup_outstanding", lambda t: True)
+        summary, unfinished = finish_existing(uuid.uuid4(), datetime.now(UTC))
+        assert calls == ["deliver", "backup"]
+        assert unfinished == []
+        assert set(summary) == {"delivery", "backup"}
+
+    def test_nothing_is_resent_when_all_is_done(self, calls, monkeypatch):
+        monkeypatch.setattr("voicebrief.pipeline.daily.delivery_outstanding", lambda eid: [])
+        monkeypatch.setattr("voicebrief.pipeline.daily.backup_outstanding", lambda t: False)
+        assert finish_existing(uuid.uuid4(), datetime.now(UTC)) == ({}, [])
+        assert calls == []
+
+    def test_a_channel_that_still_fails_keeps_the_day_open(self, calls, monkeypatch):
+        monkeypatch.setattr("voicebrief.pipeline.daily.delivery_outstanding", lambda eid: ["slack"])
+        monkeypatch.setattr("voicebrief.pipeline.daily.backup_outstanding", lambda t: False)
+        _, unfinished = finish_existing(uuid.uuid4(), datetime.now(UTC))
+        assert unfinished == ["delivery:slack"]
+
+    def test_a_failed_backup_keeps_the_day_open(self, monkeypatch):
+        monkeypatch.setattr("voicebrief.pipeline.daily.delivery_outstanding", lambda eid: [])
+        monkeypatch.setattr("voicebrief.pipeline.daily.backup_outstanding", lambda t: True)
+        monkeypatch.setattr(
+            "voicebrief.backup.backup_after_generation", lambda: {"ok": False, "error": "x"}
+        )
+        _, unfinished = finish_existing(uuid.uuid4(), datetime.now(UTC))
+        assert unfinished == ["backup"]
+
+    def test_backup_older_than_the_episode_is_outstanding(self, monkeypatch, tmp_path):
+        from voicebrief.pipeline.daily import backup_outstanding
+
+        dump = tmp_path / "voicebrief-1.dump"
+        dump.write_text("x")
+        monkeypatch.setattr("voicebrief.backup.list_backups", lambda *a, **k: [dump])
+        now = datetime.now(UTC)
+        assert backup_outstanding(now + timedelta(hours=1)) is True
+        assert backup_outstanding(now - timedelta(hours=1)) is False
+        monkeypatch.setattr("voicebrief.backup.list_backups", lambda *a, **k: [])
+        assert backup_outstanding(now) is True
 
 
 @pytest.mark.integration
@@ -116,6 +183,16 @@ class TestDailyRun:
         assert result.outcome == "already_done"
         assert result.exit_code == 0
         assert result.title == "Earlier brief"
+
+    def test_an_unfinished_day_exits_nonzero_so_the_scheduler_retries(self, email, monkeypatch):
+        self._make_episode(email, status=EpisodeStatus.ready)
+        monkeypatch.setattr(
+            "voicebrief.pipeline.daily.finish_existing", lambda *a: ({}, ["delivery:slack"])
+        )
+        result = run_daily(BriefRequest(email=email), skip_ingest=True, now=midday_today())
+        assert result.outcome == "already_done"
+        assert result.unfinished == ["delivery:slack"]
+        assert result.exit_code == 1
 
     def test_a_degraded_brief_still_counts_as_todays(self, email):
         self._make_episode(email, status=EpisodeStatus.degraded)

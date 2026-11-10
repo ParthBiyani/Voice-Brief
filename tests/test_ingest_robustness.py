@@ -178,3 +178,41 @@ class TestSourceRegistry:
         assert gone.slug in retired
         assert gone.enabled is False
         assert keep.enabled is True
+
+
+class TestTransientRetry:
+    async def test_a_blip_is_retried_and_then_succeeds(self):
+        from voicebrief.pipeline.ingest import _with_retry
+
+        calls = []
+
+        async def flaky():
+            calls.append(1)
+            if len(calls) < 3:
+                raise httpx.ConnectError("getaddrinfo failed")
+            return ["item"]
+
+        assert await _with_retry(flaky, delays=(0, 0)) == ["item"]
+        assert len(calls) == 3
+
+    async def test_a_persistent_failure_still_surfaces(self):
+        from voicebrief.pipeline.ingest import _with_retry
+
+        async def down():
+            raise httpx.ReadError("reset")
+
+        with pytest.raises(httpx.ReadError):
+            await _with_retry(down, delays=(0, 0))
+
+    async def test_a_refusal_is_not_retried(self):
+        from voicebrief.pipeline.ingest import _with_retry
+
+        calls = []
+
+        async def refused():
+            calls.append(1)
+            raise httpx.HTTPError("rate limited")
+
+        with pytest.raises(httpx.HTTPError):
+            await _with_retry(refused, delays=(0, 0))
+        assert len(calls) == 1

@@ -444,6 +444,28 @@ def deliver_test() -> None:
         raise typer.Exit(1)
 
 
+@deliver_app.command("alarm")
+def deliver_alarm(
+    reason: str = typer.Argument(..., help="What went wrong, in a sentence"),
+    headline: str = typer.Option("VoiceBrief has no brief for you today", "--headline"),
+) -> None:
+    """Tell Slack/email that today's brief is not happening. Needs no database.
+
+    The scheduler script calls this when the day's retries have not produced a brief, and
+    when yesterday's never arrived. It must work when Docker is down, so it touches
+    nothing but the notification channels.
+    """
+    from voicebrief.delivery.deliver import configured_channels, notify
+
+    if not configured_channels():
+        console.print("[yellow]No channel configured; nobody to tell.[/yellow]")
+        raise typer.Exit(1)
+    results = notify(":rotating_light:", headline, reason)
+    sent = any(o.get("ok") for o in results.values())
+    console.print("alarm sent" if sent else "[red]alarm could not be sent[/red]")
+    raise typer.Exit(0 if sent else 1)
+
+
 @deliver_app.command("episode")
 def deliver_episode_command(
     episode_id: str = typer.Argument(..., help="Episode id (see `history show`)"),

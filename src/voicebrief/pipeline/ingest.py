@@ -65,6 +65,29 @@ class SourceStats:
     warnings: list[str] = field(default_factory=list)
 
 
+# Errors that mean the network blinked, not that the source refused us. A laptop waking
+# from sleep fails dozens of feeds at once with these; one more try a few seconds later
+# usually works. Rate limits and HTTP errors are deliberately not retried.
+TRANSIENT_ERRORS = (
+    httpx.ConnectError,
+    httpx.ConnectTimeout,
+    httpx.ReadError,
+    httpx.ReadTimeout,
+    httpx.RemoteProtocolError,
+)
+RETRY_DELAYS = (3.0, 9.0)
+
+
+async def _with_retry(make_call, *, delays: tuple[float, ...] = RETRY_DELAYS):
+    """Await `make_call()`, retrying transient network errors after each delay."""
+    for delay in delays:
+        try:
+            return await make_call()
+        except TRANSIENT_ERRORS:
+            await asyncio.sleep(delay)
+    return await make_call()
+
+
 async def _fetch_one(
     client: httpx.AsyncClient,
     source: Source,
@@ -83,13 +106,17 @@ async def _fetch_one(
             adapter = registry.build(adapter_kind, to_source_config(source))
             if serial is not None:
                 async with serial:
-                    items = await asyncio.wait_for(
-                        adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                    items = await _with_retry(
+                        lambda: asyncio.wait_for(
+                            adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                        )
                     )
                     await asyncio.sleep(SERIAL_ADAPTERS[adapter_kind])
             else:
-                items = await asyncio.wait_for(
-                    adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                items = await _with_retry(
+                    lambda: asyncio.wait_for(
+                        adapter.fetch(client, since), timeout=PER_SOURCE_TIMEOUT
+                    )
                 )
             stats.fetched = len(items)
             stats.warnings = list(adapter.notes)
