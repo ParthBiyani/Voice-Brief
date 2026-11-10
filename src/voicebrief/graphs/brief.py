@@ -116,6 +116,26 @@ manufacture one where it does not exist.\
 """
 
 
+DIALOGUE_RULES = """\
+
+THIS SEGMENT IS A CONVERSATION between two hosts who talk to each other, like a podcast.
+HOST A is the curious one. HOST B is the one who knows the material. A asks, B answers.
+- Write every turn on its own line, starting with "HOST A:" or "HOST B:". Nothing else
+  marks who speaks, and no stage directions or names.
+- A speaks first and asks the question a busy engineer would ask: "What actually
+  changed?", "Does that touch anything I use?", "Why does that matter?". A asks at least
+  two questions in a full segment, one in a short one. A's questions may only be about
+  things the FACTS cover.
+- B answers from the FACTS only. If the FACTS cannot answer a question A asks, A does not
+  ask it. Every figure, version and name comes from B's answers, as the facts give it.
+- Turns are short: one to three sentences, spoken. Alternate often. A may follow up
+  ("And the second change?") or acknowledge in a word or two ("Okay.", "Right.", "Got
+  it."). An acknowledgement is not a verdict: no "wow", "huge", "impressive".
+- Use contractions and plain words, the way two people talk. No lists, no "firstly".
+- The grounding rules above apply to what either host says.\
+"""
+
+
 KNOWLEDGE_SEGMENT_SYSTEM = """\
 You write one segment of an audio episode that explains material the listener supplied:
 their own documents, papers, notes or code.
@@ -151,6 +171,7 @@ class BriefGraph:
         self.mode = mode
         self.subject = subject
         self.segment_system = KNOWLEDGE_SEGMENT_SYSTEM if mode == "knowledge" else SEGMENT_SYSTEM
+        self.active_system = self.segment_system  # the dialogue version when two hosts talk
         self.client = client
         self.max_stories = max_stories
         self.target_minutes = target_minutes
@@ -243,6 +264,9 @@ class BriefGraph:
         profile = state.get("profile")
         language = state.get("language", "en")
         style = state.get("style", "solo_anchor")
+        self.active_system = (
+            self.segment_system + DIALOGUE_RULES if style == "two_host" else self.segment_system
+        )
 
         # Budget words across stories so the episode lands near its target length.
         story_budget = max(
@@ -416,7 +440,7 @@ class BriefGraph:
             f"{summary.as_context()}{personal}\n\n"
             f"Write this as one spoken segment of about {word_budget} words"
             f"{' in Hindi' if language == 'hi' else ''}"
-            f"{', as a two-host exchange marked HOST A: and HOST B:' if style == 'two_host' else ''}.\n"
+            f"{', as a conversation between HOST A and HOST B' if style == 'two_host' else ''}.\n"
             f"Use only the facts above."
         )
 
@@ -425,7 +449,7 @@ class BriefGraph:
                 prompt=prompt,
                 stage=Stage.script,
                 tier=Tier.flagship,
-                system=self.segment_system,
+                system=self.active_system,
                 max_tokens=1500,
                 cache_system=True,
                 fallback_tier=Tier.utility,
@@ -468,7 +492,13 @@ class BriefGraph:
         )
         prompt = (
             f"Write a 45-word agenda naming what is coming up:\n{headlines}\n"
-            f"Spoken, flowing prose. Not a list read aloud.{opener}"
+            + (
+                "As a short exchange: HOST A asks what is on today, HOST B runs through "
+                "it in a sentence or two. "
+                if style == "two_host"
+                else "Spoken, flowing prose. "
+            )
+            + f"Not a list read aloud.{opener}"
             f"{' Write in Hindi.' if language == 'hi' else ''}"
         )
         return self._simple_segment(prompt, "agenda", "Agenda", 250)
@@ -482,6 +512,11 @@ class BriefGraph:
         prompt = (
             f"Write a 20-word sign-off for {what}. Warm, brief, no "
             "call to action, no 'like and subscribe'."
+            + (
+                " Two turns: HOST B says it, HOST A answers in a few words."
+                if style == "two_host"
+                else ""
+            )
             + (" Write in Hindi." if language == "hi" else "")
         )
         return self._simple_segment(prompt, "sign_off", "Sign-off", 150)
@@ -492,7 +527,7 @@ class BriefGraph:
                 prompt=prompt,
                 stage=Stage.script,
                 tier=Tier.flagship,
-                system=self.segment_system,
+                system=self.active_system,
                 max_tokens=max_tokens,
                 cache_system=True,
                 fallback_tier=Tier.utility,

@@ -80,6 +80,12 @@ class Settings(BaseSettings):
     tts_engine: TTSEngine = Field(default="kokoro", alias="VB_TTS_ENGINE")
     tts_voice_en: str = Field(default="af_heart", alias="VB_TTS_VOICE_EN")
     tts_voice_hi: str = Field(default="hf_alpha", alias="VB_TTS_VOICE_HI")
+    # The two hosts of the "two hosts" style: A asks (a woman), B answers (a man).
+    tts_voice_host_a_en: str = Field(default="af_heart", alias="VB_TTS_VOICE_HOST_A_EN")
+    tts_voice_host_b_en: str = Field(default="am_michael", alias="VB_TTS_VOICE_HOST_B_EN")
+    tts_voice_host_a_hi: str = Field(default="hf_alpha", alias="VB_TTS_VOICE_HOST_A_HI")
+    tts_voice_host_b_hi: str = Field(default="hm_omega", alias="VB_TTS_VOICE_HOST_B_HI")
+    tts_speed: float = Field(default=1.0, ge=0.7, le=1.3, alias="VB_TTS_SPEED")
     # Where the Kokoro ONNX weights live. Unset means a per-user folder, not the repo.
     tts_model_dir: str | None = Field(default=None, alias="VB_TTS_MODEL_DIR")
 

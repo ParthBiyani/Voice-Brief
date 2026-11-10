@@ -74,4 +74,9 @@ work is added at the bottom of the right section.
 
 ## Added later
 
+- [x] **Two real voices and a real conversation (owner request, 10 Nov).** Two-host briefs had one
+  voice reading the HOST labels aloud. Now A (woman) asks and B (man) answers, each in their own
+  voice, and speech is paced sentence by sentence. Needs a listen by the owner: voice and pacing
+  settings are `VB_TTS_VOICE_HOST_*` and `VB_TTS_SPEED`.
+
 _(new items go here)_

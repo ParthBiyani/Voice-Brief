@@ -106,7 +106,8 @@ the places where sources disagree called out. This is Mode 2's user.
 | Feedback | Thumbs become smoothed per-source and per-topic affinity, plus recent liked/disliked headlines in the re-rank prompt | Built; effect not yet measured |
 | Grounded script | Summaries of cited facts; opens on the agenda (no cold open, no greeting), one segment per story, sign-off; spoken register; no speculation. Documents episodes keep a cold open | Built |
 | Verification | Deterministic per-sentence check of figures, versions, names and content words; invented-link check; report stored on the episode | Built |
-| Speech | Kokoro (82M) via kokoro-onnx, per-segment cache, timestamps from measured audio, MP3 via soundfile | Built |
+| Speech | Kokoro (82M) via kokoro-onnx; spoken sentence by sentence with levelled loudness and pauses that follow the punctuation and the speaker; timestamps from measured audio, MP3 via soundfile | Built |
+| Two hosts | "Two hosts" style is a real conversation: HOST A (a woman, `af_heart`) asks, HOST B (a man, `am_michael`) answers from the facts only; each turn is voiced by its host and the labels are never spoken. Hindi uses `hf_alpha` and `hm_omega` | Built |
 | Honest status | `ready` only with stories, stored audio with real sound, and at least half the requested stories; otherwise `degraded` or `failed` with a reason; exit codes 0/2/1 | Built |
 | Delivery | Slack bot posts a digest and the MP3 in its thread; optional email; delivered once, failures retried, failed runs announced; dates in local time | Built; verified live 31 Oct |
 | Slack Q&A (verified live) | Thread reply = question about that episode (matched by the digest's Slack `ts`); new channel message = latest brief; answers only from the episode and its sources (all scripts + sources of the 3 most similar segments); recorded with channel `slack`; Socket Mode, no public URL | Built |
@@ -259,7 +260,6 @@ Full detail, including the data model and the step-by-step morning run, is in th
 
 - Local entailment check (a small NLI model) alongside the lexical verifier, to catch inverted meaning.
 - Ecosystem-qualified dependency matching (for example `pub:dio`) so short names can count safely.
-- Distinct voices for the two-host style.
 - Move to a small cloud VM using the existing production overlay; GitHub OAuth sign-up for a handful
   of users; S3 instead of MinIO.
 
