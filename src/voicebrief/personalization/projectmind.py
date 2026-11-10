@@ -182,16 +182,15 @@ def parse_bundle(markdown: str) -> ParsedBundle:
             statement = _SCOPE_RE.sub("", line[2:]).strip()
             if statement:
                 parsed.statements.append(statement)
-        elif section.startswith("relevant history"):
-            if match := _HISTORY_HEAD_RE.match(line):
-                parsed.history.append(
-                    HistoryItem(
-                        kind=(match["type"] or "history").strip(),
-                        project=match["project"].strip(),
-                        when=match["when"].strip(),
-                        what=match["what"].strip(),
-                    )
+        elif section.startswith("relevant history") and (match := _HISTORY_HEAD_RE.match(line)):
+            parsed.history.append(
+                HistoryItem(
+                    kind=(match["type"] or "history").strip(),
+                    project=match["project"].strip(),
+                    when=match["when"].strip(),
+                    what=match["what"].strip(),
                 )
+            )
 
     if entities := _ENTITIES_RE.search(markdown):
         parsed.entities = [
