@@ -373,12 +373,17 @@ _NUMBER_TOKEN = re.compile(
 )
 
 
-def spoken_numbers(text: str) -> set[str]:
+def spoken_numbers(text: str, known: set[str] | None = None) -> set[str]:
     """Numbers expressed in words, rendered back to digit strings.
 
     Handles the forms a news brief actually produces: "four point two" -> 4.2,
     "eighty two percent" -> 82, "three billion" -> 3000000000, "two thousand four
     hundred seventy six" -> 2476.
+
+    Some speech has two honest readings: "sixteen six nine seven" is either the figures
+    16, 6, 9 and 7 or the one figure 16697. `known` (the source's numbers) settles it: when
+    the run-together reading is in the source it alone is returned; otherwise the separate
+    figures are, so an invented figure still cannot hide behind a lenient reading.
     """
     found: set[str] = set()
     # Split on punctuation as well as whitespace. Without this, "four point two,
@@ -388,11 +393,35 @@ def spoken_numbers(text: str) -> set[str]:
     # spaces; commas and full stops genuinely separate figures.
     normalised = text.replace("-", " ")
     for run in re.split(r"[^a-zA-Z\s]+", normalised):
-        found |= _spoken_numbers_in_run(run)
+        found |= _spoken_numbers_in_run(run, known)
+        amounts = _spoken_amounts(run)
+        for amount, minor in amounts:
+            found.add(amount)
+            if known is not None and amount in known and minor not in known:
+                found.discard(minor)  # the cents belong to the amount, not a figure of their own
     return found
 
 
-def _spoken_numbers_in_run(text: str) -> set[str]:
+def _can_extend(current: int, value: int) -> bool:
+    """Whether the number word `value` continues the spoken number built so far.
+
+    Speech glues words into one figure only in a few shapes: tens then ones ("eighty
+    two"), anything under a hundred after "hundred" or "thousand" ("two hundred
+    sixteen"). Anything else is a new figure read straight after the last one: digits
+    spoken in groups ("sixteen six nine seven" is 16697, not 38) and years ("twenty
+    twenty six" is 2026, not 46).
+    """
+    if current == 0:
+        return True
+    rest = current % 100
+    if value == 0:
+        return False
+    if value <= 9:
+        return rest == 0 or (rest >= 20 and rest % 10 == 0)
+    return rest == 0  # teens and tens only follow a hundred or thousand
+
+
+def _spoken_numbers_in_run(text: str, known: set[str] | None = None) -> set[str]:
     found: set[str] = set()
     tokens = [t.lower() for t in re.findall(r"[a-zA-Z]+", text)]
 
@@ -405,6 +434,7 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
         total = 0
         current = 0
         mantissa = None  # "three billion" should also satisfy a source saying "3B"
+        segments: list[int] = []  # figures spoken back to back: "twenty" "twenty six"
         # One digit group per "point". "one point seven point one" is the version 1.7.1,
         # which two groups express and a single running decimal cannot: the second
         # "point" used to overwrite the first group and yield "1.1".
@@ -428,6 +458,10 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
                     else:
                         group.append(str(value))
                 else:
+                    if (total or current) and not _can_extend(current, value):
+                        segments.append(total + current)
+                        total = current = 0
+                        mantissa = None
                     current += value
             elif token in _MULTIPLIERS:
                 multiplier = _MULTIPLIERS[token]
@@ -438,29 +472,70 @@ def _spoken_numbers_in_run(text: str) -> set[str]:
                     current = 0
                 else:
                     current = max(current, 1) * multiplier
-            elif token == "and" and not groups:
-                pass  # "two hundred and five"
+            elif token == "and" and not groups and (total or current) and current % 100 == 0:
+                pass  # "two hundred and five"; "ten and fifty" are two figures instead
             else:
                 break
             j += 1
 
-        value = total + current
+        last = total + current
         if j > i:
-            parts = [str(value), *("".join(g) for g in groups if g)]
-            found.add(".".join(parts))
-            # Also record the bare integer part: "four point two" should satisfy a
-            # source that only mentions version 4.
-            if len(parts) > 1:
-                found.add(str(value))
-            # And the mantissa, so "three billion parameters" matches a source that
-            # writes the same figure as "3B".
+            ints = [*segments, last]
+            # Every figure on its own ("ten and fifty" -> 10, 50) and, when several were
+            # spoken in a row, run together as digits ("sixteen six nine seven" -> 16697).
+            candidates = {str(n) for n in ints}
+            if len(ints) > 1:
+                joined = "".join(str(n) for n in ints)
+                if known is not None and joined in known:
+                    candidates = {joined}
+                else:
+                    candidates.add(joined)
+            tail_digits = [".".join(["".join(g) for g in groups if g])] if groups else []
+            for head in set(candidates):
+                if tail_digits and tail_digits[0]:
+                    found.add(f"{head}.{tail_digits[0]}")
+                    found.add(head)
+            if not (tail_digits and tail_digits[0]):
+                found |= candidates
             if mantissa is not None:
                 found.add(str(mantissa))
         i = max(j, i + 1)
     return found
 
 
-def _numbers(text: str) -> set[str]:
+_CURRENCY_WORDS = frozenset({"dollar", "dollars", "euro", "euros", "pound", "pounds"})
+_MINOR_WORDS = frozenset({"cent", "cents", "penny", "pence"})
+
+
+def _spoken_amounts(text: str) -> list[tuple[str, str]]:
+    """ "Sixty seven dollars and sixteen cents" is the figure 67.16, which a source writes
+    as "$67.16". Read separately, the 16 would look invented."""
+    tokens = [t.lower() for t in re.findall(r"[a-zA-Z]+", text.replace("-", " "))]
+    found: list[tuple[str, str]] = []
+    for at, token in enumerate(tokens):
+        if token not in _CURRENCY_WORDS or tokens[at + 1 : at + 2] != ["and"]:
+            continue
+        end = at + 2
+        while end < len(tokens) and tokens[end] in _NUMBER_WORDS:
+            end += 1
+        if end == at + 2 or end >= len(tokens) or tokens[end] not in _MINOR_WORDS:
+            continue
+        start = at
+        while start > 0 and (
+            tokens[start - 1] in _NUMBER_WORDS or tokens[start - 1] in _MULTIPLIERS
+        ):
+            start -= 1
+        majors = _spoken_numbers_in_run(" ".join(tokens[start:at]))
+        minors = _spoken_numbers_in_run(" ".join(tokens[at + 2 : end]))
+        for major in majors:
+            for minor in minors:
+                if major.isdigit() and minor.isdigit() and int(minor) < 100:
+                    found.append((f"{major}.{int(minor):02d}", minor))
+                    found.append((f"{major}.{int(minor)}", minor))
+    return found
+
+
+def _numbers(text: str, known: set[str] | None = None) -> set[str]:
     """Every number in the text, digits and spoken words alike.
 
     Numbers are checked strictly and separately from prose overlap, because a
@@ -499,7 +574,7 @@ def _numbers(text: str) -> set[str]:
     # A decimal also stands for its integer part: "version 4.2" satisfies "version
     # four", which is how a brief usually says it out loud.
     normalised |= {d.split(".")[0] for d in normalised if "." in d}
-    return normalised | spoken_numbers(text)
+    return normalised | spoken_numbers(text, known)
 
 
 # Sentences with at most this many content words are judged by their figures alone.
@@ -636,7 +711,8 @@ def verify_segment(
         # improved by ninety seven percent" has just two content words once number
         # words are excluded, and skipping it would exempt exactly the sentence shape
         # most likely to carry a fabricated figure.
-        if not claim or (not words and not _numbers(sentence)):
+        sentence_numbers = _numbers(sentence, known=source_numbers)
+        if not claim or (not words and not sentence_numbers):
             report.skipped_narration += 1
             continue
         if not claim and len(words) < MIN_CONTENT_WORDS:
@@ -647,7 +723,7 @@ def verify_segment(
 
         # A number not present in the sources is a fabrication regardless of how well
         # the surrounding prose overlaps.
-        invented = (_numbers(sentence) - source_numbers) - _small_counts(sentence)
+        invented = (sentence_numbers - source_numbers) - _small_counts(sentence)
         if invented:
             report.unsupported.append(sentence)
             continue
