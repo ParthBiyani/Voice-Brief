@@ -66,7 +66,7 @@ class TestRequestShape:
         call = fake.calls[0]
         assert call["model"] == "claude-sonnet-5-5"
         assert call["thinking"] == {"type": "adaptive"}
-        assert call["output_config"]["effort"] == "high"
+        assert call["output_config"]["effort"] == "medium"
 
     def test_thinking_is_never_disabled(self):
         # Sonnet 5.5 and Opus 5.5 reject {"type": "disabled"} with a 400.
@@ -99,7 +99,7 @@ class TestRequestShape:
     def test_requested_tokens_get_thinking_headroom(self):
         provider, fake = provider_with([reply()])
         provider.complete(prompt="p", stage=Stage.script, tier=Tier.flagship, max_tokens=200)
-        assert fake.calls[0]["max_tokens"] == 200 + THINKING_HEADROOM["high"]
+        assert fake.calls[0]["max_tokens"] == 200 + THINKING_HEADROOM["medium"]
 
     def test_schema_requests_structured_output(self):
         provider, fake = provider_with([reply('{"a": 1}')])
@@ -281,3 +281,19 @@ class TestSchemaSanitising:
 
         ranked = rerank([story], Client(), limit=1)
         assert ranked[0].llm_score == 10.0
+
+
+def test_script_effort_follows_the_setting(monkeypatch):
+    from voicebrief.config import get_settings
+
+    monkeypatch.setenv("VB_SCRIPT_EFFORT", "high")
+    get_settings.cache_clear()
+    try:
+        provider, fake = provider_with([reply(), reply()])
+        provider.complete(prompt="p", stage=Stage.script, tier=Tier.flagship, max_tokens=1500)
+        provider.complete(prompt="p", stage=Stage.ranking, tier=Tier.utility, max_tokens=500)
+        assert fake.calls[0]["output_config"]["effort"] == "high"
+        assert fake.calls[1]["output_config"]["effort"] == "low"  # the cheap tier is unaffected
+    finally:
+        monkeypatch.undo()
+        get_settings.cache_clear()

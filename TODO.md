@@ -36,14 +36,14 @@ work is added at the bottom of the right section.
 
 ## Quality
 
-- [ ] **5. Find out why attribution dropped to 0.82.** The flagged sentences look like spoken
+- [x] **5. Find out why attribution dropped to 0.82.** The flagged sentences look like spoken
   numbers ("sixteen six nine seven") not matching digits ("16697"), so the verifier may be giving
   false positives. Fix the verifier or the writer, whichever is wrong. Why: the PRD's 0.966 was one
   day, and the metric cannot be trusted until this is understood.
-- [ ] **6. Stop reading PR numbers and version strings aloud; cap GitHub release items per
+- [x] **6. Stop reading PR numbers and version strings aloud; cap GitHub release items per
   brief.** Today's brief was mostly release notes. Why: poor listening, and it dilutes "what
   matters to my code".
-- [ ] **7. Bring cost back under ₹8.** Trim the script prompt or input, or run the blind listening
+- [x] **7. Bring cost back under ₹8.** Trim the script prompt or input, or run the blind listening
   test of Haiku for the script (roadmap item). Why: the target was missed on the last two days.
 - [ ] **8. Collect real thumbs and rerun the ranking evaluation** (`history export` joined with
   votes). Why: precision@10 is 0.600 against 0.70, and only synthetic labels exist; more tuning

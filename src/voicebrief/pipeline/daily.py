@@ -53,7 +53,7 @@ DAILY_LOCK = "voicebrief:daily"
 DEFAULT_EMAIL = "me@example.com"
 DEFAULT_TOPICS = ("agentic-ai", "tooling")
 DEFAULT_STORIES = 6
-DEFAULT_MINUTES = 10
+DEFAULT_MINUTES = 9
 
 
 class NoFreshStories(RuntimeError):
