@@ -595,6 +595,36 @@ def _without_repeats(ordered: list[RankedStory], limit: int) -> list[RankedStory
     return picked + deferred[: limit - len(picked)]
 
 
+# Release notes for the listener's own dependencies are the most personal thing in the
+# brief, and also the dullest to hear three of in a row: a list of version bumps and pull
+# requests. Two is the most a brief carries; the rest wait for tomorrow or fall to the
+# next best story.
+MAX_RELEASE_STORIES = 2
+RELEASE_SOURCE_PREFIX = "github-releases"
+
+
+def is_release_story(story: RankedStory) -> bool:
+    return story.candidate.source_slug.startswith(RELEASE_SOURCE_PREFIX)
+
+
+def _cap_releases(
+    selected: list[RankedStory], ordered: list[RankedStory], *, min_personal: int
+) -> list[RankedStory]:
+    """Swap surplus release stories for the best stories that are not releases."""
+    capped = list(selected)
+    spare = [s for s in ordered if s not in capped and not is_release_story(s)]
+    while sum(1 for s in capped if is_release_story(s)) > MAX_RELEASE_STORIES and spare:
+        victim = min((s for s in capped if is_release_story(s)), key=lambda s: s.score)
+        personal_left = sum(1 for s in capped if s.is_personal) - (1 if victim.is_personal else 0)
+        pick = next((s for s in spare if s.is_personal or personal_left >= min_personal), None)
+        if pick is None:
+            break
+        capped[capped.index(victim)] = pick
+        spare.remove(pick)
+    capped.sort(key=lambda s: s.score, reverse=True)
+    return capped
+
+
 def select_for_episode(
     stories: list[RankedStory], *, max_stories: int = 10, min_personal: int = 2
 ) -> list[RankedStory]:
@@ -618,6 +648,8 @@ def select_for_episode(
                     selected[i] = story
                     break
         selected.sort(key=lambda s: s.score, reverse=True)
+
+    selected = _cap_releases(selected, ordered, min_personal=min_personal)
 
     log.info(
         "rank.selected",

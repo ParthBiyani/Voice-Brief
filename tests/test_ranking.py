@@ -192,3 +192,41 @@ class TestSelection:
         stories = prerank([cand(f"story number {i}") for i in range(20)], profile=profile)
         selected = select_for_episode(stories, max_stories=10)
         assert [s.score for s in selected] == sorted((s.score for s in selected), reverse=True)
+
+
+class TestReleaseCap:
+    """Three release-note stories in one brief is a list of version bumps."""
+
+    def releases(self, n):
+        return [
+            cand(
+                f"langgraph {i}.0 released for you",
+                source_slug="github-releases-watched",
+                engagement=1.0,
+                trust_weight=1.0,
+            )
+            for i in range(n)
+        ]
+
+    def test_a_brief_carries_at_most_two_releases(self, profile):
+        others = [cand(f"unrelated industry story number {i}") for i in range(8)]
+        selected = select_for_episode(
+            prerank([*self.releases(5), *others], profile=profile), max_stories=6, min_personal=2
+        )
+        assert (
+            sum(1 for s in selected if s.candidate.source_slug.startswith("github-releases")) == 2
+        )
+        assert len(selected) == 6
+
+    def test_the_cap_gives_way_when_nothing_else_exists(self, profile):
+        selected = select_for_episode(
+            prerank(self.releases(4), profile=profile), max_stories=4, min_personal=2
+        )
+        assert len(selected) == 4
+
+    def test_the_personal_floor_still_holds_after_the_cap(self, profile):
+        others = [cand(f"unrelated industry story number {i}") for i in range(8)]
+        selected = select_for_episode(
+            prerank([*self.releases(4), *others], profile=profile), max_stories=6, min_personal=2
+        )
+        assert sum(1 for s in selected if s.is_personal) >= 2
