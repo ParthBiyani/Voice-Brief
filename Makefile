@@ -8,7 +8,7 @@ help:  ## Show available targets
 install:  ## Install the package with all extras
 	$(PY) -m pip install -e ".[ml,llm,docs,tts,dev]"
 
-up:  ## Start Postgres, Qdrant, Redis, MinIO
+up:  ## Start Postgres, Qdrant, MinIO
 	$(COMPOSE) up -d --wait
 
 down:  ## Stop VoiceBrief services (leaves volumes intact)

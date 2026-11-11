@@ -195,7 +195,7 @@ The next step is labels from real thumbs via `history export`.
 | Embeddings and speech | Local (bge-small, Kokoro via ONNX) | Free per run; embeddings deterministic for the eval harness |
 | Python | 3.11 to 3.14 (CI on both ends) | Kokoro via ONNX because the PyTorch package stops at 3.12 |
 | Sources | Official APIs and published feeds only; arXiv serial; GitHub token recommended (60 requests/hour without one) | Terms of service and politeness |
-| Hosting | One Windows laptop, Docker Compose (Postgres 16, Qdrant 1.12.4 pinned, Redis 7, MinIO), Task Scheduler | One user; local speech; ProjectMind is local |
+| Hosting | One Windows laptop, Docker Compose (Postgres 16, Qdrant 1.12.4 pinned, MinIO; all ports on localhost only), Task Scheduler | One user; local speech; ProjectMind is local |
 | Availability | Needs the laptop on and the user logged in; catch-up after logon; Slack Q&A and the web app only while it is on | No stored password; Docker Desktop requirement |
 | Slack | Scopes `chat:write`, `files:write`, `channels:read`, `channels:history`; app-level token for Socket Mode | Q&A without exposing the laptop |
 | Privacy | ProjectMind's raw "files and notes" never read; prompt and response text pruned after 90 days; web app requires a token beyond localhost | Personal data minimisation |
@@ -210,7 +210,7 @@ Task Scheduler: Daily Brief (09:00 IST · logon catch-up · -NotBefore 09:00) ·
                          ─► verify ─► voice ─► store ─► judge ─► index ─► backup ─► deliver ─► record
 
 Postgres: relational truth, history, ledger     Qdrant: item vectors, episode memory, documents
-MinIO: MP3s                                     Redis: provisioned, not yet used (future queue)
+MinIO: MP3s
 Anthropic API · GitHub API · ProjectMind CLI · Slack
 
 Phone / browser ──► voicebrief serve (FastAPI + React, one port, token-gated)

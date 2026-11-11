@@ -1,5 +1,9 @@
 # Host ports are deliberately non-default so VoiceBrief coexists with other local
-# stacks (a native Postgres on 5432, another project's Redis, etc.).
+# stacks (a native Postgres on 5432, etc.), and every one is published on 127.0.0.1 only:
+# these stores have simple credentials and, on a laptop joining public Wi-Fi, must not be
+# reachable from the network. Credentials can be changed with VB_PG_PASSWORD and
+# VB_S3_SECRET_KEY (set the same values in .env for the app). Postgres and MinIO read them only when
+# their volume is first created; changing them later means changing them inside the store.
 name: voicebrief
 
 services:
@@ -8,9 +12,9 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: voicebrief
-      POSTGRES_PASSWORD: voicebrief
+      POSTGRES_PASSWORD: ${VB_PG_PASSWORD:-voicebrief}
       POSTGRES_DB: voicebrief
-    ports: ["55432:5432"]
+    ports: ["127.0.0.1:55432:5432"]
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U voicebrief -d voicebrief"]
@@ -25,22 +29,10 @@ services:
     # version bump. Change both together or neither.
     image: qdrant/qdrant:v1.12.4
     restart: unless-stopped
-    ports: ["56333:6333", "56334:6334"]
+    ports: ["127.0.0.1:56333:6333", "127.0.0.1:56334:6334"]
     volumes: ["qdrantdata:/qdrant/storage"]
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/6333'"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
-  redis:
-    image: redis:7-alpine
-    restart: unless-stopped
-    command: ["redis-server", "--appendonly", "yes"]
-    ports: ["56379:6379"]
-    volumes: ["redisdata:/data"]
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
@@ -52,9 +44,9 @@ services:
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: voicebrief
-      MINIO_ROOT_PASSWORD: voicebrief
+      MINIO_ROOT_PASSWORD: ${VB_S3_SECRET_KEY:-voicebrief}
       MINIO_DEFAULT_BUCKETS: voicebrief-media
-    ports: ["59000:9000", "59001:9001"]
+    ports: ["127.0.0.1:59000:9000", "127.0.0.1:59001:9001"]
     volumes: ["miniodata:/bitnami/minio/data"]
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live"]
@@ -65,5 +57,4 @@ services:
 volumes:
   pgdata:
   qdrantdata:
-  redisdata:
   miniodata:
