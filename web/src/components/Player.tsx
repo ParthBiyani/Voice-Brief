@@ -223,7 +223,7 @@ function TranscriptLine({
         )}
       </div>
 
-      {segment.cues.length > 0 ? (
+      {(segment.cues ?? []).length > 0 ? (
         <SpokenText segment={segment} position={active ? position : -1} jump={jump} onSeek={onSeek} />
       ) : (
         <p className="script">{segment.script}</p>

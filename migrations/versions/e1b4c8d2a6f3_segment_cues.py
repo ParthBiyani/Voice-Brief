@@ -23,6 +23,9 @@ def upgrade() -> None:
         "segment",
         sa.Column("cues", sa.JSON(), nullable=False, server_default=sa.text("'[]'")),
     )
+    # The default only fills existing rows; the application always writes the column,
+    # and keeping it would make the schema differ from the models.
+    op.alter_column("segment", "cues", server_default=None)
 
 
 def downgrade() -> None:
