@@ -233,7 +233,7 @@ Full detail, including the data model and the step-by-step morning run, is in th
 | Hardware failure | Verified backups outside Docker after each brief; crashed runs closed out automatically |
 | ProjectMind changes | Public CLI only, fixture-pinned parser, fail-soft, 24 h cache |
 | Ranking quality unproven | History and thumbs collected for real labels; experiments documented, including failures |
-| Single-laptop dependency | Catch-up trigger; production compose overlay ready for a cloud move |
+| Single-computer dependency | Catch-up trigger, retries through Docker drops, a Slack alarm on a missed day; accepted by design |
 | Thin news items | Article text fetched for 7 opted-in sources; paywalled or bot-refusing sites stay at one line |
 | Scheduled jobs dying silently | Headless launch; scheduled jobs tested with a 90 s job; next: alarm on runs that start but never finish |
 
@@ -260,8 +260,9 @@ Full detail, including the data model and the step-by-step morning run, is in th
 
 - Local entailment check (a small NLI model) alongside the lexical verifier, to catch inverted meaning.
 - Ecosystem-qualified dependency matching (for example `pub:dio`) so short names can count safely.
-- Move to a small cloud VM using the existing production overlay; GitHub OAuth sign-up for a handful
-  of users; S3 instead of MinIO.
+- Decision (11 Nov 2026): VoiceBrief stays on the owner's own computer for the foreseeable future;
+  there is no cloud move. Other people run their own copy (see the README's setup section), so the
+  scaling table below is kept as reference for a hosted version, not as a plan.
 
 ### Later (scaling, triggered by measured pressure)
 
