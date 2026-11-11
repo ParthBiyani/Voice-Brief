@@ -701,6 +701,30 @@ def backup_restore(
     console.print(f"[green]Restored[/green] {chosen.name} ({audio} audio files put back)")
 
 
+@app.command("doctor")
+def doctor() -> None:
+    """Check this machine is ready to make a brief, and say what to run if it is not."""
+    from voicebrief.doctor import exit_code, run_checks
+
+    results = run_checks()
+    for check in results:
+        mark = (
+            "[green]ok  [/green]"
+            if check.ok
+            else ("[red]FAIL[/red]" if check.required else "[yellow]note[/yellow]")
+        )
+        console.print(f"{mark} {check.name}: {check.detail}")
+        if not check.ok and check.fix:
+            console.print(f"       fix: {check.fix}")
+    code = exit_code(results)
+    console.print()
+    if code == 0:
+        console.print("[green]Ready. Try: voicebrief daily[/green]")
+    else:
+        console.print("[red]Fix the FAIL lines above, then run doctor again.[/red]")
+    raise typer.Exit(code)
+
+
 tts_app = typer.Typer(no_args_is_help=True, help="Speech engine setup")
 app.add_typer(tts_app, name="tts")
 
