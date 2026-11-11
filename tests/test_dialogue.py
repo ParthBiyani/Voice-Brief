@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import wave
 from types import SimpleNamespace
 from typing import ClassVar
@@ -294,3 +295,50 @@ class TestSpeakable:
             cache_dir=tmp_path / "c",
         )
         assert engine.calls[0][0] == "It needs langchain-core 1 point 7 point 5."
+
+
+class TestSentenceTimings:
+    """The web player seeks by these, so they must match the audio that was laid down."""
+
+    def test_every_sentence_has_a_cue_that_matches_where_it_sits(self, tmp_path):
+        engine = ToneEngine()
+        clip = render_script(
+            DIALOGUE, engine, voices=VOICES, out_path=tmp_path / "s.wav", cache_dir=tmp_path / "c"
+        )
+        cues = clip.meta["cues"]
+        assert [c["speaker"] for c in cues] == ["A", "B", "B", "A", "B"]
+        assert cues[0]["text"] == "What changed in this release?"
+        assert cues[0]["start"] == 0.0
+        for earlier, later in itertools.pairwise(cues):
+            assert earlier["end"] <= later["start"]  # a pause lies between sentences
+        assert cues[-1]["end"] == pytest.approx(clip.duration_seconds, abs=0.01)
+
+    def test_the_cue_shows_the_written_text_not_the_spoken_form(self, tmp_path):
+        engine = ToneEngine()
+        clip = render_script(
+            "HOST B: It needs langchain-core 1.7.5.",
+            engine,
+            voices=VOICES,
+            out_path=tmp_path / "s.wav",
+            cache_dir=tmp_path / "c",
+        )
+        assert clip.meta["cues"][0]["text"] == "It needs langchain-core 1.7.5."
+
+    def test_assembly_puts_cues_on_the_episode_clock(self, tmp_path):
+        engine = ToneEngine()
+        segs = [
+            SimpleNamespace(position=0, kind="agenda", heading="A", script="First one."),
+            SimpleNamespace(position=1, kind="story", heading="S", script="Second one."),
+        ]
+        episode = assemble(
+            segs,
+            engine,
+            voice="fem",
+            voices=VOICES,
+            out_path=tmp_path / "e.wav",
+            cache_dir=tmp_path / "c",
+        )
+        first, second = episode.segments
+        assert first.cues[0]["start"] == 0.0
+        assert second.cues[0]["start"] == pytest.approx(second.start_seconds, abs=0.01)
+        assert second.cues[-1]["end"] == pytest.approx(second.end_seconds, abs=0.01)

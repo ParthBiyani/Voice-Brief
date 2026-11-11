@@ -252,6 +252,15 @@ def render_script(
     previous_speaker: str | None = None
     previous_short = False
     used: list[str] = []
+    # Where each sentence sits in this segment, in seconds, as it is laid down. The web
+    # player seeks by these, so they are counted from the samples actually written.
+    cues: list[dict] = []
+    cursor = 0
+
+    def lay(piece) -> None:
+        nonlocal cursor
+        pieces.append(piece)
+        cursor += len(piece)
 
     _prerender(turns, engine, voices, narrator, cache_dir, base_speed)
 
@@ -265,11 +274,12 @@ def render_script(
                 gap = PAUSE_QUICK_REPLY if previous_short else PAUSE_TURN
             else:
                 gap = 0.0  # a continuing turn is paced by its own sentences
-            pieces.append(np.zeros(int(gap * rate), dtype="float32"))
+            lay(np.zeros(int(gap * rate), dtype="float32"))
 
         sentences = split_sentences(turn.text) or [turn.text]
         for index, sentence in enumerate(sentences):
             speed = base_speed * sentence_rate(sentence)
+            shown = sentence
             sentence = speakable(sentence)
             key = _sentence_key(sentence, voice, engine.name, speed)
             cached = cache_dir / f"{key}.wav"
@@ -278,9 +288,19 @@ def render_script(
             samples, clip_rate = _read_wav(cached)
             if clip_rate != rate:
                 raise TTSError(f"{cached.name} is {clip_rate}Hz, expected {rate}Hz")
-            pieces.append(shape_samples(samples, rate))
+            shaped = shape_samples(samples, rate)
+            begin = cursor
+            lay(shaped)
+            cues.append(
+                {
+                    "speaker": turn.speaker,
+                    "text": shown,
+                    "start": round(begin / rate, 3),
+                    "end": round(cursor / rate, 3),
+                }
+            )
             if index < len(sentences) - 1:
-                pieces.append(np.zeros(int(sentence_pause(sentence) * rate), dtype="float32"))
+                lay(np.zeros(int(sentence_pause(sentence) * rate), dtype="float32"))
 
         previous_speaker = turn.speaker
         previous_short = len(turn.text.split()) <= QUICK_REPLY_WORDS
@@ -293,5 +313,5 @@ def render_script(
         sample_rate=rate,
         voice="+".join(used),
         engine=engine.name,
-        meta={"turns": len(turns)},
+        meta={"turns": len(turns), "cues": cues},
     )

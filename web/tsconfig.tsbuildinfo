@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/components/player.tsx","./src/components/search.tsx","./src/components/segmentchat.tsx","./src/lib/api.ts"],"version":"5.9.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/components/documents.tsx","./src/components/history.tsx","./src/components/player.tsx","./src/components/search.tsx","./src/components/segmentchat.tsx","./src/components/settings.tsx","./src/lib/api.ts","./src/lib/cues.test.ts","./src/lib/cues.ts"],"version":"5.9.3"}

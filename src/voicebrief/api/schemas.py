@@ -19,6 +19,15 @@ class Citation(BaseModel):
     item_id: str | None = None
 
 
+class Cue(BaseModel):
+    """One spoken sentence and when it is said, in episode seconds."""
+
+    speaker: str = ""
+    text: str
+    start: float
+    end: float
+
+
 class SegmentOut(BaseModel):
     id: uuid.UUID
     position: int
@@ -28,6 +37,7 @@ class SegmentOut(BaseModel):
     start_seconds: float | None = None
     end_seconds: float | None = None
     citations: list[Citation] = Field(default_factory=list)
+    cues: list[Cue] = Field(default_factory=list)
     # Dependencies from the listener's own repositories this story touches, and whether
     # it was picked for a personal reason (stack match or a stated interest).
     matched: list[str] = Field(default_factory=list)

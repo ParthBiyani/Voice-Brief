@@ -41,6 +41,8 @@ class TimedSegment:
     end_seconds: float
     audio_path: Path | None = None
     citations: list[dict] = field(default_factory=list)
+    # Sentence timings, in episode seconds: [{speaker, text, start, end}].
+    cues: list[dict] = field(default_factory=list)
 
     @property
     def duration(self) -> float:
@@ -185,6 +187,7 @@ def assemble(
                 end_seconds=round(cursor + duration, 3),
                 audio_path=clip.path if clip else None,
                 citations=list(getattr(segment, "citations", []) or []),
+                cues=_shift_cues(clip.meta.get("cues") if clip else None, cursor),
             )
         )
         # The gap is added to the cursor only when a clip follows, so the last
@@ -209,6 +212,14 @@ def assemble(
         cache_hits=hits,
         failures=failures,
     )
+
+
+def _shift_cues(cues: list[dict] | None, offset: float) -> list[dict]:
+    """Segment-relative sentence timings moved onto the episode's clock."""
+    return [
+        {**cue, "start": round(cue["start"] + offset, 3), "end": round(cue["end"] + offset, 3)}
+        for cue in cues or []
+    ]
 
 
 def _concatenate(

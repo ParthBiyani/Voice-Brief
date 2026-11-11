@@ -331,6 +331,7 @@ def _finalize_episode(
                 end_seconds=timing.end_seconds if timing else None,
                 cluster_id=segment.cluster_id,
                 citations=segment.citations,
+                cues=timing.cues if timing else [],
             )
         )
 
