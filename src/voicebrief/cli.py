@@ -202,8 +202,12 @@ def _print_episode(result) -> None:
 _EMAIL_OPT = typer.Option("me@example.com", "--user", help="User to generate for")
 _GITHUB_OPT = typer.Option("", "--github", help="GitHub login; saved for later runs")
 _TOPICS_OPT = typer.Option("", "--topics", help="Comma-separated; saved for later runs")
-_STORIES_OPT = typer.Option(None, "--stories", help="Stories per brief (default 6)")
-_MINUTES_OPT = typer.Option(None, "--minutes", help="Target length (default 10)")
+_STORIES_OPT = typer.Option(
+    None, "--stories", help="Most stories in a brief (default 14; the news decides)"
+)
+_MINUTES_OPT = typer.Option(
+    None, "--minutes", help="Longest a brief may run, in minutes (default 15)"
+)
 _LANG_OPT = typer.Option(None, "--language", help="en or hi; saved for later runs")
 _STYLE_OPT = typer.Option(None, "--style", help="solo_anchor or two_host")
 _NO_AUDIO_OPT = typer.Option(False, "--no-audio", help="Skip synthesis")
@@ -762,7 +766,7 @@ def tts_test(
     """Synthesize one sentence and report speed, to confirm speech works."""
     import time
 
-    from voicebrief.tts.engines import build_engine
+    from voicebrief.tts.engines import build_engine, voices_for
 
     settings = get_settings()
     engine = build_engine(settings.tts_engine)
@@ -771,7 +775,7 @@ def tts_test(
         raise typer.Exit(1)
 
     started = time.perf_counter()
-    clip = engine.synthesize(text, voice=voice or settings.tts_voice_en, out_path=out)
+    clip = engine.synthesize(text, voice=voice or voices_for(engine.name, "en")[""], out_path=out)
     took = time.perf_counter() - started
     console.print(
         f"[green]{engine.name}[/green] wrote {out} - {clip.duration_seconds:.1f}s of audio "

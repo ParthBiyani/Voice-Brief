@@ -16,7 +16,7 @@ from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 LLMProvider = Literal["anthropic", "ollama", "echo"]
-TTSEngine = Literal["kokoro", "piper", "null"]
+TTSEngine = Literal["edge", "openai", "elevenlabs", "kokoro", "piper", "null"]
 
 
 class Settings(BaseSettings):
@@ -76,16 +76,22 @@ class Settings(BaseSettings):
     embed_model: str = Field(default="BAAI/bge-small-en-v1.5", alias="VB_EMBED_MODEL")
     embed_dim: int = Field(default=384, alias="VB_EMBED_DIM")
 
-    # TTS
-    tts_engine: TTSEngine = Field(default="kokoro", alias="VB_TTS_ENGINE")
-    tts_voice_en: str = Field(default="af_heart", alias="VB_TTS_VOICE_EN")
-    tts_voice_hi: str = Field(default="hf_alpha", alias="VB_TTS_VOICE_HI")
-    # The two hosts of the "two hosts" style: A asks (a woman), B answers (a man).
-    tts_voice_host_a_en: str = Field(default="af_heart", alias="VB_TTS_VOICE_HOST_A_EN")
-    tts_voice_host_b_en: str = Field(default="am_michael", alias="VB_TTS_VOICE_HOST_B_EN")
-    tts_voice_host_a_hi: str = Field(default="hf_alpha", alias="VB_TTS_VOICE_HOST_A_HI")
-    tts_voice_host_b_hi: str = Field(default="hm_omega", alias="VB_TTS_VOICE_HOST_B_HI")
+    # TTS. Edge's neural voices by default: free, no key, and far more human than a small
+    # local model. They need a network and send each sentence to Microsoft; set
+    # VB_TTS_ENGINE=kokoro to keep speech entirely on this machine, or elevenlabs / openai
+    # (with a key) for the most natural delivery.
+    tts_engine: TTSEngine = Field(default="edge", alias="VB_TTS_ENGINE")
+    # Voice overrides. Unset, each engine uses its own defaults (see tts/engines.py): one
+    # woman asks and one man answers. A name is used only if it belongs to the engine.
+    tts_voice_en: str | None = Field(default=None, alias="VB_TTS_VOICE_EN")
+    tts_voice_hi: str | None = Field(default=None, alias="VB_TTS_VOICE_HI")
+    tts_voice_host_a_en: str | None = Field(default=None, alias="VB_TTS_VOICE_HOST_A_EN")
+    tts_voice_host_b_en: str | None = Field(default=None, alias="VB_TTS_VOICE_HOST_B_EN")
+    tts_voice_host_a_hi: str | None = Field(default=None, alias="VB_TTS_VOICE_HOST_A_HI")
+    tts_voice_host_b_hi: str | None = Field(default=None, alias="VB_TTS_VOICE_HOST_B_HI")
     tts_speed: float = Field(default=1.0, ge=0.7, le=1.3, alias="VB_TTS_SPEED")
+    openai_api_key: SecretStr | None = Field(default=None, alias="OPENAI_API_KEY")
+    elevenlabs_api_key: SecretStr | None = Field(default=None, alias="ELEVENLABS_API_KEY")
     # Where the Kokoro ONNX weights live. Unset means a per-user folder, not the repo.
     tts_model_dir: str | None = Field(default=None, alias="VB_TTS_MODEL_DIR")
 

@@ -94,6 +94,13 @@ class TestParsing:
             "Yes!",
         ]
 
+    def test_hindi_sentences_split_on_the_danda(self):
+        assert split_sentences("यह पहला वाक्य है। Streaming अब default है। क्या यह सही है?") == [
+            "यह पहला वाक्य है।",
+            "Streaming अब default है।",
+            "क्या यह सही है?",
+        ]
+
 
 class TestPacing:
     def test_a_question_leaves_more_room_than_a_statement(self):
@@ -243,13 +250,19 @@ class TestScriptingTheConversation:
         assert "asks at least" in DIALOGUE_RULES.replace("\n", " ")
 
 
-def test_default_hosts_are_one_woman_and_one_man():
+def test_default_hosts_are_one_woman_and_one_man(monkeypatch):
     from voicebrief.config import get_settings
+    from voicebrief.tts.engines import voices_for
 
     settings = get_settings()
-    assert settings.tts_voice_host_a_en.startswith("af_")  # female
-    assert settings.tts_voice_host_b_en.startswith("am_")  # male
-    assert settings.tts_voice_host_b_hi.startswith("hm_")
+    for field in ("tts_voice_en", "tts_voice_host_a_en", "tts_voice_host_b_en"):
+        monkeypatch.setattr(settings, field, None)
+    edge = voices_for("edge", "en")
+    assert edge["A"].startswith("en-US-Ava")  # female
+    assert edge["B"].startswith("en-US-Andrew")  # male
+    kokoro = voices_for("kokoro", "en")
+    assert kokoro["A"].startswith("af_") and kokoro["B"].startswith("am_")
+    assert voices_for("kokoro", "hinglish")["B"].startswith("hm_")
 
 
 class TestSpeakable:

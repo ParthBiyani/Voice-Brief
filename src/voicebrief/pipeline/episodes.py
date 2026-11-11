@@ -39,7 +39,7 @@ from voicebrief.logging import get_logger
 from voicebrief.personalization.feedback import Affinity
 from voicebrief.personalization.github_profile import StackProfileData
 from voicebrief.tts.assemble import assemble
-from voicebrief.tts.engines import build_engine
+from voicebrief.tts.engines import build_engine, voices_for
 
 log = get_logger(__name__)
 
@@ -293,13 +293,8 @@ def _finalize_episode(
     if render_audio and segments:
         engine = build_engine(settings.tts_engine, language=language)
         engine_name = engine.name
-        hindi = language == "hi"
-        voice = settings.tts_voice_hi if hindi else settings.tts_voice_en
-        voices = {
-            "": voice,
-            "A": settings.tts_voice_host_a_hi if hindi else settings.tts_voice_host_a_en,
-            "B": settings.tts_voice_host_b_hi if hindi else settings.tts_voice_host_b_en,
-        }
+        voices = voices_for(engine.name, language)
+        voice = voices[""]
         cache_dir = Path(tempfile.gettempdir()) / "voicebrief" / "tts-cache"
 
         with tempfile.TemporaryDirectory() as workdir:

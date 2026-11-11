@@ -27,7 +27,7 @@ log = get_logger(__name__)
 SPEAKER_LABEL = re.compile(
     r"^\s*(?:\*\*)?(HOST|SPEAKER)\s*([AB12])(?:\*\*)?\s*[:\-]\s*", re.IGNORECASE
 )
-_SENTENCE_END = re.compile(r"(?<=[.!?…])\s+(?=[\"'(\[]?[A-Z0-9])")
+_SENTENCE_END = re.compile(r"(?<=[.!?…।॥])\s+(?=[\"'(\[]?[A-Z0-9ऀ-ॿ])")
 
 # Pause after a sentence, in seconds, by how it ends.
 PAUSE_STATEMENT = 0.20
@@ -194,6 +194,37 @@ def _sentence_key(text: str, voice: str, engine: str, speed: float) -> str:
     return hashlib.sha256(basis.encode("utf-8")).hexdigest()[:40]
 
 
+def _prerender(turns, engine, voices, narrator, cache_dir, base_speed) -> None:
+    """Render every uncached sentence ahead of assembly, several at a time.
+
+    Only for engines that wait on a network (`concurrency` above one). A failed sentence
+    is left for the assembly pass to render again, where its error is raised in order.
+    """
+    if engine.concurrency <= 1:
+        return
+    from concurrent.futures import ThreadPoolExecutor
+
+    jobs: dict[str, tuple[str, str, float]] = {}
+    for turn in turns:
+        voice = voices.get(turn.speaker) or narrator
+        for sentence in split_sentences(turn.text) or [turn.text]:
+            speed = base_speed * sentence_rate(sentence)
+            spoken = speakable(sentence)
+            key = _sentence_key(spoken, voice, engine.name, speed)
+            if not (cache_dir / f"{key}.wav").exists():
+                jobs.setdefault(key, (spoken, voice, speed))
+
+    def render(item: tuple[str, tuple[str, str, float]]) -> None:
+        key, (spoken, voice, speed) = item
+        try:
+            engine.synthesize(spoken, voice=voice, out_path=cache_dir / f"{key}.wav", speed=speed)
+        except TTSError as exc:
+            log.warning("tts.prerender_failed", error=str(exc)[:160])
+
+    with ThreadPoolExecutor(max_workers=engine.concurrency) as pool:
+        list(pool.map(render, jobs.items()))
+
+
 def render_script(
     script: str,
     engine: TTSEngine,
@@ -221,6 +252,8 @@ def render_script(
     previous_speaker: str | None = None
     previous_short = False
     used: list[str] = []
+
+    _prerender(turns, engine, voices, narrator, cache_dir, base_speed)
 
     for turn in turns:
         voice = voices.get(turn.speaker) or narrator

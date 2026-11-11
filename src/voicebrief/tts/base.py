@@ -53,6 +53,10 @@ def voice_key(text: str, voice: str, engine: str, speed: float = 1.0) -> str:
 class TTSEngine(ABC):
     name: str
     sample_rate: int = 24_000
+    # How many sentences may be rendered at once. Cloud engines wait on the network, so
+    # several in flight is the difference between minutes and tens of minutes; a local
+    # model already uses the CPU and gains nothing.
+    concurrency: int = 1
 
     @abstractmethod
     def synthesize(
