@@ -14,6 +14,7 @@ the env var named by the source's `auth_ref`, never stored in the row.
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
@@ -24,6 +25,24 @@ from voicebrief.sources.base import RawItem, SourceAdapter, registry
 _API_VERSION = "2022-11-28"
 _STAR_SATURATION = 5000.0
 _MAX_CONCURRENT = 5
+
+
+_README_NOISE = re.compile(
+    r"!\[[^\]]*\]\([^)]*\)|\[!\[[^\]]*\]\([^)]*\)\]\([^)]*\)|<img[^>]*>|<[^>]+>|```.*?```",
+    re.DOTALL,
+)
+_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+README_LIMIT = 6000
+
+
+def clean_readme(markdown: str) -> str:
+    """The README as prose: badges, images, HTML and code blocks dropped, links reduced
+    to their text, headings kept as plain lines."""
+    text = _README_NOISE.sub(" ", markdown)
+    text = _LINK.sub(lambda match: match.group(1), text)
+    text = re.sub(r"^#{1,6}\s*", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[*_`>|]+", " ", text)
+    return " ".join(text.split())[:README_LIMIT]
 
 
 class _GitHubBase(SourceAdapter):
@@ -82,13 +101,18 @@ class GitHubSearchAdapter(_GitHubBase):
         min_stars = int(cfg.get("min_stars", 50))
         created_after = (datetime.now(UTC) - timedelta(days=window_days)).date()
 
-        topics: list[str] = cfg.get("topics") or ["llm"]
         qualifier = f"created:>{created_after} stars:>={min_stars}"
+        # `open_search` ignores topics: whatever repository is gaining stars fastest, in
+        # any field. That is how a video editor or a trading model reaches the brief, not
+        # only the topics the listener already follows.
+        topics: list[str] = [""] if cfg.get("open_search") else (cfg.get("topics") or ["llm"])
         semaphore = asyncio.Semaphore(_MAX_CONCURRENT)
 
         results = await asyncio.gather(
             *(
-                self._search(client, f"topic:{topic} {qualifier}", since, semaphore)
+                self._search(
+                    client, f"topic:{topic} {qualifier}" if topic else qualifier, since, semaphore
+                )
                 for topic in topics
             ),
             return_exceptions=True,
@@ -110,7 +134,40 @@ class GitHubSearchAdapter(_GitHubBase):
             raise httpx.HTTPError(f"all {failures} GitHub search queries failed")
         if failures:
             self.notes.append(f"{failures} of {len(topics)} topic searches failed")
-        return list(merged.values())
+
+        items = list(merged.values())
+        readme_top = int(cfg.get("readme_top", 0))
+        if readme_top:
+            await self._attach_readmes(client, items, readme_top, semaphore)
+        return items
+
+    async def _attach_readmes(
+        self,
+        client: httpx.AsyncClient,
+        items: list[RawItem],
+        top: int,
+        semaphore: asyncio.Semaphore,
+    ) -> None:
+        """A one-line description makes a thin story; the README is what the repo says
+        about itself, so the leaders get it as their source text."""
+        leaders = sorted(items, key=lambda item: item.engagement, reverse=True)[:top]
+
+        async def attach(item: RawItem) -> None:
+            async with semaphore:
+                try:
+                    response = await client.get(
+                        f"https://api.github.com/repos/{item.title}/readme",
+                        headers={**self.headers(), "Accept": "application/vnd.github.raw+json"},
+                    )
+                    if response.status_code != 200:
+                        return
+                    text = clean_readme(response.text)
+                except httpx.HTTPError:
+                    return
+            if text:
+                item.body = text
+
+        await asyncio.gather(*(attach(item) for item in leaders))
 
     async def _search(
         self,
