@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     daily_budget_inr: float = Field(default=50.0, alias="VB_DAILY_BUDGET_INR")
     # Model prices are in dollars and the ledger is in rupees. Update when the market moves.
     usd_to_inr: float = Field(default=100.0, ge=50.0, le=200.0, alias="VB_USD_TO_INR")
+    # How hard the script writer thinks (low | medium | high). Hidden reasoning is most
+    # of the writer's output tokens, and so most of an episode's cost.
+    # Measured on the 10 Nov prompts: medium wrote the same segments for about 15% fewer
+    # output tokens than high; low saved nothing more and sometimes broke the rule about
+    # spelling out numbers, so medium it is.
+    script_effort: Literal["low", "medium", "high"] = Field(
+        default="medium", alias="VB_SCRIPT_EFFORT"
+    )
     # How long full prompts and responses are kept. Cost, tokens and timing are kept
     # indefinitely; only the (large, sometimes sensitive) text bodies are pruned.
     history_retention_days: int = Field(default=90, alias="VB_HISTORY_RETENTION_DAYS")

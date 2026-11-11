@@ -93,6 +93,9 @@ This is spoken, not read. That changes the rules:
 - Short sentences. No bullet points, no headings, no markdown, no emoji.
 - Never read a URL aloud. Say "the release notes" or "the paper", not the address.
 - Expand notation into speech: "version zero point four", "twelve percent".
+- Never read out pull request or issue numbers, commit hashes, or a list of changelog
+  lines. For a software release, give the version once and then say in plain words what
+  changed for someone using it. Two or three changes at most, the ones that matter most.
 - No preamble, no "in this segment", no sign-posting. Start with the news.
 
 Grounding is not negotiable:

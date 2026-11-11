@@ -174,7 +174,7 @@ class AnthropicProvider(LLMProvider):
         if supports_adaptive_thinking(model):
             kwargs["thinking"] = {"type": "adaptive"}
         if supports_effort(model):
-            effort = EFFORT_BY_TIER[tier]
+            effort = get_settings().script_effort if tier is Tier.flagship else EFFORT_BY_TIER[tier]
             output_config["effort"] = effort
             headroom = THINKING_HEADROOM[effort]
 

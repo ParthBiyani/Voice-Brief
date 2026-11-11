@@ -213,6 +213,49 @@ class TestSpokenVersionsAndMagnitudes:
         assert "1.7.9" in spoken_numbers("version one point seven point nine")
 
 
+class TestFiguresReadOutInGroups:
+    """The 10 Nov brief scored 0.82 because correct sentences were flagged as inventing
+    figures the script had only read aloud the way speech does."""
+
+    @pytest.mark.parametrize(
+        ("spoken", "expected"),
+        [
+            ("pull request sixteen six nine seven", "16697"),
+            ("version one six two point one", "162.1"),
+            ("twenty twenty six", "2026"),
+            ("ten and fifty", "10"),
+            ("ten and fifty", "50"),
+            ("sixty seven dollars and sixteen cents", "67.16"),
+            ("eighty eight dollars and fifteen cents", "88.15"),
+            ("two hundred and five", "205"),
+            ("one hundred sixteen", "116"),
+        ],
+    )
+    def test_spoken_groups_are_read_back_as_the_figure_a_source_writes(self, spoken, expected):
+        assert expected in spoken_numbers(spoken)
+
+    def test_ten_and_fifty_is_not_sixty(self):
+        assert "60" not in spoken_numbers("ten and fifty")
+
+    def test_a_pull_request_number_read_in_groups_is_supported(self):
+        facts = ["Pull request #16697 fixes the scheduler."]
+        report = verify_segment("That's pull request sixteen six nine seven.", summary(facts))
+        assert report.unsupported == []
+
+    def test_a_price_read_as_dollars_and_cents_is_supported(self):
+        facts = ["Cost per task rose from $67.16 to $88.15 on the benchmark."]
+        script = (
+            "On the benchmark, cost per task rose from sixty seven dollars and sixteen "
+            "cents to eighty eight dollars and fifteen cents."
+        )
+        assert verify_segment(script, summary(facts)).unsupported == []
+
+    def test_an_invented_figure_in_a_grouped_reading_is_still_caught(self):
+        facts = ["Pull request #16697 fixes the scheduler."]
+        report = verify_segment("That's pull request sixteen six nine eight.", summary(facts))
+        assert report.unsupported
+
+
 class TestFigureOnlyClaims:
     def test_a_claim_of_only_numbers_does_not_crash_and_is_checked_by_its_numbers(self):
         facts = summary(["Version 5.22.0 shipped"])
