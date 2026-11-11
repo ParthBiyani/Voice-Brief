@@ -79,8 +79,14 @@ def synthesize_segments(
     voice: str,
     cache_dir: Path,
     speed: float = 1.0,
+    voices: dict[str, str] | None = None,
 ) -> tuple[list[tuple[Any, SpeechClip | None]], int]:
-    """Render each segment, reusing cached audio where the text is unchanged."""
+    """Render each segment, reusing cached audio where the text is unchanged.
+
+    With `voices` (host A, host B and the narrator) each segment is spoken turn by turn
+    and sentence by sentence by `dialogue.render_script`; without it, a segment is one
+    block in one voice.
+    """
     cache_dir.mkdir(parents=True, exist_ok=True)
     results: list[tuple[Any, SpeechClip | None]] = []
     hits = 0
@@ -89,6 +95,28 @@ def synthesize_segments(
         text = (segment.script or "").strip()
         if not text:
             results.append((segment, None))
+            continue
+
+        if voices is not None:
+            from voicebrief.tts.dialogue import render_script
+
+            try:
+                segment_path = (
+                    cache_dir
+                    / f"segment-{voice_key(text, '+'.join(sorted(voices.values())), engine.name, speed)}.wav"
+                )
+                clip = render_script(
+                    text,
+                    engine,
+                    voices=voices,
+                    out_path=segment_path,
+                    cache_dir=cache_dir,
+                    base_speed=speed,
+                )
+                results.append((segment, clip))
+            except TTSError as exc:
+                log.warning("tts.segment_failed", position=segment.position, error=str(exc))
+                results.append((segment, None))
             continue
 
         key = voice_key(text, voice, engine.name, speed)
@@ -131,10 +159,11 @@ def assemble(
     out_path: Path,
     cache_dir: Path,
     speed: float = 1.0,
+    voices: dict[str, str] | None = None,
 ) -> AssembledEpisode:
     """Synthesize, concatenate, and produce timestamps that match the audio."""
     rendered, hits = synthesize_segments(
-        segments, engine, voice=voice, cache_dir=cache_dir, speed=speed
+        segments, engine, voice=voice, cache_dir=cache_dir, speed=speed, voices=voices
     )
 
     timed: list[TimedSegment] = []

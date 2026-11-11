@@ -293,13 +293,25 @@ def _finalize_episode(
     if render_audio and segments:
         engine = build_engine(settings.tts_engine, language=language)
         engine_name = engine.name
-        voice = settings.tts_voice_hi if language == "hi" else settings.tts_voice_en
+        hindi = language == "hi"
+        voice = settings.tts_voice_hi if hindi else settings.tts_voice_en
+        voices = {
+            "": voice,
+            "A": settings.tts_voice_host_a_hi if hindi else settings.tts_voice_host_a_en,
+            "B": settings.tts_voice_host_b_hi if hindi else settings.tts_voice_host_b_en,
+        }
         cache_dir = Path(tempfile.gettempdir()) / "voicebrief" / "tts-cache"
 
         with tempfile.TemporaryDirectory() as workdir:
             out_path = Path(workdir) / f"{episode.id}.wav"
             assembled = assemble(
-                segments, engine, voice=voice, out_path=out_path, cache_dir=cache_dir
+                segments,
+                engine,
+                voice=voice,
+                voices=voices,
+                speed=settings.tts_speed,
+                out_path=out_path,
+                cache_dir=cache_dir,
             )
             duration = assembled.duration_seconds
             timed = assembled.segments
