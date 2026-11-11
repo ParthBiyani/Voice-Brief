@@ -50,6 +50,8 @@ docs = [
     "python-docx>=1.1",
 ]
 tts = [
+    # Microsoft's neural voices through the free endpoint: the default engine, no key.
+    "edge-tts>=7.0",
     # The reference package pins Python below 3.13; the ONNX build of the same model has
     # no such limit and is what runs on current interpreters. `voicebrief tts setup`
     # downloads its two model files.
