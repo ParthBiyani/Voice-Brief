@@ -97,11 +97,14 @@ class DailyResult:
     attribution_rate: float | None = None
     issues: list[str] = field(default_factory=list)
     error: str | None = None
+    # Today's episode exists but its delivery or backup is still outstanding, so the
+    # scheduler must fire again rather than treat the day as finished.
+    unfinished: list[str] = field(default_factory=list)
 
     @property
     def exit_code(self) -> int:
-        """0 good (or nothing to do), 2 degraded episode, 1 failure."""
-        if self.outcome == "failed" or self.status == "failed":
+        """0 good (or nothing to do), 2 degraded episode, 1 failure or unfinished work."""
+        if self.outcome == "failed" or self.status == "failed" or self.unfinished:
             return 1
         if self.status == "degraded":
             return 2
@@ -158,6 +161,49 @@ def todays_episode(
         .scalars()
         .first()
     )
+
+
+def delivery_outstanding(episode_id: uuid.UUID) -> list[str]:
+    """Configured channels that have not yet confirmed delivery of this episode."""
+    from voicebrief.delivery.deliver import configured_channels
+
+    with session_scope() as session:
+        episode = session.get(Episode, episode_id)
+        done = ((episode.grounding if episode else None) or {}).get("delivery", {})
+    return [c for c in configured_channels() if not done.get(c, {}).get("ok")]
+
+
+def backup_outstanding(created_at: datetime) -> bool:
+    """True when no backup has been taken since the episode was made."""
+    from voicebrief.backup import list_backups
+
+    backups = list_backups()
+    if not backups:
+        return True
+    newest = max(datetime.fromtimestamp(b.stat().st_mtime, UTC) for b in backups)
+    return newest < created_at
+
+
+def finish_existing(episode_id: uuid.UUID, created_at: datetime) -> tuple[dict, list[str]]:
+    """Complete what an earlier run left undone: delivery first, then the backup.
+
+    A run can be cut short after the episode exists (Docker or the network dropping).
+    The next firing finds the episode and would otherwise stop at "already done", so the
+    brief never reached Slack and was never backed up. Delivery skips channels that
+    already succeeded, so this is safe to run every time.
+    """
+    from voicebrief.backup import backup_after_generation
+
+    summary: dict = {}
+    unfinished: list[str] = []
+    if delivery_outstanding(episode_id):
+        summary["delivery"] = deliver_episode(episode_id)
+        unfinished += [f"delivery:{c}" for c in delivery_outstanding(episode_id)]
+    if backup_outstanding(created_at):
+        summary["backup"] = backup_after_generation()
+        if not summary["backup"].get("ok"):
+            unfinished.append("backup")
+    return summary, unfinished
 
 
 def resolve_user(session: Session, request: BriefRequest) -> User:
@@ -395,17 +441,30 @@ def run_daily(
                 existing = todays_episode(session, user.id, now=now, timezone=timezone)
                 if existing is not None and not force:
                     log.info("daily.already_done", episode=str(existing.id))
+                    existing_id, created = existing.id, existing.created_at
+                    status, title = existing.status.value, existing.title
+                    done_summary: dict = {"reason": "today's brief already exists"}
+                    unfinished: list[str] = []
+                    try:
+                        extra, unfinished = finish_existing(existing_id, created)
+                        done_summary.update(extra)
+                    except Exception as exc:  # never worse than doing nothing
+                        unfinished = ["finish"]
+                        done_summary["finish_error"] = f"{type(exc).__name__}: {exc}"[:300]
+                    if unfinished:
+                        log.warning("daily.unfinished", outstanding=unfinished)
                     finish_run(
                         run_id,
-                        "skipped",
-                        summary={"reason": "today's brief already exists"},
-                        episode_id=existing.id,
+                        "skipped" if not unfinished else "degraded",
+                        summary=done_summary,
+                        episode_id=existing_id,
                     )
                     return DailyResult(
                         outcome="already_done",
-                        episode_id=existing.id,
-                        status=existing.status.value,
-                        title=existing.title,
+                        episode_id=existing_id,
+                        status=status,
+                        title=title,
+                        unfinished=unfinished,
                     )
                 topics = set(user.topics or DEFAULT_TOPICS)
 
@@ -466,6 +525,11 @@ def run_daily(
             from voicebrief.backup import backup_after_generation
 
             summary["backup"] = backup_after_generation()
+            if generated.status != "failed":
+                result.unfinished = delivery_outstanding(generated.episode_id)
+                result.unfinished = [f"delivery:{c}" for c in result.unfinished]
+                if not summary["backup"].get("ok"):
+                    result.unfinished.append("backup")
             finish_run(
                 run_id,
                 "ok" if generated.status == "ready" else generated.status,

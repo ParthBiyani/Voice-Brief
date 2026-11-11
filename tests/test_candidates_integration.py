@@ -115,10 +115,12 @@ def air(session, user, cluster_urls: list[str], *, cluster: Cluster | None = Non
 class TestFreshness:
     def test_only_recently_seen_stories_are_candidates(self, session, source, user):
         fresh = make_story(session, source, title="Fresh story today", age_hours=3)
-        make_story(session, source, title="Stale story last week", age_hours=24 * 7, size=9)
+        make_story(
+            session, source, title="Outdated-marker-7f3a story last week", age_hours=24 * 7, size=9
+        )
         got = build_candidates(session, user_id=user.id, now=NOW, limit=100_000)
         assert {c.cluster_id for c in got} >= {fresh.id}
-        assert all("Stale" not in c.title for c in got)
+        assert all("Outdated-marker-7f3a" not in c.title for c in got)
 
     def test_a_huge_old_cluster_no_longer_crowds_out_todays_news(self, session, source, user):
         make_story(session, source, title="Old blockbuster story", age_hours=24 * 10, size=50)
