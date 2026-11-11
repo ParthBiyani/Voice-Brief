@@ -43,6 +43,7 @@ class SourceKind(str, enum.Enum):
 class Language(str, enum.Enum):
     en = "en"
     hi = "hi"
+    hinglish = "hinglish"
 
 
 class EpisodeStatus(str, enum.Enum):

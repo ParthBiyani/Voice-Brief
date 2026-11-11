@@ -27,6 +27,7 @@ from typing import Annotated, TypedDict
 from langgraph.graph import END, StateGraph
 
 from voicebrief.config import local_timezone
+from voicebrief.languages import writing_instruction
 from voicebrief.llm.base import BudgetExceeded, Stage, Tier
 from voicebrief.llm.client import LLMClient
 from voicebrief.logging import get_logger
@@ -37,7 +38,7 @@ from voicebrief.pipeline.ranking import (
     RankedStory,
     prerank,
     rerank,
-    select_for_episode,
+    select_by_impact,
 )
 from voicebrief.pipeline.summarize import ClusterSummary, summarize_cluster
 
@@ -45,7 +46,16 @@ log = get_logger(__name__)
 
 # Words per minute for a brisk news register. Used to target episode length.
 WORDS_PER_MINUTE = 155
-TARGET_MINUTES = 12
+# The longest a brief may run. How long it actually runs depends on the day's news.
+TARGET_MINUTES = 15
+# Words a story gets by how much it matters: the day's big news and high-impact items are
+# told properly, a spotlight repository briefly. Scaled down together when they would
+# overrun the ceiling.
+WORDS_BY_ROLE = {"headline": 260, "spotlight": 170}
+WORDS_HIGH_IMPACT = 230
+WORDS_STANDARD = 170
+MIN_STORY_WORDS = 90
+FRAMING_WORDS = 160  # agenda and sign-off
 
 
 def _keep_last(_current, new):
@@ -87,26 +97,47 @@ class Segment:
 
 
 SEGMENT_SYSTEM = """\
-You write one segment of a daily technical audio brief for a specific engineer.
+You write one segment of a daily technical audio brief for a specific engineer. It will
+be spoken aloud by a person-sounding voice, so it has to sound like a person talking: a
+sharp colleague telling you what they just read, not a press release read out.
 
-This is spoken, not read. That changes the rules:
-- Short sentences. No bullet points, no headings, no markdown, no emoji.
-- Never read a URL aloud. Say "the release notes" or "the paper", not the address.
-- Expand notation into speech: "version zero point four", "twelve percent".
-- Never read out pull request or issue numbers, commit hashes, or a list of changelog
-  lines. For a software release, give the version once and then say in plain words what
+How it should sound:
+- Plain, warm, a little informal. Contractions always ("it's", "they've", "doesn't").
+- Vary the rhythm. A short sentence, then a longer one that carries a detail, then a short
+  one again. Never three sentences in a row built the same way.
+- Start on the point, in your own words. Connect the facts the way you would out loud:
+  "So", "Which means", "Here's the catch", "Now", "That's the part that matters". Use
+  them sparingly, a couple per segment, not as tics.
+- A question is allowed when it is how you would really lead into the next fact. Answer it
+  straight away from the facts.
+- No headings, bullet points, markdown or emoji. Never read a URL aloud.
+- Banned, because they make writing sound machine-made: "delve", "landscape", "realm",
+  "game-changer", "revolutionize", "unlock", "leverage", "seamless", "robust", "cutting-edge",
+  "in today's fast-paced world", "it's worth noting", "notably", "importantly", "let's
+  unpack", "dive into", "not just X but Y", "whether you're X or Y". No lists of exactly
+  three things for rhythm's sake. No dashes standing in for commas; use full stops.
+- No preamble, no "in this segment", no sign-posting, no greeting. Start with the news.
+
+Numbers, said the way a person would:
+- Always say the numbers that carry the story: benchmark and evaluation scores, accuracy,
+  speed, size, price, dates a thing ships, and the name and number of a new model from a
+  leading lab ("Claude Fable five point one", "GPT six"). Spell them as words.
+- Skip the numbers that tell the listener nothing: library version numbers, build
+  numbers, pull request and issue numbers, commit hashes, star counts to the digit. Say
+  "a new release" or "the latest release" instead of reading a version. The exception is
+  a version that is itself the news (a major release, or a model's name).
+- Never read a changelog line by line. For a software release say in plain words what
   changed for someone using it. Two or three changes at most, the ones that matter most.
-- No preamble, no "in this segment", no sign-posting. Start with the news.
 
 Grounding is not negotiable:
 - Every factual claim must come from the FACTS provided. If it is not there, it does
   not go in the script.
 - Do not estimate, extrapolate, or add context you happen to know. An absent detail
   stays absent.
-- No speculation about what might happen next, what to watch for, or what something
-  suggests. If the sources do not say it, neither do you.
-- No editorial verdicts. Skip "that's a real jump", "worth keeping an eye on",
-  "this is significant". State the fact and let it stand.
+- No speculation about what might happen next or what something suggests. If the
+  sources do not say it, neither do you.
+- No hype and no verdicts. Skip "that's a real jump", "huge", "significant". Let the
+  facts carry it; the voice is natural, not excited.
 - If the facts are thin, write a shorter segment. Short and true beats long and
   padded.
 
@@ -114,6 +145,22 @@ When the story touches a dependency the engineer actually uses, say so plainly a
 name the repository. That connection is the reason they are listening. Do not
 manufacture one where it does not exist.\
 """
+
+ROLE_NOTES = {
+    "headline": (
+        "\n\nTHIS IS ONE OF THE DAY'S BIG STORIES, the kind of news everyone in tech is "
+        "talking about. Open on it plainly and say why people are paying attention, from the "
+        "facts. Give the numbers and names that carry it. Do not force a link to the "
+        "listener's own code; mention one only if the FACTS clearly make it."
+    ),
+    "spotlight": (
+        "\n\nTHIS IS A REPOSITORY THAT IS RISING FAST, shared because it is interesting, not "
+        "because it touches the listener's work. Say what it is and what it lets someone do in "
+        "plain words, who it is for, and the most interesting thing about how it works, all "
+        "from the FACTS. Say the repository's name. Do not invent a link to the listener's "
+        "stack."
+    ),
+}
 
 
 DIALOGUE_RULES = """\
@@ -211,7 +258,7 @@ class BriefGraph:
             affinity=affinity,
         )
         stories = rerank(preranked, self.client, profile=profile, affinity=affinity)
-        selected = select_for_episode(stories, max_stories=self.max_stories)
+        selected = select_by_impact(stories, ceiling=self.max_stories)
 
         # Every candidate and its fate, kept so the choice can be explained later.
         picked = {id(s) for s in selected}
@@ -268,10 +315,7 @@ class BriefGraph:
             self.segment_system + DIALOGUE_RULES if style == "two_host" else self.segment_system
         )
 
-        # Budget words across stories so the episode lands near its target length.
-        story_budget = max(
-            90, (self.target_minutes * WORDS_PER_MINUTE - 260) // max(len(summaries), 1)
-        )
+        budgets = self._word_budgets([story for story, _ in summaries])
 
         errors = list(state.get("errors", []))
         # The daily brief opens straight on the agenda: a teaser of the same headlines
@@ -281,11 +325,13 @@ class BriefGraph:
         segments: list[Segment] = []
         if self.mode == "knowledge":
             segments.append(self._write_cold_open(summaries, language, style))
-        segments.append(self._write_agenda(summaries, language, style))
+        # Two stories or fewer need no running order announced.
+        if self.mode == "knowledge" or len(summaries) > 2:
+            segments.append(self._write_agenda(summaries, language, style))
         opening = len(segments)
         for index, (story, summary) in enumerate(summaries):
             segment = self._write_story(
-                story, summary, index + opening, story_budget, profile, language, style
+                story, summary, index + opening, budgets[index], profile, language, style
             )
             if segment:
                 segments.append(segment)
@@ -304,6 +350,24 @@ class BriefGraph:
                 errors.append(f"{segment.kind} was empty and was left out")
         return {"segments": kept, "errors": errors}
 
+    def _word_budgets(self, stories: list[RankedStory]) -> list[int]:
+        """Words per story: by importance for a daily brief, evenly for a documents one."""
+        ceiling = self.target_minutes * WORDS_PER_MINUTE - FRAMING_WORDS
+        if self.mode == "knowledge":
+            return [max(MIN_STORY_WORDS, (ceiling - 100) // max(len(stories), 1))] * len(stories)
+
+        wanted = [
+            WORDS_BY_ROLE.get(
+                getattr(s, "role", ""),
+                WORDS_HIGH_IMPACT if (getattr(s, "llm_score", 0) or 0) >= 9 else WORDS_STANDARD,
+            )
+            for s in stories
+        ]
+        total = sum(wanted)
+        if total > ceiling:
+            wanted = [max(MIN_STORY_WORDS, w * ceiling // total) for w in wanted]
+        return wanted
+
     def assemble_node(self, state: BriefState) -> dict:
         segments: list[Segment] = state.get("segments", [])
         for position, segment in enumerate(segments):
@@ -315,6 +379,7 @@ class BriefGraph:
             "segments": segments,
             "word_count": words,
             "estimated_minutes": round(words / WORDS_PER_MINUTE, 1),
+            "planned_stories": len(state.get("summaries", [])),
             "generated_at": datetime.now(UTC).isoformat(),
             "language": state.get("language", "en"),
             "style": state.get("style", "solo_anchor"),
@@ -436,12 +501,12 @@ class BriefGraph:
                     "bears on the story. Add nothing to it."
                 )
 
+        personal = ROLE_NOTES.get(getattr(story, "role", ""), "") + personal
         prompt = (
             f"{summary.as_context()}{personal}\n\n"
             f"Write this as one spoken segment of about {word_budget} words"
-            f"{' in Hindi' if language == 'hi' else ''}"
             f"{', as a conversation between HOST A and HOST B' if style == 'two_host' else ''}.\n"
-            f"Use only the facts above."
+            f"Use only the facts above. {writing_instruction(language)}"
         )
 
         try:
@@ -478,12 +543,18 @@ class BriefGraph:
             f"Write a 25-word cold open for an episode explaining the listener's own "
             f"material: {self.subject}. What it covers: {headlines}.\n"
             f"No greeting cliches. Land on the single most important point."
-            f"{' Write in Hindi.' if language == 'hi' else ''}"
+            f" {writing_instruction(language)}"
         )
         return self._simple_segment(prompt, "cold_open", "Cold open", 200)
 
     def _write_agenda(self, summaries, language: str, style: str) -> Segment:
-        headlines = "\n".join(f"- {s.headline}" for _, s in summaries if s.headline)
+        label = {"headline": "big news", "spotlight": "a repository to know about"}
+        headlines = "\n".join(
+            f"- {s.headline}"
+            + (f" ({label[getattr(st, 'role', '')]})" if getattr(st, "role", "") in label else "")
+            for st, s in summaries
+            if s.headline
+        )
         opener = (
             ""
             if self.mode == "knowledge"
@@ -498,8 +569,10 @@ class BriefGraph:
                 if style == "two_host"
                 else "Spoken, flowing prose. "
             )
-            + f"Not a list read aloud.{opener}"
-            f"{' Write in Hindi.' if language == 'hi' else ''}"
+            + "The day's big news comes first, then any repository to know about, then what "
+            "touches the listener's own stack: say it in that order, but do not read the "
+            "bracketed labels aloud. " + f"Not a list read aloud.{opener}"
+            f" {writing_instruction(language)}"
         )
         return self._simple_segment(prompt, "agenda", "Agenda", 250)
 
@@ -517,7 +590,7 @@ class BriefGraph:
                 if style == "two_host"
                 else ""
             )
-            + (" Write in Hindi." if language == "hi" else "")
+            + (" " + writing_instruction(language))
         )
         return self._simple_segment(prompt, "sign_off", "Sign-off", 150)
 

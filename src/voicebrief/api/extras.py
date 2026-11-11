@@ -183,7 +183,7 @@ class SettingsIn(BaseModel):
     @classmethod
     def _language(cls, value: str | None) -> str | None:
         if value is not None and value not in {item.value for item in Language}:
-            raise ValueError("language must be en or hi")
+            raise ValueError("language must be en, hi or hinglish")
         return value
 
     @field_validator("style")
@@ -397,7 +397,7 @@ async def documents_podcast(
     if len(files) > MAX_DOCUMENTS:
         raise HTTPException(status_code=422, detail=f"at most {MAX_DOCUMENTS} documents")
     if language is not None and language not in {item.value for item in Language}:
-        raise HTTPException(status_code=422, detail="language must be en or hi")
+        raise HTTPException(status_code=422, detail="language must be en, hi or hinglish")
 
     parsed = []
     origins = []
