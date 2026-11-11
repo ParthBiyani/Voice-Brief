@@ -43,6 +43,7 @@ class SourceKind(str, enum.Enum):
 class Language(str, enum.Enum):
     en = "en"
     hi = "hi"
+    hinglish = "hinglish"
 
 
 class EpisodeStatus(str, enum.Enum):
@@ -312,6 +313,9 @@ class Segment(Base, TimestampMixin):
     )
     # [{item_id, url, title, span}] — every claim traces to one of these.
     citations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    # [{speaker, text, start, end}] per spoken sentence, in episode seconds. Lets the
+    # player start the audio from any sentence or word. Empty for older episodes.
+    cues: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
 
     episode: Mapped[Episode] = relationship(back_populates="segments")
 

@@ -52,8 +52,12 @@ log = get_logger(__name__)
 DAILY_LOCK = "voicebrief:daily"
 DEFAULT_EMAIL = "me@example.com"
 DEFAULT_TOPICS = ("agentic-ai", "tooling")
+# A documents episode is sized by its request; the daily brief by the news, up to a
+# ceiling (see select_by_impact), so a quiet day is short and a big one is not cut off.
 DEFAULT_STORIES = 6
 DEFAULT_MINUTES = 9
+DAILY_MAX_STORIES = 14
+DAILY_MAX_MINUTES = 15
 
 
 class NoFreshStories(RuntimeError):
@@ -399,8 +403,8 @@ def generate_brief(
         declared_topics=set(user.topics or DEFAULT_TOPICS),
         language=user.language.value,
         style=user.style.value,
-        max_stories=request.stories or DEFAULT_STORIES,
-        target_minutes=request.minutes or DEFAULT_MINUTES,
+        max_stories=request.stories or DAILY_MAX_STORIES,
+        target_minutes=request.minutes or DAILY_MAX_MINUTES,
         render_audio=request.render_audio,
         excluded=report.excluded,
         run_id=run_id,

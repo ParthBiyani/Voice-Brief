@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import wave
 from types import SimpleNamespace
 from typing import ClassVar
@@ -92,6 +93,13 @@ class TestParsing:
             "Version 1.4.9 is out.",
             "Is it safe?",
             "Yes!",
+        ]
+
+    def test_hindi_sentences_split_on_the_danda(self):
+        assert split_sentences("यह पहला वाक्य है। Streaming अब default है। क्या यह सही है?") == [
+            "यह पहला वाक्य है।",
+            "Streaming अब default है।",
+            "क्या यह सही है?",
         ]
 
 
@@ -243,13 +251,19 @@ class TestScriptingTheConversation:
         assert "asks at least" in DIALOGUE_RULES.replace("\n", " ")
 
 
-def test_default_hosts_are_one_woman_and_one_man():
+def test_default_hosts_are_one_woman_and_one_man(monkeypatch):
     from voicebrief.config import get_settings
+    from voicebrief.tts.engines import voices_for
 
     settings = get_settings()
-    assert settings.tts_voice_host_a_en.startswith("af_")  # female
-    assert settings.tts_voice_host_b_en.startswith("am_")  # male
-    assert settings.tts_voice_host_b_hi.startswith("hm_")
+    for field in ("tts_voice_en", "tts_voice_host_a_en", "tts_voice_host_b_en"):
+        monkeypatch.setattr(settings, field, None)
+    edge = voices_for("edge", "en")
+    assert edge["A"].startswith("en-US-Ava")  # female
+    assert edge["B"].startswith("en-US-Andrew")  # male
+    kokoro = voices_for("kokoro", "en")
+    assert kokoro["A"].startswith("af_") and kokoro["B"].startswith("am_")
+    assert voices_for("kokoro", "hinglish")["B"].startswith("hm_")
 
 
 class TestSpeakable:
@@ -281,3 +295,50 @@ class TestSpeakable:
             cache_dir=tmp_path / "c",
         )
         assert engine.calls[0][0] == "It needs langchain-core 1 point 7 point 5."
+
+
+class TestSentenceTimings:
+    """The web player seeks by these, so they must match the audio that was laid down."""
+
+    def test_every_sentence_has_a_cue_that_matches_where_it_sits(self, tmp_path):
+        engine = ToneEngine()
+        clip = render_script(
+            DIALOGUE, engine, voices=VOICES, out_path=tmp_path / "s.wav", cache_dir=tmp_path / "c"
+        )
+        cues = clip.meta["cues"]
+        assert [c["speaker"] for c in cues] == ["A", "B", "B", "A", "B"]
+        assert cues[0]["text"] == "What changed in this release?"
+        assert cues[0]["start"] == 0.0
+        for earlier, later in itertools.pairwise(cues):
+            assert earlier["end"] <= later["start"]  # a pause lies between sentences
+        assert cues[-1]["end"] == pytest.approx(clip.duration_seconds, abs=0.01)
+
+    def test_the_cue_shows_the_written_text_not_the_spoken_form(self, tmp_path):
+        engine = ToneEngine()
+        clip = render_script(
+            "HOST B: It needs langchain-core 1.7.5.",
+            engine,
+            voices=VOICES,
+            out_path=tmp_path / "s.wav",
+            cache_dir=tmp_path / "c",
+        )
+        assert clip.meta["cues"][0]["text"] == "It needs langchain-core 1.7.5."
+
+    def test_assembly_puts_cues_on_the_episode_clock(self, tmp_path):
+        engine = ToneEngine()
+        segs = [
+            SimpleNamespace(position=0, kind="agenda", heading="A", script="First one."),
+            SimpleNamespace(position=1, kind="story", heading="S", script="Second one."),
+        ]
+        episode = assemble(
+            segs,
+            engine,
+            voice="fem",
+            voices=VOICES,
+            out_path=tmp_path / "e.wav",
+            cache_dir=tmp_path / "c",
+        )
+        first, second = episode.segments
+        assert first.cues[0]["start"] == 0.0
+        assert second.cues[0]["start"] == pytest.approx(second.start_seconds, abs=0.01)
+        assert second.cues[-1]["end"] == pytest.approx(second.end_seconds, abs=0.01)

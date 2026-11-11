@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { EpisodeDetail, RankingRow, Segment } from "../lib/api";
 import { api, formatTimestamp, mediaUrl, percent } from "../lib/api";
+import { activeCue, groupTurns, seekTarget, wordTimes } from "../lib/cues";
 import { SegmentChat } from "./SegmentChat";
 
 interface Props {
@@ -24,6 +25,23 @@ export function Player({ episode }: Props) {
   const [votes, setVotes] = useState<Record<string, 1 | -1>>({});
   const [why, setWhy] = useState<RankingRow[] | null>(null);
   const [showWhy, setShowWhy] = useState(false);
+  // Clicking a sentence starts exactly there; clicking a word starts near it (word times
+  // are shared out by length, since the speech engine does not report them).
+  const [jump, setJump] = useState<"sentence" | "word">(() => {
+    try {
+      return localStorage.getItem("vb-jump") === "word" ? "word" : "sentence";
+    } catch {
+      return "sentence";
+    }
+  });
+  function chooseJump(mode: "sentence" | "word") {
+    setJump(mode);
+    try {
+      localStorage.setItem("vb-jump", mode);
+    } catch {
+      /* private mode: the choice just is not remembered */
+    }
+  }
 
   // A different episode starts fresh: no stale explanation from the previous one.
   useEffect(() => {
@@ -130,6 +148,13 @@ export function Player({ episode }: Props) {
         <button onClick={() => void toggleWhy()} aria-expanded={showWhy}>
           {showWhy ? "Hide" : "Why these stories?"}
         </button>
+        <label className="jump-mode" title="What a click in the transcript jumps to">
+          <span>Click jumps to</span>
+          <select value={jump} onChange={(e) => chooseJump(e.target.value as "sentence" | "word")}>
+            <option value="sentence">sentence</option>
+            <option value="word">word</option>
+          </select>
+        </label>
       </div>
       {showWhy && <Why rows={why} />}
 
@@ -139,6 +164,8 @@ export function Player({ episode }: Props) {
             key={segment.id}
             segment={segment}
             active={segment.id === activeId}
+            position={position}
+            jump={jump}
             vote={votes[segment.id]}
             onSeek={seek}
             onVote={vote}
@@ -156,6 +183,8 @@ export function Player({ episode }: Props) {
 interface LineProps {
   segment: Segment;
   active: boolean;
+  position: number;
+  jump: "sentence" | "word";
   vote: 1 | -1 | undefined;
   onSeek: (seconds: number) => void;
   onVote: (segmentId: string, value: 1 | -1) => void;
@@ -166,6 +195,8 @@ interface LineProps {
 function TranscriptLine({
   segment,
   active,
+  position,
+  jump,
   vote,
   onSeek,
   onVote,
@@ -192,7 +223,11 @@ function TranscriptLine({
         )}
       </div>
 
-      <p className="script">{segment.script}</p>
+      {(segment.cues ?? []).length > 0 ? (
+        <SpokenText segment={segment} position={active ? position : -1} jump={jump} onSeek={onSeek} />
+      ) : (
+        <p className="script">{segment.script}</p>
+      )}
 
       {segment.citations.length > 0 && (
         <ul className="citations">
@@ -235,6 +270,63 @@ function TranscriptLine({
 
       {chatOpen && <SegmentChat segmentId={segment.id} />}
     </li>
+  );
+}
+
+/**
+ * The transcript as it is spoken: each sentence, and each word in it, starts the audio
+ * from there. The sentence and word being said are marked while it plays.
+ */
+function SpokenText({
+  segment,
+  position,
+  jump,
+  onSeek,
+}: {
+  segment: Segment;
+  position: number;
+  jump: "sentence" | "word";
+  onSeek: (seconds: number) => void;
+}) {
+  const turns = useMemo(() => groupTurns(segment.cues), [segment.cues]);
+  const current = position >= 0 ? activeCue(segment.cues, position) : -1;
+  const twoHosts = turns.some((turn) => turn.speaker !== "");
+  let index = -1;
+
+  return (
+    <div className="script spoken">
+      {turns.map((turn, turnIndex) => (
+        <p key={turnIndex} className={`turn${turn.speaker ? ` turn-${turn.speaker}` : ""}`}>
+          {twoHosts && turn.speaker && <span className="speaker">{turn.speaker}</span>}
+          {turn.cues.map((cue) => {
+            index += 1;
+            const here = index === current;
+            return (
+              <span
+                key={cue.start}
+                className={`sentence${here ? " is-spoken" : ""}`}
+                onClick={() => onSeek(seekTarget(cue.start))}
+              >
+                {wordTimes(cue).map((word, wordIndex) => (
+                  <span
+                    key={wordIndex}
+                    className={`word${here && position >= word.start && position < word.end ? " is-now" : ""}`}
+                    onClick={(event) => {
+                      if (jump === "word") {
+                        event.stopPropagation();
+                        onSeek(seekTarget(word.start));
+                      }
+                    }}
+                  >
+                    {word.text}{" "}
+                  </span>
+                ))}
+              </span>
+            );
+          })}
+        </p>
+      ))}
+    </div>
   );
 }
 

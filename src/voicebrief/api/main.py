@@ -28,6 +28,7 @@ from voicebrief import __version__
 from voicebrief.api import progress
 from voicebrief.api.schemas import (
     Citation,
+    Cue,
     EpisodeDetail,
     EpisodeSummary,
     FeedbackIn,
@@ -471,4 +472,5 @@ def _to_segment(segment: Segment) -> SegmentOut:
         start_seconds=segment.start_seconds,
         end_seconds=segment.end_seconds,
         citations=[Citation(**c) for c in (segment.citations or [])],
+        cues=[Cue(**c) for c in (segment.cues or [])],
     )

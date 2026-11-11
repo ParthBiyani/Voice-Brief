@@ -18,6 +18,14 @@ export interface Citation {
   item_id: string | null;
 }
 
+/** One spoken sentence and when it is said, in episode seconds. */
+export interface Cue {
+  speaker: string;
+  text: string;
+  start: number;
+  end: number;
+}
+
 export interface Segment {
   id: string;
   position: number;
@@ -27,6 +35,8 @@ export interface Segment {
   start_seconds: number | null;
   end_seconds: number | null;
   citations: Citation[];
+  /** Sentence timings; empty for episodes made before they were recorded. */
+  cues: Cue[];
   /** Dependencies from the listener's own repositories this story touches. */
   matched: string[];
   /** Picked for a personal reason: a stack match or a stated interest. */

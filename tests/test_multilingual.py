@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-from voicebrief.config import get_settings
 from voicebrief.pipeline.grounding import split_sentences
 from voicebrief.tts.engines import KokoroEngine, build_engine
 
@@ -39,10 +38,12 @@ class TestVoiceSelection:
         assert any(v.startswith("hf_") or v.startswith("hm_") for v in voices)
 
     def test_settings_expose_a_voice_per_language(self):
-        settings = get_settings()
-        assert settings.tts_voice_en
-        assert settings.tts_voice_hi
-        assert settings.tts_voice_en != settings.tts_voice_hi
+        from voicebrief.tts.engines import voices_for
+
+        for engine in ("edge", "kokoro"):
+            assert voices_for(engine, "en")[""]
+            assert voices_for(engine, "hi")[""]
+            assert voices_for(engine, "en")[""] != voices_for(engine, "hi")[""]
 
 
 class TestDevanagariHandling:

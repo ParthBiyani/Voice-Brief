@@ -129,6 +129,15 @@ a { color: var(--accent); }
   flex: none;
 }
 .script { margin: 7px 0; white-space: pre-wrap; }
+.spoken { white-space: normal; }
+.spoken .turn { margin: 0 0 6px; }
+.spoken .speaker { display: inline-block; min-width: 1.4em; margin-right: 6px; padding: 0 5px; border-radius: 4px; background: var(--accent-soft); color: var(--muted); font-size: 12px; font-weight: 600; text-align: center; }
+.spoken .sentence { cursor: pointer; border-radius: 3px; }
+.spoken .sentence:hover { background: var(--accent-soft); }
+.spoken .sentence.is-spoken { background: var(--accent-soft); }
+.spoken .word.is-now { text-decoration: underline; text-underline-offset: 3px; }
+.jump-mode { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.jump-mode select { font-size: 13px; }
 
 .citations { list-style: none; display: flex; flex-wrap: wrap; gap: 10px; margin: 6px 0; padding: 0; font-size: 13px; }
 .segment-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
@@ -172,7 +181,7 @@ code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; fon
 }
 .audio-bar audio { margin: 0; flex: 1; min-width: 0; }
 .download { font-size: 13px; white-space: nowrap; }
-.why-bar { margin: 6px 0 4px; }
+.why-bar { margin: 6px 0 4px; display: flex; align-items: center; gap: 10px; }
 .why { border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; margin: 6px 0 10px; }
 .why ul, .plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .why li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; }

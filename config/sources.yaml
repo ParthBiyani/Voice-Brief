@@ -63,6 +63,24 @@ sources:
       min_stars: 50
       created_within_days: 30
 
+  - slug: github-trending-open
+    name: GitHub Trending — any field
+    kind: github
+    endpoint: https://api.github.com/search/repositories
+    poll_interval_minutes: 360
+    trust_weight: 0.70
+    default_topics: [open-source, tooling, trending]
+    config:
+      cluster: solo
+      adapter: github_search
+      # No topic filter: the fastest-rising new repositories of the week, whatever they
+      # do (a video editor, a trading model, a GPU tool). The brief always spotlights one
+      # or two of these, relevant to the listener or not.
+      open_search: true
+      min_stars: 400
+      created_within_days: 10
+      readme_top: 10
+
   - slug: github-releases-watched
     name: GitHub Releases — watched repos
     kind: github

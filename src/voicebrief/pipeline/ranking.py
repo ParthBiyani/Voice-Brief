@@ -164,6 +164,12 @@ class RankedStory:
     # Tools from the listener's stated interests (ProjectMind) the story is about.
     matched_interests: list[str] = field(default_factory=list)
     rationale: str = ""
+    # How much the whole industry is talking about it today, whoever the listener is
+    # (0-10, from the re-rank call). None when no model scored it.
+    buzz: float | None = None
+    # Where it sits in the running order: "headline" (the day's big news), "spotlight" (a
+    # rising repository worth knowing), or "relevant" (chosen for this listener).
+    role: str = "relevant"
     # What each heuristic signal contributed, so a decision can be explained afterwards.
     signals: dict[str, float] = field(default_factory=dict)
 
@@ -357,27 +363,35 @@ def prerank(
 # Stage 2 — LLM re-rank
 # ─────────────────────────────────────────────────────────────────────────────
 RERANK_SYSTEM = """\
-You rank technology news for one specific engineer's daily audio brief.
+You decide what goes into one specific engineer's daily audio brief. The brief is as long
+as the day's news deserves: a few minutes when a lot happened, a minute or two when little
+did. Nothing is included to fill time, so be strict.
 
 You are given that engineer's stack profile and a numbered list of candidate stories.
-Score each story 0-10 for how much it deserves a slot in *their* brief today.
+Score each story 0-10 for its IMPACT: how much it changes for someone like them.
 
-What earns a high score:
-- It changes something in a library or tool they actually depend on.
-- It is a concrete release, breaking change, or capability they could use this week.
-- It is a genuine shift in an area they work in.
+Judge impact, not novelty. A good test: can you say in one sentence what this changes for
+a person who uses it, and would that sentence matter to them? If the honest sentence is
+"it adds a small option", it is not impact.
 
-What earns a low score:
-- Generic industry news with no bearing on their stack.
-- Incremental research with no practical implication for a practitioner.
-- Marketing, funding rounds, and product launches unrelated to their work.
+- 9-10: changes how they work or what they can build: a major release or breaking change
+  in a library they depend on, a capability that removes a real workaround, a result that
+  moves their field.
+- 7-8: clearly worth their time: a meaningful gain in speed, cost, quality or capability
+  in something they use or could adopt this week, or a notable release or finding any
+  practitioner should hear.
+- 5-6: interesting, optional. Worth a line on a slow day, not a place in the brief.
+- 0-4: routine. Bug fixes, small features, minor and patch releases, version bumps,
+  dependency updates, documentation, incremental research, marketing, funding rounds,
+  anything unrelated to their work and significant to nobody. Most candidates belong here,
+  including most release notes, even for libraries they use.
 
-Weigh two things together. Relevance to this engineer: a small release of something
-they depend on beats a widely-covered story that does not touch their stack. And genuine
-significance to any practitioner: a major model release, an important open-source
-release, a serious security incident or a notable research result is worth hearing about
-even without a stack tie, and should land around 5 to 7. Reserve scores below 3 for
-stories that are neither relevant to them nor significant to anyone.
+Also give every story a `buzz` score 0-10, separate from impact: how much the whole
+industry is talking about it today, whoever is listening. 9-10 is for the stories everyone
+in tech will be discussing (a new flagship model from a leading lab, a major acquisition, a
+serious security incident, a launch that changes what developers can do). 4-6 is notable.
+Most stories are 0-3. For a new repository, buzz is how remarkable it is to any developer,
+whatever its field.
 
 Return JSON only.\
 """
@@ -393,9 +407,10 @@ RERANK_SCHEMA = {
                 "properties": {
                     "index": {"type": "integer"},
                     "score": {"type": "integer", "minimum": 0, "maximum": 10},
+                    "buzz": {"type": "integer", "minimum": 0, "maximum": 10},
                     "reason": {"type": "string"},
                 },
-                "required": ["index", "score", "reason"],
+                "required": ["index", "score", "buzz", "reason"],
                 "additionalProperties": False,
             },
         }
@@ -458,6 +473,11 @@ def rerank(
     head = stories[:limit]
     if not head:
         return stories
+    # The model scores what the heuristic ranks highest, and the heuristic favours the
+    # listener's stack. A rising repository in some other field would never be seen, so a
+    # few of those are always added to the call.
+    extras = [s for s in stories[limit:] if is_spotlight_candidate(s)][:SPOTLIGHT_EXTRAS]
+    head = head + extras
 
     listing = "\n\n".join(
         f"[{i}] {s.candidate.title}\n"
@@ -516,6 +536,8 @@ def rerank(
         # enforced here.
         story.llm_score = max(0.0, min(10.0, float(entry.get("score", 0))))
         story.rationale = str(entry.get("reason", ""))[:400]
+        if isinstance(entry.get("buzz"), int | float):
+            story.buzz = max(0.0, min(10.0, float(entry["buzz"])))
         # Blend rather than replace. The heuristic carries the dependency evidence,
         # which is factual; the model contributes judgement about significance.
         story.score = 0.4 * story.heuristic_score + 0.6 * story.llm_score
@@ -528,7 +550,7 @@ def rerank(
     # the raw heuristic they could outrank a story the model explicitly scored low, so
     # they are blended against the lowest model score seen: unreviewed never beats
     # reviewed-and-judged-relevant, but still orders by heuristic among themselves.
-    tail = stories[limit:]
+    tail = [s for s in stories[limit:] if s not in extras]
     judged = [s.llm_score for s in head if s.llm_score is not None]
     if judged:
         floor = min(judged)
@@ -625,6 +647,79 @@ def _cap_releases(
     return capped
 
 
+# The running order: the day's big news first, whether or not it touches the listener's
+# code; then a rising repository or two; then what was chosen for them.
+HEADLINE_BUZZ = 8.0
+MAX_HEADLINES = 3
+MAX_SPOTLIGHTS = 2
+SPOTLIGHT_SOURCE_PREFIX = "github-trending"
+SPOTLIGHT_MIN_CHARS = 400
+SPOTLIGHT_EXTRAS = 4  # trending repos added to the re-rank call even when the heuristic is cold  # a repo with no README text has nothing to say on air
+
+
+def is_spotlight_candidate(story: RankedStory) -> bool:
+    candidate = story.candidate
+    if not candidate.source_slug.startswith(SPOTLIGHT_SOURCE_PREFIX):
+        return False
+    return (candidate.substance_chars or 0) >= SPOTLIGHT_MIN_CHARS
+
+
+def _swap_in(selected: list[RankedStory], story: RankedStory, protected: set[int]) -> None:
+    """Put `story` in by displacing the weakest pick that is not protected."""
+    if story in selected:
+        return
+    free = [s for s in selected if id(s) not in protected]
+    if not free:
+        return
+    selected[selected.index(min(free, key=lambda s: (s.is_personal, s.score)))] = story
+
+
+def arrange_running_order(
+    selected: list[RankedStory], ordered: list[RankedStory], *, make_room: bool = True
+) -> None:
+    """Mark and order the picks: headlines, spotlights, then the rest by score.
+
+    `selected` is changed in place. Headlines are the stories the model scored as
+    industry-wide news; they are guaranteed a slot (and the first slots) even with no
+    link to the listener, because missing the day's big story is the failure a daily
+    brief cannot afford. Spotlights are the best rising repositories, one or two, also
+    regardless of fit. Neither displaces a story about the listener's own dependencies.
+    """
+    hot = sorted(
+        (s for s in ordered if (s.buzz or 0.0) >= HEADLINE_BUZZ and not is_release_story(s)),
+        key=lambda s: s.buzz or 0.0,
+        reverse=True,
+    )[:MAX_HEADLINES]
+    sparks = sorted(
+        (s for s in ordered if is_spotlight_candidate(s) and s not in hot),
+        key=lambda s: ((s.llm_score or 0.0) + (s.buzz or 0.0), s.score),
+        reverse=True,
+    )[:MAX_SPOTLIGHTS]
+
+    if not make_room:  # the caller has chosen who is in; this only labels and orders
+        hot = [s for s in hot if s in selected]
+        sparks = [s for s in selected if is_spotlight_candidate(s) and s not in hot]
+    protected = {id(s) for s in selected if s.matched_dependencies}
+    for story in [*hot, *sparks]:
+        if make_room:
+            _swap_in(selected, story, protected)
+        elif story not in selected:
+            selected.append(story)
+        protected.add(id(story))
+
+    for story in selected:
+        story.role = "relevant"
+    for story in sparks:
+        story.role = "spotlight"
+    for story in hot:
+        story.role = "headline"
+
+    rank = {"headline": 0, "spotlight": 1, "relevant": 2}
+    selected.sort(
+        key=lambda s: (rank[s.role], -(s.buzz or 0.0) if s.role == "headline" else -s.score)
+    )
+
+
 def select_for_episode(
     stories: list[RankedStory], *, max_stories: int = 10, min_personal: int = 2
 ) -> list[RankedStory]:
@@ -650,10 +745,70 @@ def select_for_episode(
         selected.sort(key=lambda s: s.score, reverse=True)
 
     selected = _cap_releases(selected, ordered, min_personal=min_personal)
+    arrange_running_order(selected, ordered)
 
     log.info(
         "rank.selected",
         stories=len(selected),
         personal=sum(1 for s in selected if s.is_personal),
+    )
+    return selected
+
+
+# How long a brief runs is decided by the news, not by a story count. A story earns its
+# place by impact (the re-rank score, 0-10); a quiet day yields a minute or two and a big
+# one fills the ceiling. Small additions to a library are not impact, so they stay out
+# however fresh they are.
+IMPACT_FLOOR = 7.0
+SPOTLIGHT_FLOOR = 5.0  # a rising repository only has to be interesting, not consequential
+MAX_STORIES_CEILING = 14
+FALLBACK_STORIES = 3  # with no model score at all, the heuristic's best few
+
+
+def impact(story: RankedStory) -> float | None:
+    return story.llm_score
+
+
+def select_by_impact(
+    stories: list[RankedStory], *, ceiling: int = MAX_STORIES_CEILING
+) -> list[RankedStory]:
+    """Every story whose impact clears the bar, the day's headlines, and a spotlight repo.
+
+    A brief is never empty while any story exists: if nothing clears the bar, the best
+    story or two are told short. Sources that reported nothing worth hearing are the
+    quiet days the listener asked to be told about in a minute.
+    """
+    ordered = sorted(stories, key=lambda s: s.score, reverse=True)
+    scored = [s for s in ordered if impact(s) is not None]
+
+    if scored:
+        qualified = [s for s in scored if (impact(s) or 0.0) >= IMPACT_FLOOR]
+        qualified += [s for s in scored if (s.buzz or 0.0) >= HEADLINE_BUZZ and s not in qualified]
+    else:  # the model could not be reached: the heuristic's order is all there is
+        qualified = ordered[:FALLBACK_STORIES]
+
+    selected = _without_repeats(sorted(qualified, key=lambda s: s.score, reverse=True), ceiling)
+    selected = _cap_releases(selected, ordered, min_personal=0)
+
+    # Spotlights are added on their own bar and never crowd out a qualifying story.
+    sparks = [
+        s
+        for s in ordered
+        if is_spotlight_candidate(s) and (impact(s) is None or (impact(s) or 0) >= SPOTLIGHT_FLOOR)
+    ]
+    sparks.sort(key=lambda s: ((s.llm_score or 0.0) + (s.buzz or 0.0), s.score), reverse=True)
+    for story in sparks[:MAX_SPOTLIGHTS]:
+        if story not in selected:
+            selected.append(story)
+    if not selected and ordered:
+        selected = ordered[:1]
+
+    arrange_running_order(selected, ordered, make_room=False)
+    log.info(
+        "rank.selected_by_impact",
+        stories=len(selected),
+        headlines=sum(1 for s in selected if s.role == "headline"),
+        spotlights=sum(1 for s in selected if s.role == "spotlight"),
+        floor=IMPACT_FLOOR,
     )
     return selected

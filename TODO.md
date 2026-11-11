@@ -69,8 +69,8 @@ work is added at the bottom of the right section.
   answer, Mode 2 documents, the Hindi path.
 - [ ] **13. Add frontend tests.** CI only builds the web app. Why: the UI has no regression
   protection.
-- [ ] **14. Move to a small cloud VM (roadmap).** Why: everything depends on this laptop being on
-  and signed in.
+- [-] **14. Move to a cloud VM.** Dropped by the owner (11 Nov): everything stays on this
+  laptop for the foreseeable future. Other people run their own copy instead.
 
 ## Added later
 
@@ -78,5 +78,23 @@ work is added at the bottom of the right section.
   voice reading the HOST labels aloud. Now A (woman) asks and B (man) answers, each in their own
   voice, and speech is paced sentence by sentence. Needs a listen by the owner: voice and pacing
   settings are `VB_TTS_VOICE_HOST_*` and `VB_TTS_SPEED`.
+
+- [x] **Human voice (owner request, 11 Nov).** Kokoro still sounded robotic. Default is now
+  Microsoft's neural voices (free, no key), with OpenAI and ElevenLabs as keyed options and Kokoro
+  as the local fallback. Sentences render in parallel. Needs a listen by the owner.
+- [x] **Script sounds like a person; hot news first; one or two rising repositories every day;
+  skip version and PR numbers but say metrics and new model names (owner request, 11 Nov).**
+- [x] **Length follows the news, 2 to 15 minutes, only high-impact stories (owner request).**
+  Replaces the fixed story count. Impact bar is `IMPACT_FLOOR` in `pipeline/ranking.py`.
+- [x] **Hindi + English (Hinglish) option, in the web Settings drop-down and the API.**
+- [x] **Click a sentence or a word in the web transcript to start the audio there.**
+- [x] **Ready for other people to run:** `voicebrief doctor`, `scripts/setup.ps1`/`setup.sh`,
+  README setup section, `.env.example`, CONTRIBUTING and SECURITY.
+- [~] **Model comparison (owner request).** First run, 11 Nov, a quiet day (3 stories, ~720-820
+  words, `eval/runs/models-20261111-2220.md`): Haiku ranks + Sonnet writes ₹3.36, Sonnet for both
+  ₹7.96, Haiku for both ₹0.64. Claims traced to a source 0.78 / 0.82 / 0.77. Sonnet scored the
+  candidates a little higher and more spread; Haiku's script was fluent but added one line of
+  outside context. One quiet day is not enough to decide. Rerun on a busy day
+  (`python scripts/compare_models.py`) and listen to the voiced scripts before changing defaults.
 
 _(new items go here)_

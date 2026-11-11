@@ -112,6 +112,7 @@ export function Settings() {
             <span>Language</span>
             <select value={language} onChange={(e) => setLanguage(e.target.value)}>
               <option value="en">English</option>
+              <option value="hinglish">Hindi + English (Hinglish)</option>
               <option value="hi">Hindi</option>
             </select>
           </label>
