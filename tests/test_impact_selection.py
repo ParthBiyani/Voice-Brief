@@ -97,6 +97,13 @@ class TestHowLongEachRuns:
         budgets = self.graph()._word_budgets([big, repo])
         assert budgets[0] > budgets[1] > 0
 
+    def test_a_story_is_not_stretched_past_what_its_sources_say(self):
+        big = story("Headline thing", impact=9, buzz=9)
+        big.role = "headline"
+        thin, rich = self.graph()._word_budgets([big, big], [90, 600])
+        assert thin < rich
+        assert thin <= 90  # 90 words of facts cannot carry a 260-word segment
+
     def test_a_full_day_never_runs_past_the_ceiling(self):
         stories = [story(f"S{i} thing{i}", impact=9) for i in range(14)]
         for s in stories:

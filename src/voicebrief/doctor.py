@@ -126,7 +126,8 @@ def check_speech() -> Check:
 
 
 def check_web() -> Check:
-    dist = Path(get_settings().web_dist) if get_settings().web_dist else Path("web/dist")
+    configured = get_settings().web_dist
+    dist = Path(configured) if configured else Path("web/dist")
     ok = (dist / "index.html").is_file()
     return Check(
         "Web app build",

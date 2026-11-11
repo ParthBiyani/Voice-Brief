@@ -55,6 +55,8 @@ WORDS_BY_ROLE = {"headline": 260, "spotlight": 170}
 WORDS_HIGH_IMPACT = 230
 WORDS_STANDARD = 170
 MIN_STORY_WORDS = 90
+THIN_STORY_WORDS = 70  # the least a story is given when its sources say little
+FACTS_TO_SPEECH = 0.8  # spoken words per word of source facts, at most
 FRAMING_WORDS = 160  # agenda and sign-off
 
 
@@ -205,6 +207,12 @@ Grounding is not negotiable:
 """
 
 
+def _facts_words(summary) -> int:
+    """How much source material a story has; unknown counts as plenty."""
+    context = getattr(summary, "as_context", None)
+    return len(context().split()) if callable(context) else 10_000
+
+
 class BriefGraph:
     def __init__(
         self,
@@ -315,7 +323,10 @@ class BriefGraph:
             self.segment_system + DIALOGUE_RULES if style == "two_host" else self.segment_system
         )
 
-        budgets = self._word_budgets([story for story, _ in summaries])
+        budgets = self._word_budgets(
+            [story for story, _ in summaries],
+            [_facts_words(summary) for _, summary in summaries],
+        )
 
         errors = list(state.get("errors", []))
         # The daily brief opens straight on the agenda: a teaser of the same headlines
@@ -350,7 +361,9 @@ class BriefGraph:
                 errors.append(f"{segment.kind} was empty and was left out")
         return {"segments": kept, "errors": errors}
 
-    def _word_budgets(self, stories: list[RankedStory]) -> list[int]:
+    def _word_budgets(
+        self, stories: list[RankedStory], facts_words: list[int] | None = None
+    ) -> list[int]:
         """Words per story: by importance for a daily brief, evenly for a documents one."""
         ceiling = self.target_minutes * WORDS_PER_MINUTE - FRAMING_WORDS
         if self.mode == "knowledge":
@@ -363,9 +376,16 @@ class BriefGraph:
             )
             for s in stories
         ]
+        # A story cannot be told at more length than the facts support. Asked for 260 words
+        # from 120 words of source, the writer pads: repeated questions, restated points.
+        if facts_words:
+            wanted = [
+                min(w, max(THIN_STORY_WORDS, int(known * FACTS_TO_SPEECH)))
+                for w, known in zip(wanted, facts_words, strict=True)
+            ]
         total = sum(wanted)
         if total > ceiling:
-            wanted = [max(MIN_STORY_WORDS, w * ceiling // total) for w in wanted]
+            wanted = [max(THIN_STORY_WORDS, w * ceiling // total) for w in wanted]
         return wanted
 
     def assemble_node(self, state: BriefState) -> dict:

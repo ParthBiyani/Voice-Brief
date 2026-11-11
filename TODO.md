@@ -90,8 +90,11 @@ work is added at the bottom of the right section.
 - [x] **Click a sentence or a word in the web transcript to start the audio there.**
 - [x] **Ready for other people to run:** `voicebrief doctor`, `scripts/setup.ps1`/`setup.sh`,
   README setup section, `.env.example`, CONTRIBUTING and SECURITY.
-- [ ] **Model comparison (owner request):** Sonnet for ranking plus script, Haiku for both,
-  against today's Haiku plus Sonnet. Run `python scripts/compare_models.py`; budget to be set
-  from the result.
+- [~] **Model comparison (owner request).** First run, 11 Nov, a quiet day (3 stories, ~720-820
+  words, `eval/runs/models-20261111-2220.md`): Haiku ranks + Sonnet writes ₹3.36, Sonnet for both
+  ₹7.96, Haiku for both ₹0.64. Claims traced to a source 0.78 / 0.82 / 0.77. Sonnet scored the
+  candidates a little higher and more spread; Haiku's script was fluent but added one line of
+  outside context. One quiet day is not enough to decide. Rerun on a busy day
+  (`python scripts/compare_models.py`) and listen to the voiced scripts before changing defaults.
 
 _(new items go here)_
